@@ -192,25 +192,21 @@ export type CareerPassportDoc = {
   locations: string[];
   workCountries: string[];
   remoteModes: Array<"remote" | "hybrid" | "onsite">;
-  needsSponsorship: boolean;
-  graduationDate: string | null;
-  minimumSalary: number | null;
   employmentTypes: string[];
-  excludedCompanies: string[];
   discoveryEnabled: boolean;
-  emailFrequency: AlertFrequency;
-  pushFrequency: AlertFrequency;
   alertStates: RecommendationState[];
   quietStart: string;
   quietEnd: string;
   timezone: string;
+  /** False while every field still comes from the CV; true once the person has saved the form themselves (or on old documents). */
+  userSet?: boolean;
   version: number;
   createdAt: Date;
   updatedAt: Date;
 };
 
 export type EligibilityFinding = {
-  code: "sponsorship" | "citizenship" | "location" | "experience" | "degree" | "clearance" | "graduation";
+  code: "citizenship" | "location" | "experience" | "degree" | "clearance";
   severity: "blocker" | "verify";
   message: string;
   evidence: string;

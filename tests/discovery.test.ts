@@ -15,7 +15,7 @@ const profile: Profile = {
   education: [{ id: "d", school: "Herald College", degree: "BSc Computer Science", start: "2023", end: "2026", details: [] }], skills: ["React", "TypeScript", "Node.js"], projects: [], certifications: [], languages: ["English"],
 };
 const passport: CareerPassportDoc = {
-  _id: "user", targetRoles: ["Frontend developer"], excludedRoles: [], locations: ["Remote"], workCountries: ["Nepal"], remoteModes: ["remote"], needsSponsorship: true, graduationDate: "2026-06", minimumSalary: null, employmentTypes: ["Full-time"], excludedCompanies: [], discoveryEnabled: true, emailFrequency: "immediate", pushFrequency: "off", alertStates: ["ready"], quietStart: "22:00", quietEnd: "08:00", timezone: "Asia/Kathmandu", version: 1, createdAt: now, updatedAt: now,
+  _id: "user", targetRoles: ["Frontend developer"], excludedRoles: [], locations: ["Remote"], workCountries: ["Nepal"], remoteModes: ["remote"], employmentTypes: ["Full-time"], discoveryEnabled: true, alertStates: ["ready"], quietStart: "22:00", quietEnd: "08:00", timezone: "Asia/Kathmandu", version: 1, createdAt: now, updatedAt: now,
 };
 const job: DiscoveredJobDoc = {
   _id: "job", sourceType: "greenhouse", sourceKey: "acme", externalId: "1", canonicalUrl: "https://example.com/job", company: "Acme", title: "Frontend Developer", location: "Remote", text: "Frontend Developer\nRequirements\n- React and TypeScript\n- 2 years of experience", post: { title: "Frontend Developer", company: "Acme", location: "Remote", salary: "", summary: "Build interfaces.", requirements: [{ text: "React and TypeScript", kind: "must", keywords: ["React", "TypeScript"] }], keywords: ["React", "TypeScript"] }, contentHash: "hash", sourceUpdatedAt: now, firstSeenAt: now, lastSeenAt: now, closedAt: null, createdAt: now, updatedAt: now,
@@ -53,11 +53,10 @@ describe("eligibility-first matching", () => {
     expect(roleCompatibility("Account executive", ["Frontend developer"])).toBe(0);
   });
 
-  it("blocks a role that explicitly refuses sponsorship", () => {
-    const text = `${job.text}\nWe are unable to sponsor visas now or in the future.`;
-    const findings = eligibilityFindings(text, profile, passport);
-    expect(findings).toContainEqual(expect.objectContaining({ code: "sponsorship", severity: "blocker" }));
-    expect(evaluateJob(profile, now, passport, { ...job, text })?.state).toBe("blocked");
+  it("no longer blocks or flags a role for refusing sponsorship or naming a graduation window", () => {
+    const text = `${job.text}\nWe are unable to sponsor visas now or in the future. Applicants must be graduating between 2027 and 2028.`;
+    expect(eligibilityFindings(text, profile, passport)).toEqual([]);
+    expect(evaluateJob(profile, now, passport, { ...job, text })?.state).not.toBe("blocked");
   });
 
   it("keeps the evidence score separate and explains why a qualified role appeared", () => {
@@ -72,10 +71,9 @@ describe("eligibility-first matching", () => {
     expect(evaluateJob(profile, now, passport, { ...job, text: `${job.text}\nThis is a six-month contract role.` })).toBeNull();
   });
 
-  it("respects explicit graduation windows and numeric minimum salary constraints", () => {
-    const graduationText = `${job.text}\nApplicants must be graduating between 2027 and 2028.`;
-    expect(evaluateJob(profile, now, passport, { ...job, text: graduationText })?.state).toBe("blocked");
-    expect(evaluateJob(profile, now, { ...passport, minimumSalary: 50_000 }, { ...job, post: { ...job.post, salary: "USD 35,000 to 40,000" } })).toBeNull();
+  it("ignores stored fields that were removed from the Career Passport", () => {
+    const old = { ...passport, needsSponsorship: true, graduationDate: "2026-06", minimumSalary: 50_000, excludedCompanies: [job.company] };
+    expect(evaluateJob(profile, now, old as never, { ...job, post: { ...job.post, salary: "USD 35,000 to 40,000" } })?.state).toBe("ready");
   });
 });
 
@@ -114,19 +112,18 @@ describe("Career Passport from a CV", () => {
     expect(result.country).toBe("Nepal");
   });
 
-  it("fills a graduation month only when the CV writes one, and offers internships to students", () => {
-    const withMonth = passportFromCv(cv({ education: [{ ...profile.education[0], end: "May 2027" }] }), now);
-    expect(withMonth.graduationDate).toBe("2027-05");
-    expect(withMonth.employmentTypes).toEqual(["Full-time", "Internship"]);
-    const yearOnly = passportFromCv(cv({ education: [{ ...profile.education[0], end: "2027" }] }), now);
-    expect(yearOnly).toMatchObject({ graduationDate: null, graduationYear: "2027" });
-    const finished = passportFromCv(cv({ education: [{ ...profile.education[0], end: "2024" }] }), now);
-    expect(finished).toMatchObject({ graduationDate: null, graduationYear: null, employmentTypes: ["Full-time"] });
+  it("offers internships to people still studying, and not to people who have finished", () => {
+    expect(passportFromCv(cv({ education: [{ ...profile.education[0], end: "May 2027" }] }), now).employmentTypes).toEqual(["Full-time", "Internship"]);
+    expect(passportFromCv(cv({ education: [{ ...profile.education[0], end: "2024" }] }), now).employmentTypes).toEqual(["Full-time"]);
   });
 
-  it("never fills in work permission, salary or sponsorship", () => {
-    const result = passportFromCv(profile, now) as Record<string, unknown>;
-    for (const key of ["workCountries", "minimumSalary", "needsSponsorship"]) expect(result).not.toHaveProperty(key);
+  it("keeps every work arrangement unless the CV's location says Remote", () => {
+    expect(passportFromCv(profile, now).remoteModes).toEqual(["remote", "hybrid", "onsite"]);
+    expect(passportFromCv(cv({ location: "Remote" }), now).remoteModes).toEqual(["remote"]);
+  });
+
+  it("never fills in the countries where the person can work", () => {
+    expect(passportFromCv(profile, now)).not.toHaveProperty("workCountries");
   });
 });
 
@@ -165,7 +162,7 @@ describe("remote-job feeds", () => {
     expect(remoteRegionFinding({ location: "Remote (Worldwide)" }, where)).toBeNull();
     expect(remoteRegionFinding({ location: "Remote (India, Nepal, Bangladesh)" }, where)).toBeNull();
     expect(remoteRegionFinding({ location: "Kathmandu" }, where)).toBeNull();
-    const evaluated = evaluateJob(profile, now, { ...passport, needsSponsorship: false, graduationDate: null }, { ...job, location: "Remote (United States)" });
+    const evaluated = evaluateJob(profile, now, passport, { ...job, location: "Remote (United States)" });
     expect(evaluated?.state).toBe("verify");
   });
 });

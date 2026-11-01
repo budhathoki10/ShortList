@@ -3,6 +3,7 @@ import { collections } from "@/db/mongo";
 import type { Profile } from "@/lib/model/types";
 import { CV_READER_VERSION } from "@/lib/cv/quality";
 import type { OriginalCvFile } from "@/db/types";
+import { syncPassportFromProfile } from "@/lib/services/discovery";
 
 export async function getProfileRow(userId: string) {
   const doc = await (await collections()).profiles.findOne({ _id: String(userId) }, { projection: { "original.bytes": 0 } });
@@ -28,6 +29,8 @@ export async function saveProfile(userId: string, data: Profile, sourceText?: st
       c.interviews.updateMany({ userId: String(userId) }, { $set: { sourceNeedsReview: true } }),
     ]);
   }
+  // The Career Passport follows the CV; a failure here must not undo a saved profile.
+  await syncPassportFromProfile(userId, data).catch((error) => console.warn("passport_sync_failed", error instanceof Error ? error.message : error));
 }
 
 /** True once the profile has enough to tailor from: a name and at least one role, project or education entry. */
