@@ -35,8 +35,8 @@ export async function listJobs(userId: string): Promise<Job[]> {
   return docs.map((d) => stripHtmlDeep(fromDoc<Job>(d)));
 }
 
-export async function setMatch(jobId: string, match: Match) {
-  await (await collections()).jobs.updateOne({ _id: String(jobId) }, { $set: { match } });
+export async function setMatch(userId: string, jobId: string, match: Match) {
+  await (await collections()).jobs.updateOne({ _id: String(jobId), userId: String(userId) }, { $set: { match } });
 }
 
 /** Re-score every job after the profile changes, so match badges stay current. Plain code, no AI. */

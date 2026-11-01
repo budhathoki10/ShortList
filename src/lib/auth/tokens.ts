@@ -41,6 +41,11 @@ export async function consumeAuthToken(token: string, purpose: TokenPurpose): Pr
   return doc?.userId ?? null;
 }
 
+/** Mark every unused token of one purpose as used, e.g. the other reset links once a password has been reset. */
+export async function revokeAuthTokens(userId: string, purpose: TokenPurpose) {
+  await (await collections()).authTokens.updateMany({ userId: String(userId), purpose, usedAt: null }, { $set: { usedAt: new Date() } });
+}
+
 export async function tokensSentRecently(userId: string, purpose: TokenPurpose, windowMs: number): Promise<number> {
   return (await collections()).authTokens.countDocuments({ userId: String(userId), purpose, createdAt: { $gt: new Date(Date.now() - windowMs) } });
 }

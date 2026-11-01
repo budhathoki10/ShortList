@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth/session";
+import { overLimit } from "@/lib/services/rate-limit";
 import { ownedJob } from "@/lib/services/jobs";
 import { deletePhoto, PhotoError, savePhoto } from "@/lib/services/photos";
 import {
@@ -105,6 +106,7 @@ export async function uploadPhotoAction(_: TemplateState, formData: FormData): P
   const user = await requireUser();
   const file = formData.get("photo");
   if (!(file instanceof File) || file.size === 0) return { error: "Choose a photo first." };
+  if (await overLimit(`photo:${user.id}`, 20, 60 * 60_000)) return { error: "You’ve uploaded several photos in the last hour. Please try again later." };
   try {
     await savePhoto(user.id, new Uint8Array(await file.arrayBuffer()));
   } catch (err) {

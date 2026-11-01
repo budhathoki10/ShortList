@@ -38,6 +38,8 @@ export async function ensureIndexes(db: Db) {
     db.collection("job_recommendations").createIndexes([
       { key: { userId: 1, discoveredJobId: 1 }, unique: true },
       { key: { userId: 1, status: 1, createdAt: -1 } },
+      // Closing a posting closes its recommendations across every user.
+      { key: { discoveredJobId: 1, status: 1 } },
     ]),
     db.collection("push_subscriptions").createIndexes([
       { key: { endpointHash: 1 }, unique: true },
@@ -46,6 +48,7 @@ export async function ensureIndexes(db: Db) {
     db.collection("notification_deliveries").createIndexes([
       { key: { state: 1, frequency: 1, nextAttemptAt: 1 } },
       { key: { userId: 1, createdAt: -1 } },
+      { key: { recommendationId: 1, state: 1 } },
     ]),
     db.collection("discovery_runs").createIndex({ startedAt: -1 }),
     db.collection("job_sources").createIndexes([{ key: { type: 1, key: 1 }, unique: true }, { key: { enabled: 1, nextAttemptAt: 1 } }]),
