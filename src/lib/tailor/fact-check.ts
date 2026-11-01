@@ -1,6 +1,7 @@
 import type { Profile } from "@/lib/model/types";
 import { SKILL_TERMS } from "@/lib/jobs/skills-dictionary";
 import { containsTerm } from "@/lib/text";
+import { declaredSkills, isModestLevel, parseSkillLabel } from "@/lib/cv/skill-levels";
 
 /**
  * The fact check: every number, name, tool, acronym or qualification in rewritten text must
@@ -8,7 +9,10 @@ import { containsTerm } from "@/lib/text";
  */
 
 /** Everything the profile says, as one lowercase string. */
-export function profileCorpus(p: Profile): string {
+export const profileCorpus = (p: Profile): string => profileText(p).toLowerCase();
+
+/** Everything the profile says, in its own capitalisation (one-letter languages like C only count as capitals). */
+function profileText(p: Profile): string {
   return [
     p.name,
     p.headline,
@@ -18,12 +22,12 @@ export function profileCorpus(p: Profile): string {
     ...p.experience.flatMap((e) => [e.title, e.company, e.location, e.start, e.end, ...e.bullets]),
     ...p.education.flatMap((e) => [e.school, e.degree, e.start, e.end, ...e.details]),
     ...p.projects.flatMap((x) => [x.name, x.link, ...x.bullets]),
-    ...p.skills,
+    // "C (learning)" supports the claim "C"; the label is checked separately by levelViolations.
+    ...p.skills.map((x) => parseSkillLabel(x).name),
     ...p.certifications,
     ...p.languages,
   ]
-    .join("\n")
-    .toLowerCase();
+    .join("\n");
 }
 
 const QUALIFICATIONS =
@@ -81,7 +85,7 @@ export function unsupportedFacts(text: string, profile: Profile, extra = ""): st
   const flags = new Set<string>();
   // Skills at the start of a sentence or written in lowercase are still factual claims.
   for (const skill of SKILL_TERMS) if (containsTerm(text, skill)) {
-    const evidence = corpus.split(/\n|(?<=[.!?])\s+/).some((line) => containsTerm(line, skill) && !/\b(no|not|never|haven.t|learning|plan to learn|want to learn)\b/i.test(line));
+    const evidence = `${profileText(profile)}\n${extra}`.split(/\n|(?<=[.!?])\s+/).some((line) => containsTerm(line, skill) && !/\b(no|not|never|haven.t|learning|plan to learn|want to learn)\b/i.test(line));
     if (!evidence) flags.add(skill);
   }
   for (const n of numbersIn(text)) if (!corpusNumbers.has(n)) flags.add(n);
@@ -137,6 +141,36 @@ export function unsupportedStrongClaims(text: string, profile: Profile): string[
   return [...flags];
 }
 
+/** Depth claims no declared skill may carry, whatever its level: only the candidate's own words can make them. */
+const DEPTH_CLAIMS = /\b(extensive\w*|deep\w*|seasoned|(?:\d+|several|many|multiple)\+?\s*years?|years? of|advanced|expert\w*|specialist\w*|specialis(?:e|ed|es|ing)|specializ(?:e|ed|es|ing)|proficien(?:t|cy)|fluent|fluency|master\w*|senior|architect\w*)\b/i;
+/** Extra claims that overstate a coursework or learning skill. */
+const MODEST_OVERSTATES = /\b(experienced?|strong\w*|solid|skilled|professional\w*|production|commercial\w*|hands-on experience|lead|led)\b/i;
+/** Wording that keeps a practice or learning skill at the level the candidate declared. */
+const MODEST_WORDING = /\b(learn\w*|coursework|practi[sc]\w*|studying|study|beginner|early|building\s+(?:\w+\s+)?skills?|developing\s+(?:\w+\s+)?skills?|self-taught|exercises?)\b/i;
+
+/**
+ * A declared skill may only be written at the level the candidate chose. A sentence that names it must
+ * not use depth claims ("C specialist", "5 years of C"), and for coursework or learning it must say so
+ * ("C (learning)", "learning C", "building C skills through practice"). Sentences copied from the profile are fine.
+ */
+export function levelViolations(text: string, profile: Profile): string[] {
+  const declared = declaredSkills(profile);
+  if (!declared.length) return [];
+  const own = new Set(profileCorpus(profile).split(/\n/).map((l) => l.trim()));
+  const flags = new Set<string>();
+  for (const sentence of text.split(/(?<=[.!?])\s+|\n+/)) {
+    if (!sentence.trim() || own.has(sentence.trim().toLowerCase())) continue;
+    for (const d of declared) {
+      // Remove the label the candidate chose before looking: "C (learning)" is the honest form.
+      const bare = sentence.replace(new RegExp(`${d.skill.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*\\((?:learning|coursework)\\)`, "gi"), d.skill);
+      if (!containsTerm(bare, d.skill)) continue;
+      if (DEPTH_CLAIMS.test(bare) || (isModestLevel(d.level) && MODEST_OVERSTATES.test(bare))) flags.add(`${d.skill}: more than you declared`);
+      else if (isModestLevel(d.level) && !MODEST_WORDING.test(sentence)) flags.add(`${d.skill}: your declared level (${d.level === "learning" ? "learning" : "coursework"}) is not shown`);
+    }
+  }
+  return [...flags];
+}
+
 /**
  * The check for anything written onto the CV (summary, headline, bullets, skill labels): the
  * ordinary fact check, plus one-letter languages and strong claims like "specialist" or "senior".
@@ -144,7 +178,7 @@ export function unsupportedStrongClaims(text: string, profile: Profile): string[
  */
 export function unsupportedCvFacts(text: string, profile: Profile, opts: { allowRoleNouns?: boolean } = {}): string[] {
   const corpus = profileCorpus(profile);
-  const flags = new Set<string>([...unsupportedFacts(text, profile), ...unsupportedLetterLanguages(text, corpus), ...unsupportedStrongClaims(text, profile)]);
+  const flags = new Set<string>([...unsupportedFacts(text, profile), ...unsupportedLetterLanguages(text, corpus), ...unsupportedStrongClaims(text, profile), ...levelViolations(text, profile)]);
   if (opts.allowRoleNouns) for (const f of [...flags]) if (ROLE_NOUNS.has(f.toLowerCase())) flags.delete(f);
   return [...flags];
 }

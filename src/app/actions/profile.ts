@@ -13,6 +13,7 @@ import { rescoreAll } from "@/lib/services/jobs";
 import { getProfile, saveProfile } from "@/lib/services/profile";
 import { refundAllowance, spendAllowance } from "@/lib/services/usage";
 import { cleanText, localId } from "@/lib/text";
+import { reconcileSkills } from "@/lib/cv/skill-levels";
 import { withSkillEvidence } from "@/lib/cv/skill-evidence";
 
 export type ProfileState = { error?: string; success?: string; preview?: Profile; method?: "ai" | "basic"; source?: string; importId?: string; originalType?: string } | undefined;
@@ -75,10 +76,14 @@ export async function updateProfile(_: ProfileState, formData: FormData): Promis
   if (!parsed.success) return { error: profileError(parsed.error.issues) };
   const p = parsed.data;
   const nonEmpty = (xs: string[]) => xs.map((x) => x.trim()).filter(Boolean);
+  // The skills list and the declared levels always agree, and a level is never raised.
+  const { skills, skillLevels } = reconcileSkills(nonEmpty(p.skills), p.skillLevels);
+  const { skillLevels: _previousLevels, ...rest } = p;
   const profile: Profile = {
-    ...p,
+    ...rest,
     links: nonEmpty(p.links),
-    skills: [...new Set(nonEmpty(p.skills))],
+    skills,
+    ...(Object.keys(skillLevels).length ? { skillLevels } : {}),
     certifications: nonEmpty(p.certifications),
     languages: nonEmpty(p.languages),
     experience: p.experience
@@ -106,6 +111,7 @@ export async function addSkillEvidence(_: ProfileState, formData: FormData): Pro
     skill: cleanText(String(formData.get("skill") ?? "")),
     experienceId: String(formData.get("experienceId") ?? ""),
     sentence: cleanText(String(formData.get("sentence") ?? "")),
+    level: String(formData.get("level") ?? ""),
   });
   if ("error" in result) return { error: result.error };
   await saveProfile(user.id, result.profile);
