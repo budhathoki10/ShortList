@@ -1,4 +1,4 @@
-# Shortlist
+# Shortlist Job Radar
 
 A job-hunt helper for anyone applying for jobs. You add your CV once, then each job you paste gets four steps (one tab each, ticked off as you finish them):
 
@@ -13,7 +13,7 @@ Every non-essential message (job-alert email, push alerts and follow-up reminder
 
 The **Job Radar** adds discovery before preparation. A scheduled agent reads allowlisted employer boards on Greenhouse, Lever, Ashby, Workable, SmartRecruiters and Recruitee, and public remote-job feeds (Remotive, Jobicy, Himalayas, Remote OK, Arbeitnow), rejects or flags explicit eligibility conflicts, ranks the remaining roles against the person's Career Passport and CV evidence, and stores every recommendation before sending email or VAPID Web Push alerts. Candidates still review and submit every application themselves.
 
-The rule everything follows: **Shortlist only uses what's in your profile.** The AI can reword and reorder. It can't add an employer, title, degree, number or skill you don't have. A plain-code check (`src/lib/tailor/fact-check.ts`) catches anything that slips through, so it doesn't rely on the model behaving.
+The rule everything follows: **Shortlist Job Radar only uses what's in your profile.** The AI can reword and reorder. It can't add an employer, title, degree, number or skill you don't have. A plain-code check (`src/lib/tailor/fact-check.ts`) catches anything that slips through, so it doesn't rely on the model behaving.
 
 ![Match check](docs/screenshots/match.png)
 
@@ -46,7 +46,7 @@ You need Node 20 or newer and a MongoDB 5.0 or newer (Atlas free tier, a local i
 
 ```bash
 npm install
-cp .env.example .env            # then set MONGODB_URI (and OPENROUTER_API_KEY for the real AI)
+cp .env.example .env            # then set MONGODB_URI (and ANTHROPIC_API_KEY for the real AI)
 npm run dev                      # http://localhost:3000
 ```
 
@@ -54,7 +54,7 @@ The app creates its collections and indexes the first time it connects. To creat
 
 Everything works without any keys except the database:
 
-- **No `OPENROUTER_API_KEY`:** CVs and job posts are read with plain code, and tailoring only reorders bullets and skills. Cover letters and interview feedback use simple templates. It's useful for development, but not what you'd sell.
+- **No `ANTHROPIC_API_KEY`:** CVs and job posts are read with plain code, and tailoring only reorders bullets and skills. Cover letters and interview feedback use simple templates. It's useful for development, but not what you'd sell.
 - **No `RESEND_API_KEY`:** emails are printed to the console, so you can click confirmation and reset links from there.
 - **No payment keys:** the billing page shows the plans, but subscribing is off.
 
@@ -67,12 +67,14 @@ All of these are in `.env.example`, with comments.
 | `MONGODB_URI` | Yes | MongoDB connection string |
 | `MONGODB_DB` | No | Database name inside that server. Default `shortlist` |
 | `APP_URL` | Yes in production | Public URL, used in email links and payment return URLs |
+| `SEO_INDEXING_ENABLED` | Before launch | Leave empty for the safe automatic rule, set `false` on previews/staging, and `true` only on the canonical production deployment |
+| `GOOGLE_SITE_VERIFICATION`, `BING_SITE_VERIFICATION` | No | Ownership tokens from Google Search Console and Bing Webmaster Tools |
 | `TRUSTED_PROXY_HOPS` | No | How many proxies sit in front of the app, to find the real client IP for rate limits. Default `1`. Use `0` when nothing is in front, and the IP header is ignored |
 | `CRON_JOB_SECRET` | For reminders | Protects `/api/cron-job/*`. Make it long and random: `openssl rand -hex 32` |
 | `LEGAL_OPERATOR_NAME`, `LEGAL_COUNTRY`, `SUPPORT_EMAIL` | Before launch | Shown on Terms, Privacy and Refund. Payment providers may review these pages |
-| `OPENROUTER_API_KEY` | For the real product | OpenRouter reads CVs and job posts, and writes changes, letters and feedback |
-| `AI_READ_MODEL`, `AI_WRITE_MODEL` | No | One OpenRouter model id that supports structured outputs, or a comma-separated list tried in order (next model on 429, 5xx, timeout or invalid JSON). Both default to `openrouter/free`, which is rate-limited: set paid models |
-| `OPENROUTER_BASE_URL` | No | Only to point at another OpenAI-compatible endpoint |
+| `ANTHROPIC_API_KEY` | For the real product | Claude reads CVs and job posts, and writes changes, letters and feedback |
+| `AI_READ_MODEL`, `AI_WRITE_MODEL` | No | One Claude model id, or a comma-separated list tried in order (next model on 429, 5xx, timeout or invalid JSON). Defaults: read `claude-haiku-5-5,claude-sonnet-5-5`, write `claude-sonnet-5-5,claude-opus-5-5` |
+| `ANTHROPIC_BASE_URL` | No | Only to route through a proxy or gateway |
 | `RESEND_API_KEY`, `EMAIL_FROM` | For email | Confirmations, password resets, follow-up reminders and job alerts |
 | `EMAIL_DEV_OUTBOX` | No | Development and tests only: with no `RESEND_API_KEY`, emails are written to this file (JSON lines) instead of the console |
 | `JOB_SOURCE_BOARDS` | For Job Radar | Comma-separated public boards: `provider:board=Company`, provider one of `greenhouse`, `lever`, `ashby`, `workable`, `smartrecruiters`, `recruitee`. Example: `greenhouse:acme=Acme,ashby:linear=Linear` |
@@ -126,22 +128,35 @@ For Job Radar, create two additional authenticated schedules:
 
 Set `JOB_SOURCE_BOARDS` and/or `JOB_SOURCE_FEEDS` before enabling the first schedule. Boards and feeds are only stored for job titles someone's Career Passport targets, at most 40 new postings are read with AI per run, and each feed waits its polite interval (Remotive 6 hours, the others 1 hour) between fetches. Each feed's terms ask for a followed link back and its name on the posting; the Radar shows both. LinkedIn and Nepal job portals such as MeroJob forbid automated reading in their terms, so there are no adapters for them. Fetching is source-based, not user-based: each employer board is read once per run and its changed jobs are then matched against active Career Passports. Generate the Web Push key pair once with `npx web-push generate-vapid-keys`; expose only the public key to the browser.
 
-### 5. AI models (OpenRouter)
+### 5. AI models (Anthropic)
 
-Without paid models the app still works, but CV reading, tailoring, cover letters and the full analysis quietly use the plain-code fallbacks, because the free default (`openrouter/free`) is rate-limited. Set `OPENROUTER_API_KEY` and paid models in `.env` **and** on your host:
+Without `ANTHROPIC_API_KEY` the app still works, but CV reading, tailoring, cover letters and the full analysis quietly use the plain-code fallbacks. Create a key in the [Anthropic Console](https://console.anthropic.com), add credit, and set it in `.env` **and** on your host:
 
 ```
-AI_READ_MODEL=openai/gpt-4o-mini,google/gemini-2.0-flash-001
-AI_WRITE_MODEL=anthropic/claude-sonnet-4.5,openai/gpt-4o
+ANTHROPIC_API_KEY=sk-ant-...
+AI_READ_MODEL=claude-haiku-5-5,claude-sonnet-5-5
+AI_WRITE_MODEL=claude-sonnet-5-5,claude-opus-5-5
 ```
 
-Both accept a comma-separated list. The first model is tried first; a 429, 5xx, timeout or unusable (non-JSON or wrong-shape) answer moves on to the next. Only when every model fails does the app fall back to plain code, and it logs one warning such as `{"event":"ai_fallback","task":"write","attempts":[{"model":"…","status":429,"reason":"HTTP 429"}]}`. Prompts, CV text and keys are never logged. Use a stronger model first for `AI_WRITE_MODEL`: tailoring rebuilds the whole CV in one answer.
+The model variables are optional; the values above are the defaults. Both accept a comma-separated list. The first model is tried first; a 429, 5xx, timeout, refusal or unusable (non-JSON or wrong-shape) answer moves on to the next. Only when every model fails does the app fall back to plain code, and it logs one warning such as `{"event":"ai_fallback","task":"write","attempts":[{"model":"…","status":429,"reason":"HTTP 429"}]}`. Prompts, CV text and keys are never logged. Put the stronger model first for `AI_WRITE_MODEL`: tailoring rebuilds the whole CV in one answer.
+
+### 6. Search discovery
+
+Set `APP_URL` to the final HTTPS origin and `SEO_INDEXING_ENABLED=true` only on that canonical production deployment. Keep indexing off on preview and staging deployments. Optionally add the ownership tokens from Google Search Console and Bing Webmaster Tools.
+
+After deployment:
+
+1. Open `/robots.txt`, `/sitemap.xml`, `/manifest.webmanifest` and `/opengraph-image` on the live domain and confirm they use the production origin.
+2. Submit `/sitemap.xml` in Google Search Console and Bing Webmaster Tools.
+3. Inspect `/`, `/job-search` and `/templates` with each webmaster tool's URL inspection feature.
+4. Validate the visible structured data with Schema.org's validator and Google's Rich Results Test. FAQ markup helps machines understand the visible answers, but Google no longer displays FAQ rich results for ordinary sites.
+5. Monitor normal search queries and generative-AI visibility in Search Console, then improve the pages that earn impressions instead of creating thin pages for every keyword variation.
 
 ## How it's built
 
 - **Next.js 16** App Router with server actions, **MongoDB** (official driver, no ORM), Tailwind 4.
 - **Accounts:** email and password, with database sessions in httpOnly cookies, email confirmation, password reset, data export and account deletion.
-- **AI:** OpenRouter's chat API with JSON-schema structured outputs (`src/lib/ai.ts`). Requests ask for providers that don't keep prompts. Every answer is validated against its schema again in code, and every AI feature has a plain-code fallback.
+- **AI:** Claude through the official Anthropic SDK, with JSON-schema structured outputs (`src/lib/ai.ts`). Every answer is validated against its schema again in code, and every AI feature has a plain-code fallback.
 - **Data:** each collection and its indexes are defined in `src/db/` (`types.ts`, `indexes.ts`, `mongo.ts`). Everything that reads or writes goes through `src/lib/services/`.
 
 Where things live:
@@ -179,13 +194,13 @@ PDF imports retain their original bytes after the review is confirmed. **Origina
 
 ## Limits worth knowing
 
-- Many job boards, LinkedIn especially, block automated reading or need a login. When that happens Shortlist asks the user to paste the text, which always works.
+- Many job boards, LinkedIn especially, block automated reading or need a login. When that happens Shortlist Job Radar asks the user to paste the text, which always works.
 - Scanned (image-only) PDFs have no text to read. Users get a message asking for a DOCX or pasted text.
 - The match score is keyword and word-overlap matching, not a judgement of the person. It's labelled as a guide.
 - Some job boards embed the description as escaped HTML. It's converted to plain text when read, and leftover tags are stripped again when a saved job is shown (`src/lib/jobs/html.ts`).
 - If Freemius's renewal webhook is ever lost, the app re-reads the license from Freemius around the renewal date (at most hourly, after the page is sent), so a paying customer isn't dropped to free (`src/lib/billing/renewal-check.ts`).
 - English only for now.
-- Shortlist doesn't apply to jobs for anyone. Auto-applying breaks most job sites' terms and gets accounts banned.
+- Shortlist Job Radar doesn't apply to jobs for anyone. Auto-applying breaks most job sites' terms and gets accounts banned.
 
 ## Tests
 

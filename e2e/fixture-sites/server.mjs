@@ -1,4 +1,4 @@
-// Local stand-ins for the outside world in tests: job pages to read and a fake OpenRouter.
+// Local stand-ins for the outside world in tests: job pages to read and a fake Anthropic API.
 import http from "node:http";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
@@ -18,31 +18,32 @@ async function readJson(req) {
   return JSON.parse(raw || "{}");
 }
 
-/** The last chat request the fake OpenRouter saw, so tests can check what the app sent. */
+/** The last Messages request the fake Anthropic API saw, so tests can check what the app sent. */
 let lastChat = null;
 
-async function fakeOpenRouter(req, res, url) {
-  if (url.pathname === "/openrouter/_last") return json(res, 200, lastChat ?? {});
-  if (url.pathname !== "/openrouter/chat/completions" || req.method !== "POST") return json(res, 404, { error: { message: "Not found" } });
-  if (req.headers.authorization !== "Bearer fake-openrouter-key") return json(res, 401, { error: { message: "No auth", code: 401 } });
+async function fakeAnthropic(req, res, url) {
+  if (url.pathname === "/anthropic/_last") return json(res, 200, lastChat ?? {});
+  if (url.pathname !== "/anthropic/v1/messages" || req.method !== "POST") return json(res, 404, { type: "error", error: { type: "not_found_error", message: "Not found" } });
+  const key = req.headers["x-api-key"] ?? String(req.headers.authorization ?? "").replace(/^Bearer /, "");
+  if (key !== "fake-anthropic-key") return json(res, 401, { type: "error", error: { type: "authentication_error", message: "No auth" } });
   const body = await readJson(req);
-  lastChat = { headers: { referer: req.headers["http-referer"], title: req.headers["x-title"] }, body };
-  const props = Object.keys(body.response_format?.json_schema?.schema?.properties ?? {});
+  lastChat = { headers: { apiKey: key }, body };
+  const props = Object.keys(body.output_config?.format?.schema?.properties ?? {});
   // What the "model" says depends on the shape asked for, so tests can ask for good and bad answers.
-  const content = props.includes("answer")
-    ? "```json\n" + JSON.stringify({ answer: "ok" }) + "\n```"
+  const text = props.includes("answer")
+    ? JSON.stringify({ answer: "ok" })
     : props.includes("truncated")
       ? '{"truncated": "never fin'
       : props.includes("refused")
         ? ""
         : JSON.stringify({ unexpected: true });
-  const message = props.includes("refused") ? { content: null, refusal: "I can't help with that." } : { content };
-  return json(res, 200, { choices: [{ finish_reason: props.includes("truncated") ? "length" : "stop", message }] });
+  const stop_reason = props.includes("truncated") ? "max_tokens" : props.includes("refused") ? "refusal" : "end_turn";
+  return json(res, 200, { id: "msg_fake", type: "message", role: "assistant", model: body.model, stop_reason, content: text ? [{ type: "text", text }] : [], usage: { input_tokens: 1, output_tokens: 1 } });
 }
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url ?? "/", `http://localhost:${port}`);
-  if (url.pathname.startsWith("/openrouter/")) return fakeOpenRouter(req, res, url);
+  if (url.pathname.startsWith("/anthropic/")) return fakeAnthropic(req, res, url);
   if (url.pathname.startsWith("/company")) {
     const pages = {
       "/company": '<html><head><title>Example Company</title></head><body><h1>Example Company</h1><p>Our product helps small teams organise applications and customer conversations with a reliable online platform.</p><a href="/company/about">About our products</a><a href="/company/careers">Careers and culture</a><a href="https://unrelated.example/careers">An unrelated careers site</a></body></html>',

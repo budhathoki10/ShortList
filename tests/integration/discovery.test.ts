@@ -52,9 +52,9 @@ describe("Job Radar services", () => {
     let feed = { jobs: [{ id: 91, title: "Frontend Developer", updated_at: "2026-11-01T00:00:00Z", absolute_url: "https://jobs.example/91", location: { name: "Remote" }, content: "&lt;h2&gt;Requirements&lt;/h2&gt;&lt;ul&gt;&lt;li&gt;React and TypeScript experience building customer-facing products&lt;/li&gt;&lt;li&gt;Strong written communication with product teams&lt;/li&gt;&lt;/ul&gt;" }] };
     vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(feed), { status: 200, headers: { "content-type": "application/json" } })));
     const oldSources = process.env.JOB_SOURCE_BOARDS;
-    const oldKey = process.env.OPENROUTER_API_KEY;
+    const oldKey = process.env.ANTHROPIC_API_KEY;
     process.env.JOB_SOURCE_BOARDS = "greenhouse:acme=Acme";
-    process.env.OPENROUTER_API_KEY = "";
+    process.env.ANTHROPIC_API_KEY = "";
     try {
       const first = await runJobDiscovery();
       expect(first).toMatchObject({ sources: 1, found: 1, changed: 1, recommendations: 1, delivered: 1, failures: [] });
@@ -72,8 +72,8 @@ describe("Job Radar services", () => {
     } finally {
       if (oldSources === undefined) delete process.env.JOB_SOURCE_BOARDS;
       else process.env.JOB_SOURCE_BOARDS = oldSources;
-      if (oldKey === undefined) delete process.env.OPENROUTER_API_KEY;
-      else process.env.OPENROUTER_API_KEY = oldKey;
+      if (oldKey === undefined) delete process.env.ANTHROPIC_API_KEY;
+      else process.env.ANTHROPIC_API_KEY = oldKey;
     }
   });
 
@@ -87,10 +87,10 @@ describe("Job Radar services", () => {
       { id: 502, url: "https://jobicy.com/jobs/502", jobTitle: "Senior Accountant", companyName: "Ledger Co", jobGeo: "Anywhere", jobType: ["Full-Time"], jobDescription: body, pubDate: "2026-10-31T10:00:00+00:00" },
     ] };
     vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(feed), { status: 200, headers: { "content-type": "application/json" } })));
-    const env = { boards: process.env.JOB_SOURCE_BOARDS, feeds: process.env.JOB_SOURCE_FEEDS, key: process.env.OPENROUTER_API_KEY };
+    const env = { boards: process.env.JOB_SOURCE_BOARDS, feeds: process.env.JOB_SOURCE_FEEDS, key: process.env.ANTHROPIC_API_KEY };
     process.env.JOB_SOURCE_BOARDS = "";
     process.env.JOB_SOURCE_FEEDS = "jobicy";
-    process.env.OPENROUTER_API_KEY = "";
+    process.env.ANTHROPIC_API_KEY = "";
     const c = await collections();
     // Feeds have a polite interval between fetches; the test moves time along instead of waiting an hour.
     const due = () => c.jobSources.updateOne({ _id: "jobicy:jobicy" }, { $set: { nextAttemptAt: null } });
@@ -113,7 +113,7 @@ describe("Job Radar services", () => {
       expect(await c.discoveredJobs.findOne({ externalId: "501" })).toMatchObject({ closedAt: expect.any(Date) });
       expect(await c.jobRecommendations.findOne({ userId: user.id })).toMatchObject({ status: "closed" });
     } finally {
-      for (const [name, value] of [["JOB_SOURCE_BOARDS", env.boards], ["JOB_SOURCE_FEEDS", env.feeds], ["OPENROUTER_API_KEY", env.key]] as const) {
+      for (const [name, value] of [["JOB_SOURCE_BOARDS", env.boards], ["JOB_SOURCE_FEEDS", env.feeds], ["ANTHROPIC_API_KEY", env.key]] as const) {
         if (value === undefined) delete process.env[name];
         else process.env[name] = value;
       }
@@ -175,9 +175,9 @@ describe("Job Radar services", () => {
     let feed = { jobs: [{ id: 92, title: "Frontend Developer", updated_at: "2026-11-01T00:00:00Z", absolute_url: "https://jobs.example/92", location: { name: "Remote" }, content: content("") }] };
     vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(feed), { status: 200, headers: { "content-type": "application/json" } })));
     const oldSources = process.env.JOB_SOURCE_BOARDS;
-    const oldKey = process.env.OPENROUTER_API_KEY;
+    const oldKey = process.env.ANTHROPIC_API_KEY;
     process.env.JOB_SOURCE_BOARDS = "greenhouse:acme=Acme";
-    process.env.OPENROUTER_API_KEY = "";
+    process.env.ANTHROPIC_API_KEY = "";
     try {
       await runJobDiscovery();
       const c = await collections();
@@ -192,8 +192,8 @@ describe("Job Radar services", () => {
     } finally {
       if (oldSources === undefined) delete process.env.JOB_SOURCE_BOARDS;
       else process.env.JOB_SOURCE_BOARDS = oldSources;
-      if (oldKey === undefined) delete process.env.OPENROUTER_API_KEY;
-      else process.env.OPENROUTER_API_KEY = oldKey;
+      if (oldKey === undefined) delete process.env.ANTHROPIC_API_KEY;
+      else process.env.ANTHROPIC_API_KEY = oldKey;
     }
   });
 

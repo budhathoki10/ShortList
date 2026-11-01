@@ -5,18 +5,17 @@ import { usePathname } from "next/navigation";
 import { logout } from "@/app/actions/auth";
 import { icons, type IconName } from "./icons";
 
-export const NAV: { href: string; label: string; icon: IconName; keys: string }[] = [
-  { href: "/app", label: "Today", icon: "today", keys: "T" },
-  { href: "/app/radar", label: "Job Radar", icon: "radar", keys: "R" },
-  { href: "/app/jobs", label: "Jobs", icon: "jobs", keys: "J" },
-  { href: "/app/profile", label: "Your CV", icon: "cv", keys: "C" },
-  { href: "/app/studio", label: "Templates", icon: "studio", keys: "L" },
-  { href: "/app/progress", label: "Progress", icon: "progress", keys: "P" },
-  { href: "/app/settings", label: "Settings", icon: "settings", keys: "S" },
+export const NAV: { href: string; label: string; icon: IconName }[] = [
+  { href: "/app", label: "Today", icon: "today" },
+  { href: "/app/radar", label: "Job Radar", icon: "radar" },
+  { href: "/app/jobs", label: "Jobs", icon: "jobs" },
+  { href: "/app/profile", label: "Your CV", icon: "cv" },
+  { href: "/app/studio", label: "Templates", icon: "studio" },
+  { href: "/app/progress", label: "Progress", icon: "progress" },
+  { href: "/app/settings", label: "Settings", icon: "settings" },
 ];
 
 export const OPEN_PALETTE = "shortlist:palette";
-export const OPEN_SHORTCUTS = "shortlist:shortcuts";
 
 const base =
   "group/item relative flex h-11 w-full items-center rounded-md text-sm outline-offset-[-2px] transition-colors duration-150 focus-visible:outline-sidebar-fg max-lg:h-12";
@@ -24,7 +23,6 @@ const base =
 const idle = "text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-fg";
 const on =
   "bg-sidebar-active font-medium text-sidebar-fg before:absolute before:inset-y-2.5 before:left-0 before:w-[3px] before:rounded-full before:bg-accent";
-const keycap = "inline-flex min-w-5 items-center justify-center rounded border border-sidebar-border bg-sidebar-hover px-1 font-mono text-[11px] leading-5 text-sidebar-muted";
 
 /** The desktop icon rail expands over the page on hover or keyboard focus. */
 export function AppNav({
@@ -49,14 +47,14 @@ export function AppNav({
   const body = (
     <div className="flex h-full flex-col gap-1 px-3 py-4">
       <div className="mb-3 flex h-11 items-center">
-        <Link href="/app" aria-label="Shortlist, your job hunt" onClick={onNavigate} className={`${base} gap-0 text-sidebar-fg`}>
+        <Link href="/app" aria-label="Shortlist Job Radar, your job hunt" onClick={onNavigate} className={`${base} gap-0 text-sidebar-fg`}>
           <span className={cell}>
             <svg width="22" height="22" viewBox="0 0 20 20" aria-hidden="true">
               <rect width="20" height="20" rx="5" fill="currentColor" />
               <path d="M5.5 10.5l3 3 6-6.5" fill="none" stroke="var(--sidebar)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </span>
-          <span className={`whitespace-nowrap text-base font-semibold tracking-[-0.02em] ${label}`}>Shortlist</span>
+          <span className={`whitespace-nowrap text-base font-semibold tracking-[-0.02em] ${label}`}>Shortlist Job Radar</span>
         </Link>
       </div>
 
@@ -71,10 +69,7 @@ export function AppNav({
         <span className={cell}>
           <icons.search width={20} height={20} />
         </span>
-        <span className={`flex flex-1 items-center justify-between gap-2 whitespace-nowrap pr-2 text-left ${label}`}>
-          Search or jump to…
-          <kbd className={keycap}>⌘K</kbd>
-        </span>
+        <span className={`flex-1 whitespace-nowrap pr-2 text-left ${label}`}>Search or jump to…</span>
       </button>
 
       <nav aria-label="Main" className="flex flex-col gap-1">
@@ -100,13 +95,7 @@ export function AppNav({
                   </span>
                 )}
               </span>
-              <span className={`flex flex-1 items-center justify-between gap-2 whitespace-nowrap pr-2 ${label}`}>
-                {n.label}
-                <span className="hidden gap-0.5 lg:flex" aria-hidden="true">
-                  <kbd className={keycap}>G</kbd>
-                  <kbd className={keycap}>{n.keys}</kbd>
-                </span>
-              </span>
+              <span className={`flex-1 whitespace-nowrap pr-2 ${label}`}>{n.label}</span>
             </Link>
           );
         })}
@@ -119,22 +108,6 @@ export function AppNav({
           </span>
           <span className={`whitespace-nowrap ${label}`}>{paid ? "Paid plan" : "Free plan · Upgrade"}</span>
         </Link>
-        <button
-          type="button"
-          onClick={() => {
-            onNavigate?.();
-            window.dispatchEvent(new Event(OPEN_SHORTCUTS));
-          }}
-          className={`${base} ${idle} max-lg:hidden`}
-        >
-          <span className={cell}>
-            <icons.keyboard width={20} height={20} />
-          </span>
-          <span className={`flex flex-1 items-center justify-between gap-2 whitespace-nowrap pr-2 text-left ${label}`}>
-            Keyboard shortcuts
-            <kbd className={keycap}>?</kbd>
-          </span>
-        </button>
         <div className="flex h-11 items-center text-sidebar-muted max-lg:h-12" title={email}>
           <span className={cell}>
             <span aria-hidden="true" className="grid size-7 place-items-center rounded-full bg-sidebar-active text-xs font-medium uppercase text-sidebar-fg">

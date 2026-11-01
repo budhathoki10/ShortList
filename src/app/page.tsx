@@ -1,6 +1,8 @@
 import { FlashToast } from "@/components/toast";
 import Link from "next/link";
 import type { CSSProperties } from "react";
+import type { Metadata } from "next";
+import { JsonLd } from "@/components/json-ld";
 import { HeroPreview } from "@/components/landing/hero-preview";
 import { HowItWorks } from "@/components/landing/how-it-works";
 import { MotionFeatures } from "@/components/landing/motion-features";
@@ -10,6 +12,11 @@ import { SiteFooter, SiteHeader } from "@/components/site-chrome";
 import { ButtonLink } from "@/components/ui";
 import { priceLabels } from "@/lib/billing/config";
 import { PLAN_FEATURES } from "@/lib/plans";
+import { publicMetadata } from "@/lib/seo";
+import { SITE } from "@/lib/site";
+
+const description = "Find jobs that match your CV, tailor each CV and cover letter without inventing experience, track applications and prepare for interviews.";
+export const metadata: Metadata = publicMetadata({ title: "Shortlist Job Radar — Find jobs that fit your CV", description, path: "/" });
 
 const STEPS = [
   ["Add your CV once", "Upload a PDF or Word file, or paste it. Check what we read. From then on, it’s the only source of facts about you."],
@@ -25,7 +32,7 @@ const FAQ = [
   },
   {
     q: "Does it apply to jobs for me?",
-    a: "No. Mass auto-applying gets accounts banned on job sites and annoys recruiters. Shortlist helps you send fewer, better applications, yourself.",
+    a: "No. Mass auto-applying gets accounts banned on job sites and annoys recruiters. Shortlist Job Radar helps you send fewer, better applications, yourself.",
   },
   {
     q: "What if a site won’t let you read the job post?",
@@ -43,7 +50,7 @@ const FAQ = [
 
 const WHY = [
   "Recruiters spend seconds on a CV, and screening software looks for the words in the job post. The same CV sent to twenty jobs reads as written for none of them. Tailoring each one is what job seekers say is the hardest part.",
-  "AI tools that “optimise” a CV often do it by adding skills you don’t have. That gets you an interview you can’t pass. Shortlist only rewords and reorders what you’ve actually done, and shows you every change before it’s used.",
+  "AI tools that “optimise” a CV often do it by adding skills you don’t have. That gets you an interview you can’t pass. Shortlist Job Radar only rewords and reorders what you’ve actually done, and shows you every change before it’s used.",
 ];
 
 const h2 = "text-2xl font-semibold tracking-[-0.02em] sm:text-[2rem] sm:leading-[1.15]";
@@ -74,6 +81,30 @@ export default async function Home({ searchParams }: PageProps<"/">) {
   const rows = PLAN_FEATURES.map((f) => [f.feature, cell(f.free), cell(f.paid)] as const);
   return (
     <>
+      <JsonLd
+        data={{
+          "@context": "https://schema.org",
+          "@graph": [
+            { "@type": "WebSite", "@id": `${SITE.url}/#website`, name: SITE.name, url: SITE.url, description },
+            {
+              "@type": "WebApplication",
+              "@id": `${SITE.url}/#app`,
+              name: SITE.name,
+              url: SITE.url,
+              description,
+              applicationCategory: "BusinessApplication",
+              operatingSystem: "Any modern web browser",
+              browserRequirements: "Requires JavaScript and a modern web browser",
+              featureList: ["CV-based job discovery", "Truthful CV tailoring", "Cover letter drafting", "Application tracking", "Interview preparation"],
+              offers: { "@type": "Offer", price: "0", priceCurrency: "USD", description: "Free for the first job; no card required" },
+            },
+            {
+              "@type": "FAQPage",
+              mainEntity: FAQ.map(({ q, a }) => ({ "@type": "Question", name: q, acceptedAnswer: { "@type": "Answer", text: a } })),
+            },
+          ],
+        }}
+      />
       <SiteHeader />
       <MotionFeatures>
       <main id="main" className="flex-1">
@@ -89,7 +120,7 @@ export default async function Home({ searchParams }: PageProps<"/">) {
             <div>
               <p className="rise inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1 text-[13px] font-medium text-muted">
                 <i className="size-1.5 rounded-full bg-accent" />
-                For anyone applying for jobs
+                Job search and application toolkit
               </p>
               <h1 className="t-display mt-5 text-balance">
                 <Words text="A CV for every job." />
@@ -98,8 +129,7 @@ export default async function Home({ searchParams }: PageProps<"/">) {
                 </span>
               </h1>
               <p className="rise mt-5 max-w-xl text-base leading-7 text-muted sm:text-lg" style={{ "--d": "650ms" } as CSSProperties}>
-                Paste a job post. Shortlist shows how well you fit, then rewrites your CV and cover letter for that job using only what&apos;s true about you. It keeps track of every application and
-                reminds you to follow up.
+                Shortlist Job Radar finds roles that match your CV and preferences, shows how well you fit, tailors your CV and cover letter using only what&apos;s true, tracks the application and reminds you to follow up.
               </p>
               <div className="rise mt-8 flex flex-wrap items-center gap-x-5 gap-y-3" style={{ "--d": "800ms" } as CSSProperties}>
                 <ButtonLink href="/signup" size="lg" className="group">
@@ -110,6 +140,30 @@ export default async function Home({ searchParams }: PageProps<"/">) {
               </div>
             </div>
             <HeroPreview />
+          </div>
+        </section>
+
+        <section className="border-y border-border bg-surface">
+          <div className="mx-auto grid max-w-5xl gap-8 px-4 py-14 sm:px-6 sm:py-20 md:grid-cols-[1.2fr_0.8fr] md:items-center md:gap-14">
+            <div>
+              <p className="t-label text-accent">Personalised job search</p>
+              <h2 className={`${h2} mt-2`}>Find jobs that fit your CV and eligibility.</h2>
+              <p className="mt-4 max-w-2xl text-base leading-7 text-muted">
+                Choose target roles, locations, remote or on-site work, employment types and whether you need sponsorship. Job Radar checks approved public job sources, then explains which matches are ready, a stretch, or need verification.
+              </p>
+              <Link href="/job-search" className="mt-5 inline-flex min-h-10 items-center gap-2 font-medium text-accent hover:underline">
+                See how the job search works <Arrow />
+              </Link>
+            </div>
+            <div className="rounded-xl border border-border bg-tint p-5 sm:p-6">
+              <p className="font-medium">Built for focused searches</p>
+              <ul className="mt-4 space-y-3 text-sm leading-6 text-muted">
+                <li>Local, hybrid and remote jobs</li>
+                <li>Graduate jobs, entry-level roles and internships</li>
+                <li>Full-time and part-time preferences</li>
+                <li>Explicit location and sponsorship conflicts flagged before you apply</li>
+              </ul>
+            </div>
           </div>
         </section>
 

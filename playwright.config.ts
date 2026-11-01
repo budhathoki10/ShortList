@@ -27,7 +27,7 @@ const appEnv = {
   // Zero means "no proxy we trust", which switches the per-IP limits off. The limit's own behaviour is covered by unit tests.
   TRUSTED_PROXY_HOPS: "0",
   // No AI key: the plain-code fallbacks run, so results are deterministic.
-  OPENROUTER_API_KEY: "",
+  ANTHROPIC_API_KEY: "",
   CRON_JOB_SECRET: "e2e-cron-job-secret",
   ...FREEMIUS_TEST_ENV,
   // No access to Freemius from here: every API lookup finds nothing, and webhooks carry all the data.

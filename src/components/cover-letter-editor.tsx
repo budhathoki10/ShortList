@@ -105,7 +105,7 @@ export function CoverLetterEditor({ jobId, initial, flags, email, role, recipien
         <label className="block space-y-1.5"><span className="t-label">Subject</span><input value={subject} onChange={(e) => setSubject(e.target.value)} className={inputClass} /></label>
         <a href={canCompose ? compose.gmail : undefined} target="_blank" rel="noreferrer" aria-disabled={!canCompose} className={buttonClass("primary", "md", "w-full")}>Open in Gmail ↗</a>
         <a href={canCompose ? compose.mailto : undefined} aria-disabled={!canCompose} className={buttonClass("secondary", "md", "w-full")}>Open in my mail app</a>
-        <p className="text-xs leading-relaxed text-muted">Your current letter edits are included. Check the From account in your mail app; Shortlist has no permission to send from your personal inbox.</p>
+        <p className="text-xs leading-relaxed text-muted">Your current letter edits are included. Check the From account in your mail app; Shortlist Job Radar has no permission to send from your personal inbox.</p>
         <div className="border-t border-border pt-4"><a href={`/app/download/cv/${jobId}?format=pdf`} className="inline-flex min-h-10 items-center text-sm font-medium text-accent hover:underline max-sm:min-h-11">Download CV to attach</a><p className="mt-1 text-xs text-muted">Attach the downloaded file in your email draft.</p></div>
       </aside>
     </div>

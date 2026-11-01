@@ -162,8 +162,8 @@ describe("the fact check on rewritten CV text", () => {
 describe("AI proposal handling", () => {
   afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
   const mocked = (data: unknown) => {
-    vi.stubEnv("OPENROUTER_API_KEY", "test-key");
-    vi.stubGlobal("fetch", vi.fn(async () => Response.json({ choices: [{ finish_reason: "stop", message: { content: JSON.stringify(data) } }] })));
+    vi.stubEnv("ANTHROPIC_API_KEY", "test-key");
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json({ type: "message", role: "assistant", stop_reason: "end_turn", content: [{ type: "text", text: JSON.stringify(data) }] })));
   };
   const proposal = (over: Record<string, unknown>) => ({
     headline: { after: "", reason: "" }, summary: { after: "", reason: "" }, bullets: [], bulletOrders: [], skillGroups: [], ...over,
@@ -222,7 +222,7 @@ describe("AI proposal handling", () => {
   });
 
   it("falls back to the plain-code rebuild when the model fails", async () => {
-    vi.stubEnv("OPENROUTER_API_KEY", "test-key");
+    vi.stubEnv("ANTHROPIC_API_KEY", "test-key");
     vi.spyOn(console, "warn").mockImplementation(() => {});
     vi.stubGlobal("fetch", vi.fn(async () => new Response("{}", { status: 429 })));
     const { changes, method } = await proposeChanges(dev, cJob, scoreMatch(dev, cJob));

@@ -141,7 +141,7 @@ function requestOnce(url: URL, timeoutMs: number): Promise<Omit<SafeResponse, "f
         lookup: guardedLookup,
         timeout: timeoutMs,
         headers: {
-          "user-agent": "Mozilla/5.0 (compatible; ShortlistBot/1.0; +job post reader)",
+          "user-agent": "Mozilla/5.0 (compatible; ShortlistJobRadarBot/1.0; +job post reader)",
           accept: "text/html,application/xhtml+xml;q=0.9,*/*;q=0.5",
           "accept-encoding": "identity",
         },

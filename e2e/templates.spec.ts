@@ -19,7 +19,7 @@ async function signedIn(page: import("@playwright/test").Page) {
 
 test("anyone can browse and search the 100 templates without an account", async ({ page }) => {
   await page.goto("/templates");
-  await expect(page.getByRole("heading", { name: "100 CV templates, honestly labelled." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "100 free CV and resume templates, honestly labelled." })).toBeVisible();
   const thumbs = page.locator("img[src*='template-thumbs']");
   await expect(thumbs).toHaveCount(100);
 

@@ -114,7 +114,7 @@ export async function deleteAccount(_: AuthState, formData: FormData): Promise<A
 
 export async function requestPasswordReset(_: AuthState, formData: FormData): Promise<AuthState> {
   const parsed = email.safeParse(formData.get("email"));
-  if (!parsed.success) return { title: "Check your email address", error: "Enter the email address you use for your Shortlist account.", fields: { email: "Enter a valid email address, such as name@example.com." } };
+  if (!parsed.success) return { title: "Check your email address", error: "Enter the email address you use for your Shortlist Job Radar account.", fields: { email: "Enter a valid email address, such as name@example.com." } };
   if (await ipLimit("reset", 10, HOUR)) return { error: TOO_MANY };
   const user = await findUserByEmail(parsed.data);
   // Same answer whether or not the account exists, so this can't be used to find out who has an account.

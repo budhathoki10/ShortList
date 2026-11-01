@@ -17,7 +17,7 @@ const profile = { ...EMPTY_PROFILE, name: "Alex Example", skills: ["JavaScript"]
 const postText = "Job title: Python Developer\nCompany: Example Company\nRequirements\n- Python programming and automated testing.\n- JavaScript experience is required.\nPreferred\n- Docker knowledge.\nResponsibilities\n- Build and maintain reliable APIs.";
 const context = { profile, postText, post: heuristicJob(postText) };
 const noCompany = { sources: [], facts: [], warning: "No source" };
-beforeEach(async () => { await resetDb(); vi.stubEnv("OPENROUTER_API_KEY", ""); });
+beforeEach(async () => { await resetDb(); vi.stubEnv("ANTHROPIC_API_KEY", ""); });
 afterEach(() => vi.unstubAllEnvs());
 async function setup() {
   const user = await makeUser();

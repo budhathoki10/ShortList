@@ -247,24 +247,19 @@ describe("redirects after login", () => {
   });
 });
 
-describe("AI via OpenRouter", () => {
-  const last = async () => (await (await fetch(`${process.env.FIXTURE_BASE}/openrouter/_last`)).json()) as { headers: Record<string, string>; body: { model: string; messages: unknown; response_format: unknown; provider: unknown } };
+describe("AI via the Anthropic API", () => {
+  const last = async () => (await (await fetch(`${process.env.FIXTURE_BASE}/anthropic/_last`)).json()) as { headers: Record<string, string>; body: { model: string; system: string; messages: unknown; output_config: unknown } };
   const answer = z.object({ answer: z.string() });
 
-  it("asks for a JSON-schema answer from providers that support it, and returns only what validates", async () => {
-    // The fake wraps its reply in a code fence, as some models do.
+  it("asks Claude for a JSON-schema answer and returns only what validates", async () => {
     expect(await structured({ task: "read", system: "sys", prompt: "hello", schema: answer })).toEqual({ answer: "ok" });
     const sent = await last();
-    expect(sent.body.model).toBe("openrouter/free");
-    expect(sent.body.messages).toEqual([
-      { role: "system", content: "sys" },
-      { role: "user", content: "hello" },
-    ]);
-    expect(sent.body.response_format).toMatchObject({ type: "json_schema", json_schema: { strict: true, schema: { type: "object", additionalProperties: false } } });
-    expect(sent.body.provider).toEqual({ require_parameters: true, data_collection: "deny" });
-    expect(sent.headers.title).toBe("Shortlist");
+    expect(sent.body.model).toBe("claude-haiku-5-5");
+    expect(sent.body.system).toBe("sys");
+    expect(sent.body.messages).toEqual([{ role: "user", content: "hello" }]);
+    expect(sent.body.output_config).toMatchObject({ format: { type: "json_schema", schema: { type: "object", additionalProperties: false } } });
     await structured({ task: "write", system: "s", prompt: "p", schema: answer });
-    expect((await last()).body.model).toBe("openrouter/free");
+    expect((await last()).body.model).toBe("claude-sonnet-5-5");
   });
 
   it("raises AiUnavailableError for refusals, cut-off answers and answers of the wrong shape", async () => {
@@ -274,14 +269,14 @@ describe("AI via OpenRouter", () => {
   });
 
   it("keeps the CV out of error messages", async () => {
-    const key = process.env.OPENROUTER_API_KEY;
-    process.env.OPENROUTER_API_KEY = "wrong-key";
+    const key = process.env.ANTHROPIC_API_KEY;
+    process.env.ANTHROPIC_API_KEY = "wrong-key";
     try {
       const failure = structured({ task: "read", system: "s", prompt: "SECRET CV TEXT", schema: answer });
-      await expect(failure).rejects.toThrow(/(?:OpenRouter request failed|No model answered).*401/);
+      await expect(failure).rejects.toThrow(/No model answered.*401/);
       await expect(failure).rejects.not.toThrow(/SECRET CV TEXT/);
     } finally {
-      process.env.OPENROUTER_API_KEY = key;
+      process.env.ANTHROPIC_API_KEY = key;
     }
   });
 });

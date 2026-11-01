@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { AppNav } from "@/components/app-nav";
 import { KeyboardLayer } from "@/components/command-palette";
 import { MobileNav } from "@/components/mobile-nav";
@@ -7,6 +8,8 @@ import { recheckRenewals } from "@/lib/billing/renewal-check";
 import { billingConfigured } from "@/lib/billing/config";
 import { isPaid } from "@/lib/plans";
 import { dueFollowUpCount, listJobs } from "@/lib/services/jobs";
+
+export const metadata: Metadata = { robots: { index: false, follow: false, noarchive: true } };
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();

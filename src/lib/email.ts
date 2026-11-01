@@ -23,7 +23,7 @@ export const resendApiBase = () => (process.env.RESEND_API_BASE ?? "https://api.
  * development and tests, so links in them can still be followed.
  */
 export async function sendEmail(email: Email): Promise<{ id: string | null }> {
-  const from = email.from ?? process.env.EMAIL_FROM ?? "Shortlist <onboarding@resend.dev>";
+  const from = email.from ?? process.env.EMAIL_FROM ?? "Shortlist Job Radar <onboarding@resend.dev>";
   const key = process.env.RESEND_API_KEY;
   if (key) {
     const res = await fetch(`${resendApiBase()}/emails`, {
@@ -61,7 +61,7 @@ export async function sendEmail(email: Email): Promise<{ id: string | null }> {
 export const escapeHtml = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
 function layout(heading: string, intro: string, buttonLabel: string, link: string, outro: string) {
-  const text = `${heading}\n\n${intro}\n\n${buttonLabel}: ${link}\n\n${outro}\n\nShortlist`;
+  const text = `${heading}\n\n${intro}\n\n${buttonLabel}: ${link}\n\n${outro}\n\nShortlist Job Radar`;
   const html = `<!doctype html><html><body style="font-family:Arial,Helvetica,sans-serif;color:#1c1f1d;max-width:520px;margin:0 auto;padding:24px">
 <h1 style="font-size:20px">${escapeHtml(heading)}</h1>
 <p>${escapeHtml(intro)}</p>
@@ -75,13 +75,13 @@ function layout(heading: string, intro: string, buttonLabel: string, link: strin
 export function verifyEmailMessage(to: string, name: string, link: string): Email {
   return {
     to,
-    subject: "Confirm your Shortlist email",
+    subject: "Confirm your Shortlist Job Radar email",
     ...layout(
       `Hi ${name}, one quick thing`,
       "Confirm this is your email address so we can send you receipts and password resets.",
       "Confirm my email",
       link,
-      "This link expires in 3 days. If you didn't create a Shortlist account, you can ignore this email.",
+      "This link expires in 3 days. If you didn't create a Shortlist Job Radar account, you can ignore this email.",
     ),
   };
 }
@@ -89,10 +89,10 @@ export function verifyEmailMessage(to: string, name: string, link: string): Emai
 export function resetPasswordMessage(to: string, link: string): Email {
   return {
     to,
-    subject: "Reset your Shortlist password",
+    subject: "Reset your Shortlist Job Radar password",
     ...layout(
       "Reset your password",
-      "Someone (hopefully you) asked to reset the password for your Shortlist account.",
+      "Someone (hopefully you) asked to reset the password for your Shortlist Job Radar account.",
       "Choose a new password",
       link,
       "This link expires in 1 hour and works once. If you didn't ask for this, ignore this email and your password stays the same.",
@@ -108,7 +108,7 @@ export function noticeMessage(
   paragraphs: string[],
   link?: { label: string; url: string },
 ): Email {
-  const text = [heading, ...paragraphs, link ? `${link.label}: ${link.url}` : null, "Shortlist"].filter(Boolean).join("\n\n");
+  const text = [heading, ...paragraphs, link ? `${link.label}: ${link.url}` : null, "Shortlist Job Radar"].filter(Boolean).join("\n\n");
   const html = `<!doctype html><html><body style="font-family:Arial,Helvetica,sans-serif;color:#1c1f1d;max-width:520px;margin:0 auto;padding:24px">
 <h1 style="font-size:20px">${escapeHtml(heading)}</h1>
 ${paragraphs.map((p) => `<p style="white-space:pre-line">${escapeHtml(p)}</p>`).join("\n")}

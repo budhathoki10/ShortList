@@ -20,7 +20,7 @@ export function NotificationsSwitch({ initialOn }: { initialOn: boolean }) {
       try {
         result = await setNotifications(next);
       } catch {
-        result = { success: false, error: "We couldn't reach Shortlist. Check your connection and try again." };
+        result = { success: false, error: "We couldn't reach Shortlist Job Radar. Check your connection and try again." };
       }
       if (!result.success) {
         setError(result.error);

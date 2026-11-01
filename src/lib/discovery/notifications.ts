@@ -205,7 +205,7 @@ export async function sendDiscoveryDigests() {
           const user = contexts[0].user;
           const lines = contexts.map(({ job, recommendation }) => `${stateLabel(recommendation.state)} · ${job.title} at ${job.company}${job.location ? ` · ${job.location}` : ""}`);
           const digestKey = createHash("sha256").update(ids.slice().sort().join("\n")).digest("hex");
-          const result = await sendEmail({ ...noticeMessage(user.email, `${contexts.length} new Shortlist matches`, "Your new job matches", lines, { label: "Open Job Radar", url: appUrl("/app/radar") }), idempotencyKey: `discovery-digest:${digestKey}` });
+          const result = await sendEmail({ ...noticeMessage(user.email, `${contexts.length} new Shortlist Job Radar matches`, "Your new job matches", lines, { label: "Open Job Radar", url: appUrl("/app/radar") }), idempotencyKey: `discovery-digest:${digestKey}` });
           await c.notificationDeliveries.updateMany({ _id: { $in: ids }, state: "sending" }, { $set: { providerMessageId: result.id } });
         } else {
           await sendPushToUser(first.userId, { title: `${contexts.length} new job matches`, body: "Open Job Radar to review your latest shortlist.", url: "/app/radar", tag: "job-match-digest", version: Math.max(...contexts.map(({ recommendation }) => recommendation.notificationVersion)) });
@@ -233,7 +233,7 @@ export class NotificationsOffError extends Error {
 export async function sendTestPush(userId: string) {
   const user = await (await collections()).users.findOne({ _id: String(userId) }, { projection: { notificationsOff: 1 } });
   if (!user || !notificationsOn(user)) throw new NotificationsOffError();
-  await sendPushToUser(userId, { title: "Shortlist alerts are on", body: "Your next qualified job match can reach this device.", url: "/app/radar", tag: "shortlist-test", version: 1 });
+  await sendPushToUser(userId, { title: "Shortlist Job Radar alerts are on", body: "Your next qualified job match can reach this device.", url: "/app/radar", tag: "shortlist-test", version: 1 });
 }
 
 export const pushConfigured = webPushConfigured;

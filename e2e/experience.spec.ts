@@ -125,37 +125,23 @@ test("the sidebar is an icon rail that opens over the page, without moving it", 
   await expect.poll(width).toBe(240);
 });
 
-test("the palette and shortcuts reach everything without the mouse", async ({ page }) => {
+test("the palette opens from navigation without exposing global shortcuts", async ({ page }) => {
   await signedIn(page);
   const palette = page.getByRole("dialog", { name: "Command palette" });
-  // Keys pressed before the page is interactive do nothing, so press until it opens.
-  await expect(async () => {
-    await page.keyboard.press("Control+k");
-    await expect(palette).toBeVisible({ timeout: 700 });
-  }).toPass();
+  await page.getByRole("button", { name: "Search or jump to…" }).click();
+  await expect(palette).toBeVisible();
   await expect(palette.getByRole("combobox")).toBeFocused();
   await palette.getByRole("combobox").fill("customer");
   await expect(palette.getByRole("option")).toHaveCount(1);
   await page.keyboard.press("Enter");
   await expect(page).toHaveURL(jobUrl);
 
+  await page.keyboard.press("Control+k");
+  await expect(palette).toBeHidden();
   await page.keyboard.press("g");
   await page.keyboard.press("p");
-  await expect(page).toHaveURL(/\/app\/progress$/);
-
-  await page.keyboard.press("?");
-  await expect(page.getByRole("dialog", { name: "Keyboard shortcuts" })).toBeVisible();
-  await page.keyboard.press("Escape");
-  await expect(page.getByRole("dialog", { name: "Keyboard shortcuts" })).toBeHidden();
-
-  // Shortcuts pause while typing.
-  await page.goto("/app/jobs");
-  await page.getByLabel("Search your jobs").fill("cg?");
-  await expect(page.getByRole("dialog", { name: "Keyboard shortcuts" })).toBeHidden();
-  await expect(page).toHaveURL(/\/app\/jobs\?q=cg%3F/);
-
-  await page.getByLabel("Search your jobs").press("Escape");
-  await expect(page).toHaveURL(/\/app\/jobs$/);
+  await expect(page).toHaveURL(jobUrl);
+  await expect(page.getByText("Keyboard shortcuts", { exact: true })).toHaveCount(0);
 });
 
 test("the job list filters through the URL and says why it is empty", async ({ page }) => {

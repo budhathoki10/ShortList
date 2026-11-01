@@ -212,7 +212,7 @@ export function Logo() {
         <rect width="20" height="20" rx="5" fill="var(--ink)" />
         <path d="M5.5 10.5l3 3 6-6.5" fill="none" stroke="var(--on-ink)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
-      Shortlist
+      Shortlist Job Radar
     </span>
   );
 }

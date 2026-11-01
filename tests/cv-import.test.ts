@@ -40,8 +40,8 @@ describe("CV import regressions", () => {
     const text = await cvFileToText({ name: "cv.pdf", type: "application/pdf", bytes: await linkedPdf() });
     const fragmented = { ...EMPTY_PROFILE, name: "Alex Example", projects: Array.from({ length: 8 }, (_, i) => ({ id: `p${i}`, name: `Tech Stack: this is not a project title ${i}`, link: "", bullets: [] })) };
     expect(profileNeedsRepair(fragmented)).toBe(true);
-    vi.stubEnv("OPENROUTER_API_KEY", "unit-test-key");
-    vi.stubGlobal("fetch", vi.fn(async () => Response.json({ choices: [{ finish_reason: "stop", message: { content: JSON.stringify(fragmented) } }] })));
+    vi.stubEnv("ANTHROPIC_API_KEY", "unit-test-key");
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json({ type: "message", role: "assistant", stop_reason: "end_turn", content: [{ type: "text", text: JSON.stringify(fragmented) }] })));
     const { profile, method } = await parseCv(text);
     expect(method).toBe("basic");
     expect(profile.projects).toHaveLength(2);
@@ -65,8 +65,8 @@ describe("CV import regressions", () => {
     const invented = heuristicProfile(text);
     invented.links = ["https://invented.example.com/"];
     invented.projects[0].link = "https://wrong-project.example.com/";
-    vi.stubEnv("OPENROUTER_API_KEY", "unit-test-key");
-    vi.stubGlobal("fetch", vi.fn(async () => Response.json({ choices: [{ finish_reason: "stop", message: { content: JSON.stringify(invented) } }] })));
+    vi.stubEnv("ANTHROPIC_API_KEY", "unit-test-key");
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json({ type: "message", role: "assistant", stop_reason: "end_turn", content: [{ type: "text", text: JSON.stringify(invented) }] })));
     const { profile } = await parseCv(text);
     expect(profile.links).toEqual(["https://linkedin.com/in/alex-example", "https://github.com/alex-example"]);
     expect(profile.projects[0].link).toBe("https://queueboard.example.com/");

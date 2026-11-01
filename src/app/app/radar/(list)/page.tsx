@@ -73,9 +73,17 @@ function RecommendationCard({ recommendation, job }: { recommendation: JobRecomm
 export default async function RadarPage() {
   const user = await requireUser();
   const [passport, rows, profile, sourceStatus] = await Promise.all([getCareerPassport(user.id), listRecommendations(user.id, true), getProfile(user.id), getDiscoverySourceStatus()]);
-  // A first passport starts from what the CV states; a saved one keeps the person's choices and offers "Fill from my CV".
+  // The passport fills itself from the CV: a first one starts from it, and a saved one keeps the person's own choices
+  // with any field still empty taken from the CV. Work permission, salary and sponsorship are never filled in.
   const fromCv = passportFromCv(profile);
-  const defaultValue: PassportFormValue = passport ?? {
+  const orCv = <T,>(saved: T[], cv: T[]) => (saved.length ? saved : cv);
+  const defaultValue: PassportFormValue = passport ? {
+    ...passport,
+    targetRoles: orCv(passport.targetRoles, fromCv.targetRoles),
+    locations: orCv(passport.locations, fromCv.locations),
+    employmentTypes: orCv(passport.employmentTypes, fromCv.employmentTypes),
+    graduationDate: passport.graduationDate ?? fromCv.graduationDate,
+  } : {
     targetRoles: fromCv.targetRoles, excludedRoles: [], locations: fromCv.locations, workCountries: [], remoteModes: ["remote", "hybrid", "onsite"], needsSponsorship: false, graduationDate: fromCv.graduationDate, minimumSalary: null, employmentTypes: fromCv.employmentTypes, excludedCompanies: [], discoveryEnabled: true, emailFrequency: "off", pushFrequency: "off", alertStates: ["ready"], quietStart: "22:00", quietEnd: "08:00", timezone: "",
   };
   const groups = (["ready", "stretch", "verify", "blocked"] as const).map((state) => ({ state, rows: rows.filter((row) => row.recommendation.state === state && ["active", "saved"].includes(row.recommendation.status)) }));

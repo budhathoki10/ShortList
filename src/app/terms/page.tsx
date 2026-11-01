@@ -3,8 +3,9 @@ import Link from "next/link";
 import { LegalPage } from "@/components/legal-page";
 import { LIMITS } from "@/lib/plans";
 import { SITE } from "@/lib/site";
+import { publicMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = { title: "Terms of Service" };
+export const metadata: Metadata = publicMetadata({ title: "Terms of Service", description: "The terms for using Shortlist Job Radar's job search, CV tailoring, application tracking and interview preparation tools.", path: "/terms" });
 
 export default function TermsPage() {
   return (
@@ -13,9 +14,9 @@ export default function TermsPage() {
         These terms are an agreement between you and {SITE.operator} ({SITE.country}), who runs {SITE.name}. By creating an account you agree to them.
       </p>
 
-      <h2>What Shortlist does</h2>
+      <h2>What Shortlist Job Radar does</h2>
       <p>
-        Shortlist helps you apply for jobs. You give it your CV and job posts you&apos;re interested in. It checks how well you match, suggests
+        Shortlist Job Radar helps you apply for jobs. You give it your CV and job posts you&apos;re interested in. It checks how well you match, suggests
         changes to your CV for each job, drafts cover letters, prepares interview questions, and keeps track of your applications. It doesn&apos;t
         apply to jobs for you, contact employers, or promise any result.
       </p>
@@ -24,7 +25,7 @@ export default function TermsPage() {
       <ul>
         <li>You must be at least 16 and give accurate information about yourself.</li>
         <li>
-          Everything you send to an employer is your responsibility. Shortlist only builds on what&apos;s in your profile and flags anything a suggestion
+          Everything you send to an employer is your responsibility. Shortlist Job Radar only builds on what&apos;s in your profile and flags anything a suggestion
           adds, but you should read every document before you send it.
         </li>
         <li>Only upload CVs and job posts you&apos;re entitled to use. Don&apos;t upload other people&apos;s personal data beyond what a CV normally contains.</li>
@@ -71,7 +72,7 @@ export default function TermsPage() {
 
       <h2>Liability</h2>
       <p>
-        Shortlist is provided as is. We don&apos;t guarantee interviews, offers or that the service will always be available. To the extent the law
+        Shortlist Job Radar is provided as is. We don&apos;t guarantee interviews, offers or that the service will always be available. To the extent the law
         allows, our total liability is limited to what you paid us in the 12 months before the claim.
       </p>
 
