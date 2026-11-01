@@ -98,7 +98,7 @@ export function PushManager({ publicKey, configured, accountOn = true }: { publi
   }
 
   const on = Boolean(subscription);
-  const hint = !configured ? "Not set up on this server." : supported === false ? "Not supported in this browser." : "Job Radar alerts on this device. Choose which alerts in your Career Passport.";
+  const hint = !configured ? "Not set up on this server." : supported === false ? "Not supported in this browser." : "Job Radar alerts on this device, whenever notifications are on for your account.";
 
   return (
     <div>

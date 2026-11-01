@@ -29,10 +29,10 @@ export default function PrivacyPage() {
           This includes application plans, learning progress and work sample links, mock interview conversations, and coaching reports.
         </li>
         <li>
-          <strong>Your Career Passport:</strong> the search preferences you enter for Job Radar: target and excluded roles, places and employment types,
-          expected graduation month, minimum salary, companies to skip, and your alert settings. It can also hold details you choose to give, such as the
-          countries you can work in and whether you need visa sponsorship. Every field is optional. We use these only to decide which jobs to show you. We
-          never infer them from your CV.
+          <strong>Your Career Passport:</strong> the search preferences for Job Radar: target and excluded roles, places, employment types, work
+          arrangement and quiet hours. We fill roles, places and employment types from your CV when you import it or save your profile, and you can change
+          them at any time. Details only you can know, such as the countries you can work in, are never taken from your CV. We use these only to decide which
+          jobs to show you.
         </li>
         <li>
           <strong>Job Radar matches:</strong> the jobs we found for you, how well they fit your CV and Career Passport, the CV evidence behind each match,

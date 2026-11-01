@@ -20,22 +20,10 @@ export function roleCompatibility(title: string, targets: string[]): number {
 }
 
 function preferenceScore(job: DiscoveredJobDoc, passport: CareerPassportDoc, roleScore: number) {
-  let score = roleScore * 0.6;
+  let score = roleScore * 0.8;
   const locationText = canonical(job.location);
   if (!passport.locations.length || passport.locations.some((place) => locationText.includes(canonical(place)))) score += 20;
-  if (!passport.excludedCompanies.some((name) => canonical(job.company).includes(canonical(name)))) score += 10;
-  const salaryMaximum = explicitAnnualSalaryMaximum(job.post.salary);
-  if (!passport.minimumSalary || !salaryMaximum || salaryMaximum >= passport.minimumSalary) score += 10;
   return Math.min(100, Math.round(score));
-}
-
-function explicitAnnualSalaryMaximum(value: string) {
-  if (!value) return null;
-  const numbers = [...value.matchAll(/(?:^|[^\d])([\d]{2,3}(?:[,.]\d{3})+|\d{2,3}(?:\.\d+)?\s*[kK])(?:[^\d]|$)/g)].map((match) => {
-    const raw = match[1].replace(/,/g, "").replace(/\s/g, "");
-    return /k$/i.test(raw) ? Number(raw.slice(0, -1)) * 1_000 : Number(raw);
-  }).filter(Number.isFinite);
-  return numbers.length ? Math.max(...numbers) : null;
 }
 
 function explicitWorkMode(job: DiscoveredJobDoc): CareerPassportDoc["remoteModes"][number] | null {
@@ -82,13 +70,10 @@ export function evaluateJob(profile: Profile, profileUpdatedAt: Date, passport: 
   const roleScore = roleCompatibility(job.title, passport.targetRoles);
   if (roleScore < 45) return null;
   if (passport.excludedRoles.some((role) => overlap(job.title, role) >= 0.5)) return null;
-  if (passport.excludedCompanies.some((name) => canonical(job.company).includes(canonical(name)))) return null;
   const workMode = explicitWorkMode(job);
   if (workMode && !passport.remoteModes.includes(workMode)) return null;
   const employmentType = explicitEmploymentType(job);
   if (employmentType && passport.employmentTypes.length && !passport.employmentTypes.some((type) => canonical(type) === canonical(employmentType))) return null;
-  const salaryMaximum = explicitAnnualSalaryMaximum(job.post.salary);
-  if (passport.minimumSalary && salaryMaximum && salaryMaximum < passport.minimumSalary) return null;
 
   const match = scoreMatch(profile, job.post);
   const eligibility = eligibilityFindings(job.text, profile, passport);

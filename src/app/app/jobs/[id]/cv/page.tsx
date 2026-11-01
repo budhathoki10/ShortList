@@ -10,7 +10,7 @@ import { requireUser } from "@/lib/auth/session";
 import { limitsFor } from "@/lib/plans";
 import { getTailoredCv } from "@/lib/services/documents";
 import { ownedJob } from "@/lib/services/jobs";
-import { photoUrl } from "@/lib/services/photos";
+import { photoStatus } from "@/lib/services/photos";
 import { getProfileRow, profileReady } from "@/lib/services/profile";
 import { listMyTemplates, resolveCvStyle } from "@/lib/services/templates";
 import { recommendTemplates } from "@/lib/templates/registry";
@@ -68,7 +68,7 @@ export default async function CvTab({ params }: PageProps<"/app/jobs/[id]/cv">) 
   }
 
   const changes = doc.cv?.changes ?? [];
-  const [style, photo, mine] = await Promise.all([resolveCvStyle(user.id, job), photoUrl(user.id), listMyTemplates(user.id)]);
+  const [style, photo, mine] = await Promise.all([resolveCvStyle(user.id, job), photoStatus(user.id), listMyTemplates(user.id)]);
   const options: LookOption[] = [
     { id: style.template.id, name: style.template.name, spec: style.template.spec },
     ...recommendTemplates(profile, job.post, 4).map((t) => ({ id: t.id, name: t.name, spec: t.spec })),
@@ -81,7 +81,7 @@ export default async function CvTab({ params }: PageProps<"/app/jobs/[id]/cv">) 
       initial={changes}
       original={row?.original ?? null}
       docx={limits.docx}
-      look={{ photoUrl: photo, current: { id: style.template.id, name: style.template.name }, spec: style.spec, fitted: Boolean(style.fit), fitKey: JSON.stringify(style.fit), options }}
+      look={{ photoUrl: photo?.onCv ? photo.url : null, photoOn: photo?.onCv ?? null, current: { id: style.template.id, name: style.template.name }, spec: style.spec, fitted: Boolean(style.fit), fitKey: JSON.stringify(style.fit), options }}
       action={
         <>
           <div className="mb-5 empty:hidden">{gapCloser}</div>

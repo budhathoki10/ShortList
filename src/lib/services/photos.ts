@@ -32,7 +32,7 @@ export async function normalisePhoto(bytes: Uint8Array): Promise<Buffer> {
 
 export async function savePhoto(userId: string, bytes: Uint8Array) {
   const image = await normalisePhoto(bytes);
-  await (await collections()).photos.updateOne({ _id: String(userId) }, { $set: { image, updatedAt: new Date() } }, { upsert: true });
+  await (await collections()).photos.updateOne({ _id: String(userId) }, { $set: { image, updatedAt: new Date(), onCv: true } }, { upsert: true });
 }
 
 /** The stored photo as plain bytes, or null. (The driver hands binary back as a Binary whose `.buffer` is the bytes.) */
@@ -44,10 +44,25 @@ export async function getPhoto(userId: string): Promise<{ image: Buffer; updated
   return { image: Buffer.from(bytes), updatedAt: row.updatedAt };
 }
 
-/** The URL a CV uses for the photo, changing whenever the photo does so browsers don't show an old one. */
+/** The stored photo and whether it is switched on for CVs. The URL changes whenever the photo does so browsers don't show an old one. */
+export async function photoStatus(userId: string): Promise<{ url: string; onCv: boolean } | null> {
+  const row = await (await collections()).photos.findOne({ _id: String(userId) }, { projection: { updatedAt: 1, onCv: 1 } });
+  return row ? { url: `/app/photo?v=${row.updatedAt.getTime()}`, onCv: row.onCv !== false } : null;
+}
+
+/** The URL a CV uses for the photo: null when there is none, or when the person turned it off. */
 export async function photoUrl(userId: string): Promise<string | null> {
-  const row = await (await collections()).photos.findOne({ _id: String(userId) }, { projection: { updatedAt: 1 } });
-  return row ? `/app/photo?v=${row.updatedAt.getTime()}` : null;
+  const status = await photoStatus(userId);
+  return status?.onCv ? status.url : null;
+}
+
+/** The photo bytes for a downloaded CV: null when there is none, or when the person turned it off. */
+export async function getCvPhoto(userId: string) {
+  return (await photoStatus(userId))?.onCv ? getPhoto(userId) : null;
+}
+
+export async function setPhotoOnCv(userId: string, onCv: boolean) {
+  await (await collections()).photos.updateOne({ _id: String(userId) }, { $set: { onCv } });
 }
 
 export async function deletePhoto(userId: string) {

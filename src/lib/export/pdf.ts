@@ -4,8 +4,12 @@ import { CV_SECTIONS, type CvSection, type Profile } from "@/lib/model/types";
 import { skillGroupLines } from "@/lib/cv/presentation";
 import { linkLabel, textLinks, webUrl } from "@/lib/cv/links";
 
+/** The person's photo as PNG (PDFKit doesn't read WebP) and the shape their template gives it. */
+export type PdfPhoto = { png: Buffer; shape: "circle" | "square" | "rounded" };
+const PHOTO = 72;
+
 /** A real, selectable-text PDF. Pagination and links never depend on browser print settings. */
-export async function cvPdfBuffer(cv: Profile): Promise<Buffer> {
+export async function cvPdfBuffer(cv: Profile, photo: PdfPhoto | null = null): Promise<Buffer> {
   const doc = new PDFDocument({ size: "A4", margins: { top: 46, bottom: 46, left: 48, right: 48 }, bufferPages: true,
     info: { Title: `${cv.name} — CV`, Author: cv.name, Creator: "Shortlist Job Radar" } });
   const chunks: Buffer[] = [];
@@ -59,12 +63,23 @@ export async function cvPdfBuffer(cv: Profile): Promise<Buffer> {
     }
     doc.y += 3;
   };
-  doc.font("Helvetica-Bold").fontSize(23).fillColor("#172b41").text(cv.name, 48, doc.y, { width });
+  // The photo sits top right; the name and headline keep clear of it, and the rest starts below it.
+  const top = doc.y;
+  const headWidth = photo ? width - PHOTO - 14 : width;
+  if (photo) {
+    const x = doc.page.width - 48 - PHOTO;
+    doc.save();
+    if (photo.shape === "circle") doc.circle(x + PHOTO / 2, top + PHOTO / 2, PHOTO / 2).clip();
+    else if (photo.shape === "rounded") doc.roundedRect(x, top, PHOTO, PHOTO, 10).clip();
+    doc.image(photo.png, x, top, { width: PHOTO, height: PHOTO });
+    doc.restore();
+  }
+  doc.font("Helvetica-Bold").fontSize(23).fillColor("#172b41").text(cv.name, 48, doc.y, { width: headWidth });
   if (cv.headline) {
     doc.y += 4;
-    doc.font("Helvetica").fontSize(11.5).fillColor("#425468").text(cv.headline, 48, doc.y, { width });
+    doc.font("Helvetica").fontSize(11.5).fillColor("#425468").text(cv.headline, 48, doc.y, { width: headWidth });
   }
-  doc.y += 8;
+  doc.y = photo ? Math.max(doc.y + 8, top + PHOTO + 8) : doc.y + 8;
   const contacts = [cv.email, cv.phone, cv.location].filter(Boolean);
   if (contacts.length) paragraph(contacts.join("  |  "));
   const links = cv.links.map(webUrl).filter((url): url is string => !!url);
