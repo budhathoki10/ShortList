@@ -132,7 +132,7 @@ export function CvWorkbench({
   docx: boolean;
   original: { name: string; type: string } | null;
   /** The job's CV template, the person's photo and the looks they can try. */
-  look: { photoUrl: string | null; current: { id: string; name: string }; spec: TemplateSpec; fitted: boolean; fitKey: string; options: LookOption[] };
+  look: { photoUrl: string | null; photoOn: boolean | null; current: { id: string; name: string }; spec: TemplateSpec; fitted: boolean; fitKey: string; options: LookOption[] };
   /** The "Suggest again" control, rendered on the server. */
   action: React.ReactNode;
 }) {
@@ -264,6 +264,7 @@ export function CvWorkbench({
           jobId={jobId}
           cv={cv}
           photoUrl={look.photoUrl}
+          photoOn={look.photoOn}
           current={look.current}
           spec={look.spec}
           fitted={look.fitted}

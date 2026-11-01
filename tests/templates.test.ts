@@ -8,9 +8,10 @@ import { CvDocument } from "@/components/cv/cv-document";
 import { heuristicProfile } from "@/lib/cv/heuristic";
 import { linkLabel } from "@/lib/cv/links";
 import { cvDocxBuffer } from "@/lib/export/docx";
+import { cvPdfBuffer } from "@/lib/export/pdf";
 import { EMPTY_PROFILE, type Profile } from "@/lib/model/types";
 import { BUILTIN_TEMPLATES, CATEGORY_IDS } from "@/lib/templates/builtin";
-import { atsReport, atsTwin, contrastIssues, contrastRatio, photoAdvice } from "@/lib/templates/checks";
+import { atsReport, atsTwin, contrastIssues, contrastRatio, photoAdvice, photoSlot } from "@/lib/templates/checks";
 import { fitSteps } from "@/lib/templates/fit";
 import { filterTemplates, getBuiltin, recommendTemplates, visibleBuiltins } from "@/lib/templates/registry";
 import { SAMPLE_PROFILE } from "@/lib/templates/sample";
@@ -276,5 +277,37 @@ describe("Word export follows the template", () => {
     expect(xml).toContain('w:ascii="Lora"');
     expect(xml).toContain(t.spec.palette.accent.slice(1).toUpperCase());
     expect(xml).toContain('w:w="11906"'); // A4 width in twips
+  });
+});
+
+describe("an uploaded photo reaches every kind of CV", () => {
+  const withSlot = getBuiltin("sl-081")!.spec; // Sidecar: left sidebar with a photo slot
+  const photoPng = () => sharp({ create: { width: 40, height: 40, channels: 3, background: "#cc3333" } }).png().toBuffer();
+  const pdfImages = (pdf: Buffer) => (pdf.toString("latin1").match(/\/Subtype \/Image/g) ?? []).length;
+
+  it("puts the photo into the PDF, which used to ignore it", async () => {
+    const png = await photoPng();
+    expect(pdfImages(await cvPdfBuffer(SAMPLE_PROFILE))).toBe(0);
+    for (const shape of ["circle", "square", "rounded"] as const) expect(pdfImages(await cvPdfBuffer(SAMPLE_PROFILE, { png, shape }))).toBe(1);
+  });
+
+  it("stays a valid, larger PDF once a photo is added", async () => {
+    const withPhoto = await cvPdfBuffer(SAMPLE_PROFILE, { png: await photoPng(), shape: "circle" });
+    expect(withPhoto.subarray(0, 5).toString()).toBe("%PDF-");
+    expect((await cvPdfBuffer(SAMPLE_PROFILE)).length).toBeLessThan(withPhoto.length);
+  });
+
+  it("explains the photo from one answer: shown, off, no slot, or none", () => {
+    expect(photoSlot(withSlot, { onCv: true })).toBe("shown");
+    expect(photoSlot(withSlot, { onCv: false })).toBe("off");
+    expect(photoSlot(DEFAULT_SPEC, { onCv: true })).toBe("no-slot");
+    expect(photoSlot(withSlot, null)).toBe("none");
+  });
+
+  it("shows the photo in the preview and the Word file for a template with a slot", async () => {
+    expect(html(withSlot, SAMPLE_PROFILE, "/app/photo?v=1")).toContain('src="/app/photo?v=1"');
+    const { default: JSZip } = await import("jszip");
+    const zip = await JSZip.loadAsync(await cvDocxBuffer(SAMPLE_PROFILE, withSlot, await photoPng()));
+    expect(Object.keys(zip.files).some((name) => name.startsWith("word/media/"))).toBe(true);
   });
 });

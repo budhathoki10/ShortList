@@ -178,7 +178,7 @@ export type RateLimitDoc = { _id: string; count: number; expiresAt: Date };
 export type CvTemplateDoc = { _id: string; userId: string; name: string; basedOn: string | null; spec: TemplateSpec; createdAt: Date; updatedAt: Date };
 
 /** A profile photo, re-encoded to WebP without metadata. `_id` is the user's id, so there is at most one. Served only to its owner. */
-export type PhotoDoc = { _id: string; image: Uint8Array; updatedAt: Date };
+export type PhotoDoc = { _id: string; image: Uint8Array; updatedAt: Date; /** False once the person turned the photo off for their CVs. Missing means on. */ onCv?: boolean };
 
 export type AlertFrequency = "immediate" | "daily" | "off";
 export type RecommendationState = "ready" | "stretch" | "verify" | "blocked";
