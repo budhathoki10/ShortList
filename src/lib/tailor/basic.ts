@@ -1,6 +1,7 @@
-import { CV_SECTIONS, type Change, type CloseGap, type CvSection, type JobPost, type Match, type Profile } from "@/lib/model/types";
+import { CV_SECTIONS, type SkillLevel, type Change, type CloseGap, type CvSection, type JobPost, type Match, type Profile } from "@/lib/model/types";
 import { isAddableSkill } from "@/lib/match/skills";
-import { canonical, localId, overlap } from "@/lib/text";
+import { declaredSkills } from "@/lib/cv/skill-levels";
+import { canonical, containsTerm, localId, overlap } from "@/lib/text";
 import { unsupportedCvFacts } from "./fact-check";
 import { candidateSentences, entryRelevance, focusOf, groupSkills, groupOf, isStackLine, orderSkills, rankIndexes, relevance, skillRelevance, type Focus } from "./relevance";
 
@@ -27,9 +28,27 @@ export function basicSummary(profile: Profile, focus: Focus): string {
     if (chosen.some((c) => overlap(c, s.text) > 0.6)) continue;
     chosen.push(s.text);
   }
-  if (!chosen.length && pickedSummary) return profile.summary.trim();
+  const declared = declaredLines(profile, focus);
+  if (!chosen.length && pickedSummary) return [profile.summary.trim(), ...declared].map((t) => (/[.!?]$/.test(t) ? t : `${t}.`)).join(" ");
   const end = (t: string) => (/[.!?]$/.test(t) ? t : `${t}.`);
-  return [lead.text, ...chosen].map(end).join(" ");
+  return [lead.text, ...chosen, ...declared].map(end).join(" ");
+}
+
+/**
+ * One sentence for the skills the candidate declared themselves that this job asks for, worded at
+ * exactly the level they chose. Work and project levels read as experience; coursework and learning
+ * never go beyond "building skills".
+ */
+export function declaredLines(profile: Profile, focus: Focus): string[] {
+  const wanted = declaredSkills(profile).filter((d) => skillRelevance(d.skill, focus) > 0);
+  const names = (xs: typeof wanted) => (xs.length > 2 ? `${xs.slice(0, -1).map((x) => x.skill).join(", ")} and ${xs.at(-1)!.skill}` : xs.map((x) => x.skill).join(" and "));
+  const lines: string[] = [];
+  const by = (level: SkillLevel) => wanted.filter((d) => d.level === level);
+  if (by("work").length) lines.push(`Has used ${names(by("work"))} in professional work`);
+  if (by("project").length) lines.push(`Has applied ${names(by("project"))} in project work`);
+  if (by("practice").length) lines.push(`Building ${names(by("practice"))} skills through coursework and hands-on practice`);
+  if (by("learning").length) lines.push(`Currently building ${names(by("learning"))} skills through hands-on practice`);
+  return lines;
 }
 
 /** Developer ↔ Engineer, only when the CV already uses one of them and the job title uses the other. */
@@ -37,6 +56,8 @@ export function basicHeadline(profile: Profile, post: JobPost): string {
   const h = profile.headline.trim();
   if (!h) return "";
   const title = post.title.toLowerCase();
+  const centred = declaredSkills(profile).find((d) => (d.level === "work" || d.level === "project") && containsTerm(post.title, d.skill) && !containsTerm(h, d.skill));
+  if (centred) return `${h} · ${centred.skill}`;
   if (/\bdeveloper\b/i.test(h) && /\bengineer\b/.test(title) && !/\bdeveloper\b/.test(title)) return h.replace(/\bdeveloper\b/i, (m) => (m[0] === "D" ? "Engineer" : "engineer"));
   if (/\bengineer\b/i.test(h) && /\bdeveloper\b/.test(title) && !/\bengineer\b/.test(title)) return h.replace(/\bengineer\b/i, (m) => (m[0] === "E" ? "Developer" : "developer"));
   return "";
@@ -112,7 +133,8 @@ export function basicChanges(profile: Profile, post: JobPost, match: Match): { c
   }
 
   // The focused version: shorter, by leaving out what this job doesn't care about. Off by default.
-  const unrelated = profile.skills.filter((s) => skillRelevance(s, focus) === 0);
+  const declaredLabels = new Set(declaredSkills(profile).map((d) => d.label));
+  const unrelated = profile.skills.filter((s) => skillRelevance(s, focus) === 0 && !declaredLabels.has(s));
   if (focus.terms.length >= 3 && profile.skills.length >= 8 && profile.skills.length - unrelated.length >= 3 && unrelated.length) changes.push(make({ kind: "skills-trim", drop: unrelated.slice(0, profile.skills.length - 6), accepted: false, optional: true, reason: "Leaves out skills this job doesn't mention, for a more focused CV" }));
   for (const e of profile.experience) {
     if (e.bullets.length < 5) continue;

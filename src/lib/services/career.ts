@@ -4,6 +4,7 @@ import { collections, isDuplicateKey } from "@/db/mongo";
 import { stripHtmlDeep } from "@/lib/jobs/html";
 import type { ApplicationPlan, CareerQuestion, LearningProgress, MockFeedback, MockSessionDoc } from "@/lib/career/types";
 import { mockReport, nextDifficulty } from "@/lib/career/mock";
+import { MAX_MOCK_TURNS } from "@/lib/career/scoring";
 import { adaptQuestion } from "@/lib/career/questions";
 import { ownedJob } from "./jobs";
 
@@ -57,9 +58,9 @@ export async function advanceMockSession(userId: string, id: string, version: nu
   const row = await getMockSession(userId, id);
   const current = row?.turns.at(-1);
   if (!row || row.status !== "active" || row.version !== version || (!current?.feedback && !finish)) return false;
-  const followUp = !finish && current?.feedback && current.followUpDepth === 0 && current.question.kind !== "closing" && row.turns.length < 17;
+  const followUp = !finish && current?.feedback && current.followUpDepth === 0 && current.question.kind !== "closing" && row.turns.length < MAX_MOCK_TURNS - 1;
   const mainIndex = followUp ? row.mainIndex : row.mainIndex + 1;
-  const complete = finish || mainIndex >= row.queue.length || row.turns.length >= 18;
+  const complete = finish || mainIndex >= row.queue.length || row.turns.length >= MAX_MOCK_TURNS;
   const question: CareerQuestion | undefined = !complete ? followUp ? { ...current!.question, id: randomUUID(), question: current!.feedback!.followUp, assesses: "Explain or defend the previous answer with concrete reasoning.", difficulty: nextDifficulty(current!.question.difficulty, current!.feedback!) } : adaptQuestion(row.queue[mainIndex], current?.feedback ? nextDifficulty(row.queue[mainIndex].difficulty, current.feedback) : row.queue[mainIndex].difficulty) : undefined;
   const turns = question ? [...row.turns, { id: randomUUID(), question, answer: "", feedback: null, followUpDepth: followUp ? 1 : 0 }] : row.turns;
   const result = await (await collections()).mockSessions.updateOne({ _id: id, userId, version, status: "active" }, { $set: { turns, mainIndex, status: complete ? "complete" : "active", report: complete ? mockReport(turns) : null, updatedAt: new Date() }, $inc: { version: 1 } });

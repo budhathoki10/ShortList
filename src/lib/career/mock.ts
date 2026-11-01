@@ -5,6 +5,7 @@ import { contentWords } from "@/lib/text";
 import { unsupportedExperienceClaims, unsupportedFacts } from "@/lib/tailor/fact-check";
 import type { CareerContext, CareerQuestion, MockFeedback, MockReport, MockTurn } from "./types";
 import { questionCoaching } from "./coaching";
+import { aiPracticeScore, heuristicPractice, practiceReport } from "./scoring";
 import { referenceCorrections } from "./references";
 
 const Criteria = ["correctness", "depth", "communication", "confidence", "relevance"] as const;
@@ -30,13 +31,15 @@ export async function evaluateMockAnswer(question: CareerQuestion, answer: strin
       const rubric = out.rubric.map((r) => r.criterion === "correctness" && knownCorrections.length ? { ...r, score: Math.min(r.score, 2), note: knownCorrections[0] } : r);
       const average = rubric.reduce((sum, r) => sum + r.score, 0) / 5;
       const correctness = rubric.find((r) => r.criterion === "correctness")!.score;
-      return { ...out, rubric, method: "ai", score: Number((knowledge ? Math.min(average, correctness + 1) : average).toFixed(1)), corrections: [...new Set([...knownCorrections, ...out.corrections])], improvedAnswer: flags.length ? guide.starter : out.improvedAnswer, modelAnswer: modelFlags.length ? guide.starter : out.modelAnswer, improvements: [...out.improvements.slice(0, 3), ...(flags.length ? ["The personal rewrite added unsupported details; fill in the scaffold using your real example."] : [])], sources: guide.reference ? [guide.reference.source] : [] };
+      const practice = aiPracticeScore(rubric, knowledge);
+      return { ...out, rubric, method: "ai", practiceScore: practice.score, communicationScore: practice.communication, scoreMethod: "ai", score: Number((knowledge ? Math.min(average, correctness + 1) : average).toFixed(1)), corrections: [...new Set([...knownCorrections, ...out.corrections])], improvedAnswer: flags.length ? guide.starter : out.improvedAnswer, modelAnswer: modelFlags.length ? guide.starter : out.modelAnswer, improvements: [...out.improvements.slice(0, 3), ...(flags.length ? ["The personal rewrite added unsupported details; fill in the scaffold using your real example."] : [])], sources: guide.reference ? [guide.reference.source] : [] };
     } catch { /* A checklist must not masquerade as technical evaluation. */ }
   }
   const words = answer.trim().split(/\s+/).length;
   const connected = contentWords(question.question).some((w) => answer.toLowerCase().includes(w));
   const contribution = /\bI\s+(built|wrote|tested|fixed|implemented|designed|checked|learned|asked|used)\b/i.test(answer);
-  return { method: "checklist", score: null,
+  const estimate = heuristicPractice(question, answer, knownCorrections);
+  return { method: "checklist", score: null, practiceScore: estimate.score, communicationScore: estimate.communication, scoreMethod: "estimate",
     rubric: Criteria.map((criterion) => ({ criterion, score: null, note: criterion === "correctness" ? "AI evaluation is unavailable. Technical correctness has not been assessed; code has not been executed." : criterion === "confidence" ? "Written text cannot establish vocal confidence. Practise aloud separately." : criterion === "depth" ? `${words} words. Check the expected concepts below; length does not establish depth.` : criterion === "relevance" ? connected ? "Some wording connects to the question; check that you address every part." : "Explain the connection to this question explicitly." : "Read the answer aloud and check that the sequence is easy to follow." })),
     strengths: contribution ? ["You name an action you personally took. Keep it tied to a specific example."] : [],
     improvements: [...(!connected ? ["Make the connection to this question explicit; the answer does not yet identify the requested example or concept."] : []), ...guide.steps].slice(0, 3),
@@ -55,7 +58,7 @@ const mean = (scores: (number | null)[]) => { const known = scores.filter((s): s
 export function mockReport(turns: MockTurn[]): MockReport {
   const feedback = turns.flatMap((t) => t.feedback ?? []);
   const middle = Math.ceil(feedback.length / 2);
-  return { overall: mean(feedback.map((f) => f.score)), assessedAnswers: feedback.filter((f) => f.method === "ai").length, localAnswers: feedback.filter((f) => f.method === "checklist").length,
+  return { practice: practiceReport(turns), overall: mean(feedback.map((f) => f.score)), assessedAnswers: feedback.filter((f) => f.method === "ai").length, localAnswers: feedback.filter((f) => f.method === "checklist").length,
     criteria: Criteria.map((criterion) => ({ criterion, score: mean(feedback.flatMap((f) => f.rubric.filter((r) => r.criterion === criterion).map((r) => r.score))) })),
     strengths: [...new Set(feedback.flatMap((f) => f.strengths))].slice(0, 5), weaknesses: [...new Set(feedback.flatMap((f) => [...f.corrections, ...f.improvements]))].slice(0, 8), nextSteps: [...new Set(feedback.flatMap((f) => f.improvements))].slice(0, 5),
     firstHalf: mean(feedback.slice(0, middle).map((f) => f.score)), secondHalf: mean(feedback.slice(middle).map((f) => f.score)) };

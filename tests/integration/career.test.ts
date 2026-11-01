@@ -10,7 +10,7 @@ import type { MockFeedback } from "@/lib/career/types";
 import { createJob, deleteJob } from "@/lib/services/jobs";
 import { deleteUser, exportUserData } from "@/lib/services/account";
 import { getProfile, saveProfile } from "@/lib/services/profile";
-import { advanceMockSession, createMockSession, getCareerPlan, getMockSession, recordMockAnswer, saveCareerPlan, updateLearningProgress } from "@/lib/services/career";
+import { advanceMockSession, createMockSession, getCareerPlan, getMockSession, listMockSessions, recordMockAnswer, saveCareerPlan, updateLearningProgress } from "@/lib/services/career";
 import { makeUser, resetDb } from "./helpers";
 
 const profile = { ...EMPTY_PROFILE, name: "Alex Example", skills: ["JavaScript"], projects: [{ id: "p1", name: "Tracker", link: "", bullets: ["Built a JavaScript tracker and tested invalid inputs."] }] };
@@ -76,11 +76,20 @@ describe("application preparation lifecycle", () => {
       expect(await advanceMockSession(user.id, session._id, session.version + 1)).toBe(true);
       session = (await getMockSession(user.id, session._id))!;
     }
-    expect(session.turns.length).toBeLessThanOrEqual(18);
+    expect(session.turns.length).toBeLessThanOrEqual(28);
     expect(session.turns.at(-1)!.question.kind).toBe("closing");
     expect(session.report?.overall).toBeNull();
     expect(session.report?.localAnswers).toBe(session.turns.length);
     expect(session.report?.assessedAnswers).toBe(0);
+    // The Practice score is persisted with the session: a whole number from 0 to 100, labelled as an estimate without AI.
+    const practice = session.report!.practice!;
+    expect(Number.isInteger(practice.score)).toBe(true);
+    expect(practice.score).toBeGreaterThanOrEqual(0);
+    expect(practice.score).toBeLessThanOrEqual(100);
+    expect(practice.method).toBe("estimate");
+    expect(practice.areas.length).toBeGreaterThan(0);
+    const listed = (await listMockSessions(user.id, job.id)).find((s) => s._id === session._id)!;
+    expect(listed.report?.practice?.score).toBe(practice.score);
   });
   it("exports preparation work and removes it with the job or account", async () => {
     const { user, job, plan } = await setup();

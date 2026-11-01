@@ -66,7 +66,8 @@ test("a candidate without Python gets an honest plan, records practice and compl
   await question.getByLabel("Your interview answer", { exact: false }).fill("I support customers and use Zendesk. I have not used Python professionally. I would start by implementing a small tracker and testing invalid input.");
   await question.getByRole("button", { name: "Submit interview answer" }).click();
   const feedback = page.getByRole("region", { name: "Mock answer feedback" });
-  await expect(feedback).toContainText("Guided practice · unscored");
+  await expect(feedback).toContainText(/\d+\/100/);
+  await expect(feedback).toContainText("Practice score (estimate)");
   await expect(feedback).toContainText("overall correctness has not been assessed");
   await page.getByRole("button", { name: "Continue interview", exact: true }).click();
   await expect(question).toContainText("Follow-up");
@@ -81,8 +82,10 @@ test("a candidate without Python gets an honest plan, records practice and compl
   await page.screenshot({ path: "tmp/cv-audit/career/mock-mobile.png", fullPage: true });
   await page.getByRole("button", { name: "Finish session and view report", exact: true }).click();
   const report = page.getByRole("region", { name: "Mock interview report" });
-  await expect(report).toContainText("Unscored practice");
-  await expect(report).toContainText("1 answer reviewed");
+  await expect(report).toContainText("Practice score");
+  await expect(report.getByLabel("Practice score by area")).toBeVisible();
+  await expect(report).toContainText("an estimate");
+  await expect(report).toContainText("not a prediction of any hiring decision");
   const exported = await page.request.get("/app/settings/export");
   const data = await exported.json();
   expect(data.applicationPlans).toHaveLength(1);

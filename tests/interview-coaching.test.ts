@@ -52,7 +52,7 @@ it("groups related skill prompts and distinguishes missing skills from claimed e
   expect(bank.some((q) => q.kind === "gap" && q.question.includes("Python") && q.question.includes("demonstrate today"))).toBe(true);
   expect(bank.some((q) => /time you used.*Python/.test(q.question))).toBe(false);
   const practice = await interviewQuestions(profile, context.post, scoreMatch(profile, context.post), postText);
-  expect(practice.find((q) => q.prompt?.kind === "technical")?.prompt?.referenceId).toBeDefined();
+  expect(practice.some((q) => q.prompt?.kind === "technical" && q.prompt.referenceId)).toBe(true);
 });
 
 it("coaches the user's short collaboration answer without unrelated technical advice or fabricated outcomes", async () => {

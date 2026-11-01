@@ -1,4 +1,5 @@
 import type { JobPost, Profile, SkillGroup } from "@/lib/model/types";
+import { isModestLevel, parseSkillLabel } from "@/lib/cv/skill-levels";
 import { isSkillKeyword } from "@/lib/match/skills";
 import { canonical, containsTerm, overlap } from "@/lib/text";
 
@@ -57,15 +58,19 @@ const GROUPS: [string, string[]][] = [
 const GROUP_OF = new Map(GROUPS.flatMap(([label, skills]) => skills.map((s) => [canonical(s), label] as const)));
 
 /** Which heading a known skill belongs under ("Languages", "Tools"…), or null if it is not in the list. */
-export const groupOf = (skill: string): string | null => GROUP_OF.get(canonical(skill)) ?? null;
+export const groupOf = (skill: string): string | null => GROUP_OF.get(canonical(parseSkillLabel(skill).name)) ?? null;
 
 export function skillRelevance(skill: string, focus: Focus): number {
   return focus.terms.reduce((n, t) => n + (containsTerm(skill, t.term) || canonical(skill) === canonical(t.term) ? t.weight : 0), 0);
 }
 
+/** Relevance used for ordering: a coursework or learning skill never counts for more than a trace. */
+const leadRelevance = (s: string, focus: Focus) => (isModestLevel(parseSkillLabel(s).level) ? Math.min(skillRelevance(s, focus), 0.5) : skillRelevance(s, focus));
+
 /** The skills most relevant first, as before: only the person's own skills, no additions. */
 export function orderSkills(skills: string[], focus: Focus): string[] {
-  return skills.map((s, i) => ({ s, i, r: skillRelevance(s, focus) })).sort((a, b) => b.r - a.r || a.i - b.i).map((x) => x.s);
+  // A skill declared at coursework or learning level never outranks real experience, however much the job wants it.
+  return skills.map((s, i) => ({ s, i, r: leadRelevance(s, focus) })).sort((a, b) => b.r - a.r || a.i - b.i).map((x) => x.s);
 }
 
 /**
@@ -77,12 +82,12 @@ export function groupSkills(skills: string[], focus: Focus): SkillGroup[] | null
   const buckets = new Map<string, string[]>();
   let unknown = 0;
   for (const s of orderSkills(skills, focus)) {
-    const label = GROUP_OF.get(canonical(s)) ?? "Other";
+    const label = GROUP_OF.get(canonical(parseSkillLabel(s).name)) ?? "Other";
     if (label === "Other") unknown++;
     buckets.set(label, [...(buckets.get(label) ?? []), s]);
   }
   if (unknown > skills.length / 2 || buckets.size < 2) return null;
-  const groups = [...buckets].map(([label, list]) => ({ label, skills: list, top: Math.max(...list.map((s) => skillRelevance(s, focus))) }));
+  const groups = [...buckets].map(([label, list]) => ({ label, skills: list, top: Math.max(...list.map((s) => leadRelevance(s, focus))) }));
   const order = (l: string) => [...GROUPS.map(([g]) => g), "Other"].indexOf(l);
   groups.sort((a, b) => b.top - a.top || order(a.label) - order(b.label));
   return groups.map(({ label, skills: list }) => ({ label, skills: list }));

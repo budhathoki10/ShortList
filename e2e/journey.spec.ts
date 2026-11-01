@@ -93,7 +93,7 @@ test("a job seeker goes from CV to application to follow-up, without anything in
     .getByLabel("Your answer")
     .fill("Our renewals were slipping, so I set up check-in calls two weeks before each renewal and tracked answers in the CRM. Over six months churn on my accounts fell under 3 percent, and the whole team started doing the same.");
   await first.getByRole("button", { name: "Get feedback" }).click();
-  await expect(page.getByText("Guided practice · unscored")).toBeVisible();
+  await expect(page.getByText("Practice score (estimate)")).toBeVisible();
   await expect(page.getByText("Practised 1 of")).toBeVisible();
 
   // 7. Apply, then a week passes with no answer.

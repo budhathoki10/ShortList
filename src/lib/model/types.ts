@@ -40,11 +40,16 @@ export type Profile = {
   languages: string[];
   /** The word each link sat on in the original CV ("LinkedIn", "Live"), keyed by address. Display only. */
   linkLabels?: Record<string, string>;
+  /** Skills the candidate declared themselves, keyed by skill name, at the level they chose. Never raised by tailoring. */
+  skillLevels?: Record<string, SkillLevel>;
   /** Presentation of an accepted tailored version; never new candidate facts. */
   sectionOrder?: CvSection[];
   /** Grouped presentation of the same skills (for example "Languages", "Tools"), job-relevant group first. Never adds a skill. */
   skillGroups?: SkillGroup[];
 };
+
+/** How well the candidate says they know a skill they declared themselves. Only ever set by the candidate. */
+export type SkillLevel = "work" | "project" | "practice" | "learning";
 
 export type SkillGroup = { label: string; skills: string[] };
 
@@ -117,4 +122,6 @@ export type AnswerFeedback = {
   method?: "ai" | "checklist";
   rubric?: { label: string; score: number | null; note: string }[];
   corrections?: string[]; modelAnswer?: string; sources?: { title: string; url: string }[];
+  /** Practice score for this answer, 0 to 100: from the AI rubric, or a plain-code estimate. Not a hiring prediction. */
+  practiceScore?: number; scoreMethod?: "ai" | "estimate";
 };
