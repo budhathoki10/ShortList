@@ -1,14 +1,17 @@
 import type { Metadata } from "next";
 import { DeleteAccountForm, VerifyEmailBanner } from "@/components/auth-forms";
 import { PushManager } from "@/components/discovery/push-manager";
+import { NotificationsSwitch } from "@/components/notifications-switch";
 import { buttonClass, PageHeader } from "@/components/ui";
 import { requireUser } from "@/lib/auth/session";
 import { pushConfigured } from "@/lib/discovery/notifications";
+import { notificationsOn } from "@/lib/services/notification-settings";
 
 export const metadata: Metadata = { title: "Settings" };
 
 export default async function SettingsPage() {
   const user = await requireUser();
+  const on = notificationsOn(user);
   return (
     <div className="max-w-3xl space-y-10">
       <PageHeader title="Settings" description={`${user.name} · ${user.email}`} />
@@ -17,8 +20,11 @@ export default async function SettingsPage() {
         {user.emailVerifiedAt ? <p className="mt-2 text-sm text-success">Verified · {user.email}</p> : <VerifyEmailBanner email={user.email} />}
       </section>
 
-      <section aria-label="Notifications" className="rounded-xl border border-border bg-surface p-5 sm:p-6">
-        <PushManager publicKey={process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? ""} configured={pushConfigured()} />
+      <section id="notifications" aria-labelledby="notifications-label" className="scroll-mt-20 rounded-xl border border-border bg-surface p-5 sm:p-6">
+        <NotificationsSwitch initialOn={on} />
+        <div className="mt-5 border-t border-border pt-5">
+          <PushManager publicKey={process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? ""} configured={pushConfigured()} accountOn={on} />
+        </div>
       </section>
 
       <section aria-labelledby="your-data" className="space-y-3 border-t border-border pt-8">

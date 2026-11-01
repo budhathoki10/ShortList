@@ -4,7 +4,12 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { collections } from "@/db/mongo";
 import type { DiscoveredJobDoc, JobRecommendationDoc } from "@/db/types";
-import { enqueueRecommendationNotifications, sendDiscoveryDigests, sendImmediateDiscoveryNotifications } from "@/lib/discovery/notifications";
+import { enqueueRecommendationNotifications, NotificationsOffError, sendDiscoveryDigests, sendImmediateDiscoveryNotifications, sendTestPush } from "@/lib/discovery/notifications";
+import { getNotificationsOn, NOTIFICATIONS_OFF_REASON, setNotificationsOn } from "@/lib/services/notification-settings";
+import { sendFollowUpDigests } from "@/lib/services/reminders";
+import { createJob, setStatus } from "@/lib/services/jobs";
+import { addDays } from "@/lib/dates";
+import { today } from "@/lib/plans";
 import { runJobDiscovery } from "@/lib/discovery/runner";
 import { removePushDevice, saveCareerPassport, saveRecommendationToTracker, subscribePush } from "@/lib/services/discovery";
 import { deleteUser } from "@/lib/services/account";
@@ -278,5 +283,86 @@ describe("Job Radar services", () => {
     expect(await c.jobRecommendations.countDocuments({ userId: user.id })).toBe(0);
     expect(await c.notificationDeliveries.countDocuments({ userId: user.id })).toBe(0);
     expect(await c.pushSubscriptions.countDocuments({ userId: user.id })).toBe(0);
+  });
+});
+
+describe("the account-wide notifications switch", () => {
+  const outbox = () => { try { return readFileSync(OUTBOX, "utf8"); } catch { return ""; } };
+
+  it("is on by default and persists when turned off and on", async () => {
+    const { user } = await fixture();
+    expect(await getNotificationsOn(user.id)).toBe(true);
+    await setNotificationsOn(user.id, false);
+    expect(await getNotificationsOn(user.id)).toBe(false);
+    expect((await (await collections()).users.findOne({ _id: user.id }))?.notificationsOff).toBe(true);
+    await setNotificationsOn(user.id, true);
+    expect(await getNotificationsOn(user.id)).toBe(true);
+  });
+
+  it("queues nothing new while off, even when the Career Passport asks for email and push", async () => {
+    const { user, passport, recommendation } = await fixture();
+    await subscribePush(user.id, { endpoint: "https://fcm.googleapis.com/fcm/send/off", p256dh: "a".repeat(50), auth: "b".repeat(20), deviceLabel: "Browser" });
+    await setNotificationsOn(user.id, false);
+    await enqueueRecommendationNotifications({ ...passport, pushFrequency: "immediate" }, recommendation._id, 1);
+    expect(await (await collections()).notificationDeliveries.countDocuments({ userId: user.id })).toBe(0);
+  });
+
+  it("closes alerts already waiting when turned off, so turning back on releases no backlog", async () => {
+    const { user, passport, recommendation } = await fixture();
+    await enqueueRecommendationNotifications(passport, recommendation._id, 1);
+    await setNotificationsOn(user.id, false);
+    await setNotificationsOn(user.id, true);
+    expect(await sendImmediateDiscoveryNotifications()).toBe(0);
+    expect(outbox()).toBe("");
+    expect(await (await collections()).notificationDeliveries.findOne({ recommendationId: recommendation._id })).toMatchObject({ state: "sent", sentAt: null, failureReason: NOTIFICATIONS_OFF_REASON });
+  });
+
+  it("skips a delivery claimed after the switch went off, for immediate alerts and digests", async () => {
+    const { user, passport, recommendation } = await fixture();
+    await enqueueRecommendationNotifications(passport, recommendation._id, 1);
+    await enqueueRecommendationNotifications({ ...passport, emailFrequency: "daily" }, recommendation._id, 2);
+    // Turned off directly, as a second server would see it mid-run, without closing the queue.
+    await (await collections()).users.updateOne({ _id: user.id }, { $set: { notificationsOff: true } });
+    expect(await sendImmediateDiscoveryNotifications()).toBe(0);
+    expect(await sendDiscoveryDigests()).toEqual({ groups: 1, sent: 0 });
+    expect(outbox()).toBe("");
+    expect(await (await collections()).notificationDeliveries.findOne({ _id: `${recommendation._id}:email:1` })).toMatchObject({ state: "sent", failureReason: NOTIFICATIONS_OFF_REASON });
+  });
+
+  it("delivers again once turned back on", async () => {
+    const { user, passport, recommendation } = await fixture();
+    await setNotificationsOn(user.id, false);
+    await setNotificationsOn(user.id, true);
+    await enqueueRecommendationNotifications(passport, recommendation._id, 1);
+    expect(await sendImmediateDiscoveryNotifications()).toBe(1);
+    expect(outbox()).toContain("Frontend Developer at Acme");
+  });
+
+  it("refuses a test push while off", async () => {
+    const { user } = await fixture();
+    await subscribePush(user.id, { endpoint: "https://fcm.googleapis.com/fcm/send/test", p256dh: "a".repeat(50), auth: "b".repeat(20), deviceLabel: "Browser" });
+    await setNotificationsOn(user.id, false);
+    await expect(sendTestPush(user.id)).rejects.toBeInstanceOf(NotificationsOffError);
+    expect(pushSend).not.toHaveBeenCalled();
+    await setNotificationsOn(user.id, true);
+    await sendTestPush(user.id);
+    expect(pushSend).toHaveBeenCalledTimes(1);
+  });
+
+  it("stops follow-up reminder emails while off, and sends them only to confirmed addresses", async () => {
+    const on = await makeUser({ email: "on@example.com", emailVerifiedAt: new Date() });
+    const off = await makeUser({ email: "off@example.com", emailVerifiedAt: new Date() });
+    const unconfirmed = await makeUser({ email: "unconfirmed@example.com" });
+    const post = { title: "Support Lead", company: "Acme", location: "", salary: "", summary: "", requirements: [], keywords: [] };
+    for (const person of [on, off, unconfirmed]) {
+      const job = await createJob(person.id, { url: null, postText: "Support Lead at Acme", post, match: null });
+      await setStatus(person.id, job.id, "applied", addDays(today(), -8));
+    }
+    await setNotificationsOn(off.id, false);
+    expect(await sendFollowUpDigests()).toEqual({ people: 1, sent: 1 });
+    const mail = outbox();
+    expect(mail).toContain("on@example.com");
+    expect(mail).not.toContain("off@example.com");
+    expect(mail).not.toContain("unconfirmed@example.com");
   });
 });

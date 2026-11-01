@@ -398,8 +398,8 @@ describe("accounts", () => {
 
 describe("follow-up reminders", () => {
   it("emails each person once, listing their due applications", async () => {
-    const asha = await makeUser({ email: "asha@example.com" });
-    const ram = await makeUser({ email: "ram@example.com" });
+    const asha = await makeUser({ email: "asha@example.com", emailVerifiedAt: new Date() });
+    const ram = await makeUser({ email: "ram@example.com", emailVerifiedAt: new Date() });
     const due1 = await newJob(asha.id);
     const due2 = await createJob(asha.id, { url: null, postText, post: { ...post, title: "Support Manager", company: "Acme" }, match: null });
     const notYet = await newJob(ram.id);

@@ -5,6 +5,7 @@ import { createAuthToken } from "@/lib/auth/tokens";
 import { resetPasswordMessage, sendEmail, verifyEmailMessage } from "@/lib/email";
 import { appUrl } from "@/lib/util";
 import { originalBytes } from "@/lib/cv/original";
+import { notificationsOn } from "./notification-settings";
 
 export async function sendVerificationEmail(user: Pick<User, "id" | "email" | "name">) {
   const token = await createAuthToken(user.id, "verify_email");
@@ -73,7 +74,7 @@ export async function exportUserData(user: User) {
   ]);
   return {
     exportedAt: new Date().toISOString(),
-    account: { name: user.name, email: user.email, createdAt: user.createdAt },
+    account: { name: user.name, email: user.email, createdAt: user.createdAt, notificationsOn: notificationsOn(user) },
     profile: profile?.data ?? null,
     defaultTemplateId: profile?.defaultTemplateId ?? null,
     templates: templates.map((t) => ({ name: t.name, basedOn: t.basedOn, spec: t.spec, createdAt: t.createdAt, updatedAt: t.updatedAt })),

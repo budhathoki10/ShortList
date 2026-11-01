@@ -119,7 +119,10 @@ export async function allDueFollowUps(day = today()) {
   const { jobs, users } = await collections();
   const docs = await jobs.find({ status: "applied", followUpOn: { $type: "string", $lte: day, $gte: addDays(day, -60) } }).toArray();
   if (docs.length === 0) return [];
-  const owners = await users.find({ _id: { $in: [...new Set(docs.map((d) => d.userId))] } }, { projection: { email: 1, name: 1 } }).toArray();
+  // Reminders are non-essential: only to a confirmed address, and never when the person turned notifications off in Settings.
+  const owners = await users
+    .find({ _id: { $in: [...new Set(docs.map((d) => d.userId))] }, emailVerifiedAt: { $ne: null }, notificationsOff: { $ne: true } }, { projection: { email: 1, name: 1 } })
+    .toArray();
   const byId = new Map(owners.map((u) => [u._id, u]));
   return docs.flatMap((d) => {
     const owner = byId.get(d.userId);
