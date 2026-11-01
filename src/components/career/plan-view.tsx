@@ -149,7 +149,7 @@ export function PlanView({ jobId, row, declared = [] }: { jobId: string; row: Pl
                       <span className="min-w-0 flex-1 truncate font-medium" title={task.skill}>
                         {task.skill}
                       </span>
-                      {declaredBySkill.has(task.skill.toLowerCase()) && <span onClick={(e) => e.stopPropagation()}>{tag(declaredBySkill.get(task.skill.toLowerCase())!)}</span>}
+                      {declaredBySkill.has(task.skill.toLowerCase()) && tag(declaredBySkill.get(task.skill.toLowerCase())!)}
                       <span className="shrink-0 text-xs text-muted">{done ? "Practised" : task.priority === "must" ? "Required" : "Preferred"}</span>
                       {chevron}
                     </summary>

@@ -24,6 +24,9 @@ test("four steps per job, and a missing skill is added honestly, in the candidat
   const gaps = page.getByRole("region", { name: /Not in your CV yet/ });
   const hubspot = gaps.getByRole("listitem").filter({ hasText: "HubSpot" });
   await hubspot.getByRole("button", { name: "I have this" }).click();
+  // A level is required, and it is the candidate's own choice.
+  await expect(hubspot.getByRole("group", { name: /How well do you know it/ })).toBeVisible();
+  await hubspot.getByText("Used it at work", { exact: true }).click();
   await hubspot.getByLabel("Where did you use it?").selectOption({ index: 0 });
   await hubspot.getByLabel("What did you do with it?").fill("Kept customer records and renewal notes in HubSpot for 60 accounts");
   await hubspot.getByRole("button", { name: "Add to my CV" }).click();
@@ -37,6 +40,7 @@ test("four steps per job, and a missing skill is added honestly, in the candidat
     return (await db.collection("profiles").findOne({ _id: user!._id }))!.data;
   });
   expect(saved.skills).toContain("HubSpot");
+  expect(saved.skillLevels).toEqual({ HubSpot: "work" });
   expect(saved.experience[0].bullets.at(-1)).toBe("Kept customer records and renewal notes in HubSpot for 60 accounts");
 
   // Fit now shows it.
