@@ -104,7 +104,7 @@ function ChangeCard({ c, profile, onToggle }: { c: Change; profile: Profile; onT
         <button
           type="button"
           onClick={() => onToggle(!c.accepted)}
-          className="mt-3 inline-flex h-8 items-center rounded px-2 text-[13px] font-medium text-accent transition-colors duration-150 hover:bg-accent-soft max-sm:h-10"
+          className="mt-3 inline-flex h-8 items-center rounded px-2 text-[13px] font-medium text-accent transition-colors duration-150 hover:bg-accent-soft max-sm:h-11"
         >
           {c.accepted ? "Don't use this" : c.optional ? "Use this (optional)" : "Use this"}
         </button>
@@ -233,17 +233,17 @@ export function CvWorkbench({
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <div role="group" aria-label="CV format" className="flex gap-0.5 rounded-lg border border-border bg-surface p-0.5">
-            <button type="button" disabled={!hasOriginalPdf} aria-pressed={layout === "original"} onClick={() => setLayout("original")} title={hasOriginalPdf ? "Your uploaded PDF, exactly as it is" : "Upload your original PDF on Your CV to use it here"} className={`rounded-md px-3 py-1.5 text-[13px] font-medium transition-colors duration-150 disabled:opacity-50 ${layout === "original" ? "bg-accent-soft text-accent" : "text-muted hover:bg-surface-hover hover:text-foreground"}`}>
+            <button type="button" disabled={!hasOriginalPdf} aria-pressed={layout === "original"} onClick={() => setLayout("original")} title={hasOriginalPdf ? "Your uploaded PDF, exactly as it is" : "Upload your original PDF on Your CV to use it here"} className={`rounded-md px-3 py-1.5 text-[13px] font-medium transition-colors duration-150 disabled:opacity-50 max-sm:min-h-11 ${layout === "original" ? "bg-accent-soft text-accent" : "text-muted hover:bg-surface-hover hover:text-foreground"}`}>
               Original PDF
             </button>
-            <button type="button" aria-pressed={layout === "redesigned"} onClick={() => setLayout("redesigned")} title="Your CV with the changes you accepted, in the look below" className={`rounded-md px-3 py-1.5 text-[13px] font-medium transition-colors duration-150 disabled:opacity-50 ${layout === "redesigned" ? "bg-accent-soft text-accent" : "text-muted hover:bg-surface-hover hover:text-foreground"}`}>
+            <button type="button" aria-pressed={layout === "redesigned"} onClick={() => setLayout("redesigned")} title="Your CV with the changes you accepted, in the look below" className={`rounded-md px-3 py-1.5 text-[13px] font-medium transition-colors duration-150 disabled:opacity-50 max-sm:min-h-11 ${layout === "redesigned" ? "bg-accent-soft text-accent" : "text-muted hover:bg-surface-hover hover:text-foreground"}`}>
               Tailored version
             </button>
           </div>
           {layout === "redesigned" && (
             <div role="group" aria-label="CV content length" className="flex gap-0.5 rounded-lg border border-border bg-surface p-0.5">
               {(["focused", "full"] as const).map((mode) => (
-                <button key={mode} type="button" aria-pressed={content === mode} onClick={() => setContent(mode)} title={mode === "focused" ? "Shorter: key project highlights and a short summary" : "Everything saved in your CV"} className={`rounded-md px-3 py-1.5 text-[13px] font-medium transition-colors duration-150 disabled:opacity-50 ${content === mode ? "bg-accent-soft text-accent" : "text-muted hover:bg-surface-hover hover:text-foreground"}`}>
+                <button key={mode} type="button" aria-pressed={content === mode} onClick={() => setContent(mode)} title={mode === "focused" ? "Shorter: key project highlights and a short summary" : "Everything saved in your CV"} className={`rounded-md px-3 py-1.5 text-[13px] font-medium transition-colors duration-150 disabled:opacity-50 max-sm:min-h-11 ${content === mode ? "bg-accent-soft text-accent" : "text-muted hover:bg-surface-hover hover:text-foreground"}`}>
                   {mode === "focused" ? "Focused" : "Full"}
                 </button>
               ))}

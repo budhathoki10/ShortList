@@ -28,7 +28,7 @@ export default async function JobLayout({ children, params }: LayoutProps<"/app/
   return (
     <div className="space-y-6">
       <div className="print:hidden">
-        <Link href="/app/jobs" className="inline-flex items-center gap-1 rounded text-[13px] text-muted transition-colors duration-150 hover:text-foreground max-sm:min-h-10">
+        <Link href="/app/jobs" className="inline-flex items-center gap-1 rounded text-[13px] text-muted transition-colors duration-150 hover:text-foreground max-sm:min-h-11">
           <span aria-hidden="true">←</span> Jobs
         </Link>
         <div className="mt-2 flex flex-wrap items-end justify-between gap-x-6 gap-y-3">

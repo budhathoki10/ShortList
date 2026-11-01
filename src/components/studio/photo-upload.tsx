@@ -31,7 +31,7 @@ export function PhotoUpload({ photoUrl }: { photoUrl: string | null }) {
             upload(data);
           }}
         >
-          <label className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg border border-strong-border bg-surface px-3 text-[13px] font-medium hover:border-strong-border has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent">
+          <label className="inline-flex h-9 cursor-pointer items-center max-sm:h-11 gap-1.5 rounded-lg border border-strong-border bg-surface px-3 text-[13px] font-medium hover:border-strong-border has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent">
             <Icon name="photo" size={15} />
             {uploading ? "Uploading…" : photoUrl ? "Replace photo" : "Add a photo"}
             <input

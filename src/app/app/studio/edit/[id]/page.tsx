@@ -22,10 +22,10 @@ export default async function EditTemplate({ params, searchParams }: PageProps<"
   return (
     <div className="space-y-2">
       <nav aria-label="Breadcrumb" className="text-[13px] text-muted">
-        <Link href="/app/studio" className="hover:text-foreground">
+        <Link href="/app/studio" className="hover:text-foreground max-sm:inline-block max-sm:py-3">
           CV Studio
         </Link>{" "}
-        / {template.builtin ? <Link href="/app/studio/templates" className="hover:text-foreground">Templates</Link> : "My templates"} / {template.name}
+        / {template.builtin ? <Link href="/app/studio/templates" className="hover:text-foreground max-sm:inline-block max-sm:py-3">Templates</Link> : "My templates"} / {template.name}
       </nav>
       <FlashToast message={saved === "1" ? "Saved to My templates." : null} clear={["saved"]} />
       <TemplateEditor

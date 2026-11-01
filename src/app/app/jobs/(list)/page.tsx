@@ -68,7 +68,7 @@ export default async function JobsPage({ searchParams }: PageProps<"/app/jobs">)
                 if (q) params.set("q", q);
                 if (only) params.set("status", only);
                 if (showBoard) params.set("view", "board");
-                return <Link key={String(showBoard)} href={params.size ? `/app/jobs?${params}` : "/app/jobs"} aria-current={board === showBoard ? "true" : undefined} className={`rounded px-3 py-1.5 text-xs font-medium ${board === showBoard ? "bg-sunken text-foreground" : "text-muted hover:text-foreground"}`}>{showBoard ? "Board" : "List"}</Link>;
+                return <Link key={String(showBoard)} href={params.size ? `/app/jobs?${params}` : "/app/jobs"} aria-current={board === showBoard ? "true" : undefined} className={`inline-flex items-center rounded px-3 py-1.5 text-xs font-medium max-sm:h-11 max-sm:text-[13px] ${board === showBoard ? "bg-sunken text-foreground" : "text-muted hover:text-foreground"}`}>{showBoard ? "Board" : "List"}</Link>;
               })}
             </nav>
           </div>

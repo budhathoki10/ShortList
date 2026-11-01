@@ -216,7 +216,7 @@ export function PlanView({ jobId, row }: { jobId: string; row: PlanRow }) {
       )}
 
       <RefreshAnalysis jobId={jobId} companyUrl={plan.company.sources[0]?.url} note={plan.method === "ai" ? "AI-assisted, quotes checked against the post" : "Basic analysis: AI was unavailable"}>
-        <Link href="/app/strategy" className="text-accent hover:underline">
+        <Link href="/app/strategy" className="text-accent hover:underline max-sm:inline-flex max-sm:min-h-11 max-sm:items-center">
           Compare saved jobs
         </Link>
       </RefreshAnalysis>

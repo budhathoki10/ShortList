@@ -65,7 +65,7 @@ function Section({ title, children, action, active }: { title: string; children:
 }
 
 const small =
-  "inline-flex h-8 items-center rounded px-2 text-[13px] text-muted transition-colors duration-150 hover:bg-surface-hover hover:text-foreground disabled:pointer-events-none disabled:opacity-40 max-sm:h-10";
+  "inline-flex h-8 items-center rounded px-2 text-[13px] text-muted transition-colors duration-150 hover:bg-surface-hover hover:text-foreground disabled:pointer-events-none disabled:opacity-40 max-sm:h-11";
 
 /** Every section of the profile, editable. One bullet per line keeps it fast to fix. */
 export function ProfileEditor({ initial }: { initial: Profile }) {

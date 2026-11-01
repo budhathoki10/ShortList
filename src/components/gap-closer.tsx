@@ -73,7 +73,7 @@ function GapRow({ skill, roles }: { skill: string; roles: Role[] }) {
           <button
             type="button"
             onClick={() => setOpen(true)}
-            className="rounded px-2 py-1 text-xs font-medium text-accent transition-colors duration-150 hover:bg-accent-soft focus-visible:outline-2 focus-visible:outline-accent/40 max-sm:min-h-10"
+            className="rounded px-2 py-1 text-xs font-medium text-accent transition-colors duration-150 hover:bg-accent-soft focus-visible:outline-2 focus-visible:outline-accent/40 max-sm:min-h-11"
           >
             I have this
           </button>
@@ -114,7 +114,7 @@ function GapRow({ skill, roles }: { skill: string; roles: Role[] }) {
             <FormSubmit size="sm" loading={pending}>
               {pending ? "Adding…" : "Add to my CV"}
             </FormSubmit>
-            <button type="button" onClick={() => setOpen(false)} className="rounded px-2 py-1 text-xs text-muted hover:text-foreground max-sm:min-h-10">
+            <button type="button" onClick={() => setOpen(false)} className="rounded px-2 py-1 text-xs text-muted hover:text-foreground max-sm:min-h-11">
               Cancel
             </button>
           </div>
