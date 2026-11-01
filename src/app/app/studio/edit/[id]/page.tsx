@@ -27,6 +27,7 @@ export default async function EditTemplate({ params, searchParams }: PageProps<"
         </Link>{" "}
         / {template.builtin ? <Link href="/app/studio/templates" className="hover:text-foreground max-sm:inline-block max-sm:py-3">Templates</Link> : "My templates"} / {template.name}
       </nav>
+      <h1 className="sr-only">Edit template: {template.name}</h1>
       <FlashToast message={saved === "1" ? "Saved to My templates." : null} clear={["saved"]} />
       <TemplateEditor
         key={`${template.id}-${startFromTwin}`}

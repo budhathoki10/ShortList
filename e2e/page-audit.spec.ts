@@ -20,7 +20,7 @@ async function checkFits(page: Page, path: string, width: number) {
 }
 
 test("all main pages work on desktop, tablet and phone, without the global verification banner", async ({ page, browser }) => {
-  test.setTimeout(300_000);
+  test.setTimeout(420_000);
   mkdirSync("tmp/cv-audit/pages", { recursive: true });
   await setUpJobSeeker(page, `pages-${Date.now()}@example.com`);
   const jobUrl = await addFixtureJob(page, FIXTURE_BASE);

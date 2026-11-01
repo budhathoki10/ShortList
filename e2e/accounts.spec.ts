@@ -119,7 +119,7 @@ test("repeated wrong passwords for one account are slowed down", async ({ page }
   await page.context().clearCookies();
   for (let attempt = 0; attempt < 10; attempt++) {
     await logIn(page, address, `wrong-password-${attempt}`);
-    await expect(page.getByText("The email and password don’t match")).toBeVisible();
+    await expect(page.getByText("Incorrect email or password.")).toBeVisible();
   }
   // Even the right password waits once the limit is reached.
   await logIn(page, address);

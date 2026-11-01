@@ -7,7 +7,7 @@ import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { createSession, destroySession, requireUser } from "@/lib/auth/session";
 import { consumeAuthToken, revokeAuthTokens, tokensSentRecently } from "@/lib/auth/tokens";
 import { deleteAllSessions, deleteUser, markEmailVerified, sendPasswordResetEmail, sendVerificationEmail } from "@/lib/services/account";
-import { keyPart, overLimit } from "@/lib/services/rate-limit";
+import { keyPart, limitReached, overLimit } from "@/lib/services/rate-limit";
 import { createUser, findUserByEmail, setPasswordHash } from "@/lib/services/users";
 import { clientIp, safeRedirectPath } from "@/lib/util";
 
@@ -46,6 +46,8 @@ const VERIFY_RESEND_COOLDOWN_MS = 2 * 60 * 1000;
 const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
 const TOO_MANY = "Please wait a few minutes before trying again.";
+/** Wrong passwords allowed per address in 15 minutes. */
+const LOGIN_FAILURES = 10;
 
 /**
  * A per-IP counter. With no address we can trust (see clientIp) there is nothing to count against, so it
@@ -78,12 +80,17 @@ export async function signup(_: AuthState, formData: FormData): Promise<AuthStat
 export async function login(_: AuthState, formData: FormData): Promise<AuthState> {
   const parsed = LoginSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return validationFeedback(parsed.error.issues);
-  // Counted per address whether or not the account exists, so guessing passwords is slow and reveals nothing.
-  if ((await overLimit(`login:email:${keyPart(parsed.data.email)}`, 10, 15 * MINUTE)) || (await ipLimit("login", 50, 15 * MINUTE))) {
-    return { title: "Too many attempts", error: "Too many log-in attempts for this account. Wait 15 minutes, or reset your password." };
+  // Failed attempts are counted per address, whether or not the account exists, so guessing passwords is slow and
+  // reveals nothing. Successful logins don't count, so someone who logs in often is never locked out.
+  const failedKey = `login-failed:email:${keyPart(parsed.data.email)}`;
+  if ((await limitReached(failedKey, LOGIN_FAILURES, 15 * MINUTE)) || (await ipLimit("login", 100, 15 * MINUTE))) {
+    return { title: "Too many attempts", error: "Too many log-in attempts for this account. Wait 15 minutes, or reset your password.", recovery: { href: "/forgot-password", label: "Reset your password" } };
   }
   const user = await findUserByEmail(parsed.data.email);
-  if (!user || !(await verifyPassword(parsed.data.password, user.passwordHash))) return { title: "Unable to log in", error: "The email and password don’t match. Check your details and try again." };
+  if (!user || !(await verifyPassword(parsed.data.password, user.passwordHash))) {
+    await overLimit(failedKey, LOGIN_FAILURES, 15 * MINUTE);
+    return { title: "Unable to log in", error: "The email and password don’t match. Check your details and try again." };
+  }
   await createSession(user.id);
   redirect(safeRedirectPath(formData.get("next"), "/app"));
 }

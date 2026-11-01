@@ -49,10 +49,13 @@ export function PlanView({ jobId, row }: { jobId: string; row: PlanRow }) {
       {/* The answer first: how well you fit, and where to go next. */}
       <section aria-label="Fit" className="rounded-lg border border-border bg-surface px-5 py-4">
         <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
-          <p className="flex cursor-help items-baseline gap-1" title={plan.fit.explanation}>
-            <span className="text-3xl font-semibold tabular-nums tracking-tight">{plan.fit.score}</span>
-            <span className="text-sm text-muted">/100</span>
-          </p>
+          <div>
+            <p className="text-xs text-muted">Full-analysis fit</p>
+            <p className="flex cursor-help items-baseline gap-1" title={plan.fit.explanation}>
+              <span className="text-3xl font-semibold tabular-nums tracking-tight">{plan.fit.score}</span>
+              <span className="text-sm text-muted">/100</span>
+            </p>
+          </div>
           <Badge tone={plan.fit.priority === "apply" ? "good" : "warn"}>{plan.fit.priority === "apply" ? "Apply" : plan.fit.priority === "prepare" ? "Prepare first" : "Stretch"}</Badge>
           <dl className="flex flex-wrap gap-x-4 gap-y-1 text-[13px] text-muted">
             {(
