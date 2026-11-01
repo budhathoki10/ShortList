@@ -1,39 +1,38 @@
 import { readFileSync } from "node:fs";
 import { expect, type Page } from "@playwright/test";
 import { MongoClient, type Db } from "mongodb";
-import { EMAIL_OUTBOX, TEST_MONGODB_DB, TEST_MONGODB_URI } from "../playwright.config";
+import { EMAIL_OUTBOX, FIXTURE_BASE, TEST_MONGODB_DB, TEST_MONGODB_URI } from "../playwright.config";
 
-export const PASSWORD = "correct-horse-battery";
 export const CV_PDF = "test-results/fixtures/asha-gurung-cv.pdf";
 
-export async function logIn(page: Page, address: string, pass = PASSWORD) {
-  await page.goto("/login");
-  await page.getByLabel("Email").fill(address);
-  await page.getByLabel("Password").fill(pass);
-  await page.getByRole("button", { name: "Log in" }).click();
+/** Tell the stand-in for Google who the next "Continue with Google" will sign in as. */
+export async function googleIdentity(identity: { email: string; name?: string; sub?: string; emailVerified?: boolean; deny?: boolean }) {
+  await fetch(`${FIXTURE_BASE}/google/_identity`, { method: "POST", body: JSON.stringify({ name: "Asha Gurung", ...identity }) });
 }
 
+/** Press "Continue with Google" on a page that is already open. */
+export async function continueWithGoogle(page: Page) {
+  await page.getByRole("link", { name: "Continue with Google" }).click();
+}
+
+/** Log in as an existing account. */
+export async function logIn(page: Page, address: string) {
+  await googleIdentity({ email: address });
+  await page.goto("/login");
+  await continueWithGoogle(page);
+}
+
+/** Create an account with Google. Google confirms the email, so the free trial is open straight away. */
 export async function signUp(page: Page, address: string, name = "Asha Gurung") {
+  await googleIdentity({ email: address, name });
   await page.goto("/signup");
-  await page.getByLabel("Your name").fill(name);
-  await page.getByLabel("Email").fill(address);
-  await page.getByLabel("Password").fill(PASSWORD);
-  await page.getByLabel("I agree to the Terms").check();
-  await page.getByRole("button", { name: "Create account" }).click();
+  await continueWithGoogle(page);
   await expect(page).toHaveURL(/\/app\/profile\?welcome=1/);
 }
 
-/** Follow the confirmation email's link and confirm, as a person would. */
-export async function confirmEmail(page: Page, address: string) {
-  await page.goto(latestEmailLink(address, "Confirm"));
-  await page.getByRole("button", { name: "Confirm my email" }).click();
-  await expect(page.getByText("Email confirmed.")).toBeVisible();
-}
-
-/** Sign up, confirm the email (the free trial needs it) and import the fixture CV. */
+/** Sign up and import the fixture CV. */
 export async function setUpJobSeeker(page: Page, address: string) {
   await signUp(page, address);
-  await confirmEmail(page, address);
   await page.goto("/app/profile?welcome=1");
   await page.locator("input[type=file][name=file]").setInputFiles(CV_PDF);
   await page.getByRole("button", { name: "Read my CV" }).click();

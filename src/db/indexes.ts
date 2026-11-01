@@ -8,9 +8,12 @@ import type { Db } from "mongodb";
  */
 export async function ensureIndexes(db: Db) {
   await Promise.all([
-    db.collection("users").createIndex({ email: 1 }, { unique: true }),
+    db.collection("users").createIndexes([
+      { key: { email: 1 }, unique: true },
+      // One account per Google identity. Partial, so old accounts that haven't signed in with Google yet (no googleId) don't collide.
+      { key: { googleId: 1 }, unique: true, partialFilterExpression: { googleId: { $type: "string" } } },
+    ]),
     db.collection("sessions").createIndexes([{ key: { userId: 1 } }, { key: { expiresAt: 1 }, expireAfterSeconds: 0 }]),
-    db.collection("auth_tokens").createIndexes([{ key: { userId: 1, purpose: 1, createdAt: -1 } }, { key: { expiresAt: 1 }, expireAfterSeconds: 0 }]),
     db.collection("payments").createIndexes([{ key: { providerRef: 1 }, unique: true }, { key: { userId: 1 } }]),
     db.collection("jobs").createIndexes([{ key: { userId: 1, updatedAt: -1 } }, { key: { status: 1, followUpOn: 1 } }]),
     db.collection("documents").createIndexes([{ key: { jobId: 1, kind: 1 }, unique: true }, { key: { userId: 1 } }]),

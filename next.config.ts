@@ -24,6 +24,14 @@ const nextConfig: NextConfig = {
     },
   },
   poweredByHeader: false,
+  async redirects() {
+    // Password sign-in is gone; old bookmarks and emailed links land on the Google login instead of a 404.
+    return [
+      { source: "/forgot-password", destination: "/login", permanent: true },
+      { source: "/reset-password/:token", destination: "/login", permanent: true },
+      { source: "/verify-email/:token", destination: "/login", permanent: true },
+    ];
+  },
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },

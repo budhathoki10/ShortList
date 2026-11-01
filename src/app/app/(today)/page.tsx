@@ -1,4 +1,3 @@
-import { FlashToast } from "@/components/toast";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { followUpAction } from "@/app/actions/jobs";
@@ -16,10 +15,9 @@ import { UsageMeter } from "@/components/usage-meter";
 
 export const metadata: Metadata = { title: "Today" };
 
-export default async function Today({ searchParams }: PageProps<"/app">) {
+export default async function Today() {
   const user = await requireUser();
-  const [{ verified, reset }, profile, jobs, due, stats, usage] = await Promise.all([
-    searchParams,
+  const [profile, jobs, due, stats, usage] = await Promise.all([
     getProfile(user.id),
     listJobs(user.id),
     dueFollowUps(user.id),
@@ -43,11 +41,6 @@ export default async function Today({ searchParams }: PageProps<"/app">) {
 
   return (
     <div className="space-y-6">
-      <FlashToast
-        message={verified === "1" ? "Email confirmed." : reset === "1" ? "Password changed. You're logged in." : verified === "0" ? "That link has expired or was already used. Request a new one from Settings → Email address." : null}
-        tone={verified === "0" ? "error" : "success"}
-        clear={["verified", "reset"]}
-      />
       <PageHeader
         eyebrow={new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}
         title={`Hi ${firstName}`}
@@ -165,10 +158,7 @@ export default async function Today({ searchParams }: PageProps<"/app">) {
                 </>
               ) : !usage.trialClaimed && !usage.verified ? (
                 <>
-                  Confirm your email to start it: analysis, a tailored CV, a cover letter and interview practice for one job, free.{" "}
-                  <Link href="/app/settings" className="font-medium text-accent hover:underline">
-                    Resend the link
-                  </Link>
+                  Log out and sign in again with Google to confirm your email and start it: analysis, a tailored CV, a cover letter and interview practice for one job, free.
                 </>
               ) : usage.trialClaimed ? (
                 "Your free trial has been used. Upgrade to tailor CVs, write cover letters and practise interviews for every job."

@@ -1,7 +1,7 @@
 import { readFileSync, rmSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { afterAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { collections } from "@/db/mongo";
 import { AiUnavailableError, structured } from "@/lib/ai";
@@ -16,12 +16,11 @@ import { paymentsForUser, recordPayment } from "@/lib/services/billing";
 import { getInterview, getTailoredCv, saveCoverLetter, saveInterview, savePracticeAnswer, saveTailoredCv, setAllChangesAccepted, setChangeAccepted } from "@/lib/services/documents";
 import { createJob, deleteJob, dueFollowUpCount, dueFollowUps, listJobs, ownedJob, progress, rescoreAll, setStatus } from "@/lib/services/jobs";
 import { getProfile, saveProfile } from "@/lib/services/profile";
-import { overLimit } from "@/lib/services/rate-limit";
+import { aiThrottle, overLimit } from "@/lib/services/rate-limit";
 import { sendFollowUpDigests } from "@/lib/services/reminders";
 import { refundAllowance, spendAllowance, trialUsage, usageThisMonth } from "@/lib/services/usage";
-import { findUserById } from "@/lib/services/users";
+import { createGoogleUser, findUserById, findUserForGoogle } from "@/lib/services/users";
 import { safeRedirectPath } from "@/lib/util";
-import { consumeAuthToken, createAuthToken, revokeAuthTokens } from "@/lib/auth/tokens";
 import { DAY, makeUser, resetDb } from "./helpers";
 
 const OUTBOX = path.join(os.tmpdir(), `shortlist-integration-outbox-${process.pid}.jsonl`);
@@ -236,6 +235,39 @@ describe("rate limits", () => {
     expect(await overLimit("test:window", 2, 60_000, t)).toBe(true);
     expect(await overLimit("test:window", 2, 60_000, t + 61_000)).toBe(false);
   });
+
+  it("allows 2 AI calls a minute per account, then asks the user to wait", async () => {
+    vi.stubEnv("AI_CALLS_PER_MINUTE", "2");
+    try {
+      expect(await aiThrottle("ai-user-a")).toBeNull();
+      expect(await aiThrottle("ai-user-a")).toBeNull();
+      expect(await aiThrottle("ai-user-a")).toMatch(/2 per minute/);
+      expect(await aiThrottle("ai-user-b")).toBeNull();
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("stops every account once the app-wide hourly total is used up", async () => {
+    vi.stubEnv("AI_GLOBAL_PER_HOUR", "2");
+    try {
+      expect(await aiThrottle("ai-global-a")).toBeNull();
+      expect(await aiThrottle("ai-global-b")).toBeNull();
+      expect(await aiThrottle("ai-global-c")).toMatch(/busy/);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("limits nothing when there is no API key, since nothing is spent", async () => {
+    vi.stubEnv("ANTHROPIC_API_KEY", "");
+    vi.stubEnv("AI_CALLS_PER_MINUTE", "1");
+    try {
+      for (let i = 0; i < 3; i++) expect(await aiThrottle("ai-no-key")).toBeNull();
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
 });
 
 describe("redirects after login", () => {
@@ -385,7 +417,7 @@ describe("accounts", () => {
     expect(await c.users.countDocuments({ _id: user.id })).toBe(0);
     expect(await c.profiles.countDocuments({ _id: user.id })).toBe(0);
     expect(await c.interviews.countDocuments({ _id: job.id })).toBe(0);
-    for (const coll of [c.jobs, c.documents, c.usage, c.payments, c.sessions, c.authTokens]) {
+    for (const coll of [c.jobs, c.documents, c.usage, c.payments, c.sessions]) {
       expect(await coll.countDocuments({ userId: user.id })).toBe(0);
     }
     expect(await getProfile(user.id)).toBeNull();
@@ -412,16 +444,43 @@ describe("follow-up reminders", () => {
   });
 });
 
-describe("password reset links", () => {
-  it("revokes every other unused reset link once one is used", async () => {
-    const user = await makeUser();
-    const first = await createAuthToken(user.id, "reset_password");
-    const second = await createAuthToken(user.id, "reset_password");
-    const verify = await createAuthToken(user.id, "verify_email");
-    expect(await consumeAuthToken(second, "reset_password")).toBe(user.id);
-    await revokeAuthTokens(user.id, "reset_password");
-    expect(await consumeAuthToken(first, "reset_password")).toBeNull();
-    // Other purposes are untouched.
-    expect(await consumeAuthToken(verify, "verify_email")).toBe(user.id);
+describe("signing in with Google", () => {
+  const asha = { sub: "g-asha", email: "asha@example.com", name: "Asha Gurung" };
+
+  it("makes an account on the first sign-in, already verified, and finds it again by Google id", async () => {
+    expect(await findUserForGoogle(asha)).toBeNull();
+    const created = await createGoogleUser(asha);
+    expect(created).toMatchObject({ email: "asha@example.com", name: "Asha Gurung", googleId: "g-asha" });
+    expect(created?.emailVerifiedAt).toBeInstanceOf(Date);
+    const found = await findUserForGoogle(asha);
+    expect(found).toMatchObject({ id: created!.id });
+    // Same person, even if Google now reports a different address: the Google id decides.
+    expect(await findUserForGoogle({ ...asha, email: "asha.new@example.com" })).toMatchObject({ id: created!.id });
+  });
+
+  it("claims an account made before Google sign-in, keeping its data and verifying the email", async () => {
+    const old = await makeUser({ email: "old@example.com", name: "Old Account" });
+    await saveProfile(old.id, profile);
+    const c = await collections();
+    await c.users.updateOne({ _id: old.id }, { $unset: { googleId: "" } });
+    expect((await c.users.findOne({ _id: old.id }))?.googleId).toBeUndefined();
+
+    const claimed = await findUserForGoogle({ sub: "g-old", email: "old@example.com", name: "Someone Else" });
+    expect(claimed).toMatchObject({ id: old.id, googleId: "g-old", name: "Old Account" });
+    expect((claimed as { emailVerifiedAt: Date | null }).emailVerifiedAt).toBeInstanceOf(Date);
+    expect(await getProfile(old.id)).not.toBeNull();
+  });
+
+  it("never hands an account to a different Google identity with the same email", async () => {
+    const owner = await createGoogleUser(asha);
+    expect(owner).not.toBeNull();
+    expect(await findUserForGoogle({ ...asha, sub: "g-someone-else" })).toBe("conflict");
+    expect((await (await collections()).users.findOne({ _id: owner!.id }))?.googleId).toBe("g-asha");
+  });
+
+  it("lets only one of two simultaneous first sign-ins create the account", async () => {
+    const results = await Promise.all([createGoogleUser(asha), createGoogleUser(asha), createGoogleUser(asha)]);
+    expect(results.filter(Boolean)).toHaveLength(1);
+    expect(await (await collections()).users.countDocuments({ email: asha.email })).toBe(1);
   });
 });

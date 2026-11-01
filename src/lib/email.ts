@@ -60,46 +60,6 @@ export async function sendEmail(email: Email): Promise<{ id: string | null }> {
 /** HTML-escape text before it goes into an email body. Names are chosen by whoever signs up, so they can't be trusted as markup. */
 export const escapeHtml = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
-function layout(heading: string, intro: string, buttonLabel: string, link: string, outro: string) {
-  const text = `${heading}\n\n${intro}\n\n${buttonLabel}: ${link}\n\n${outro}\n\nShortlist Job Radar`;
-  const html = `<!doctype html><html><body style="font-family:Arial,Helvetica,sans-serif;color:#1c1f1d;max-width:520px;margin:0 auto;padding:24px">
-<h1 style="font-size:20px">${escapeHtml(heading)}</h1>
-<p>${escapeHtml(intro)}</p>
-<p><a href="${escapeHtml(link)}" style="display:inline-block;background:#1d2740;color:#fff;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold">${escapeHtml(buttonLabel)}</a></p>
-<p style="font-size:13px;color:#5f6660">Or paste this link into your browser:<br>${escapeHtml(link)}</p>
-<p style="font-size:13px;color:#5f6660">${escapeHtml(outro)}</p>
-</body></html>`;
-  return { text, html };
-}
-
-export function verifyEmailMessage(to: string, name: string, link: string): Email {
-  return {
-    to,
-    subject: "Confirm your Shortlist Job Radar email",
-    ...layout(
-      `Hi ${name}, one quick thing`,
-      "Confirm this is your email address so we can send you receipts and password resets.",
-      "Confirm my email",
-      link,
-      "This link expires in 3 days. If you didn't create a Shortlist Job Radar account, you can ignore this email.",
-    ),
-  };
-}
-
-export function resetPasswordMessage(to: string, link: string): Email {
-  return {
-    to,
-    subject: "Reset your Shortlist Job Radar password",
-    ...layout(
-      "Reset your password",
-      "Someone (hopefully you) asked to reset the password for your Shortlist Job Radar account.",
-      "Choose a new password",
-      link,
-      "This link expires in 1 hour and works once. If you didn't ask for this, ignore this email and your password stays the same.",
-    ),
-  };
-}
-
 /** Plain notification: a heading, a few short paragraphs, and an optional link. */
 export function noticeMessage(
   to: string,
