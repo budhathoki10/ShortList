@@ -8,7 +8,7 @@ import { Field, FormMessage, inputClass } from "./ui";
 import { FormSubmit } from "./form-submit";
 import { keepInputOnSubmit } from "./use-keep-input";
 
-const link = "font-medium text-accent hover:underline";
+const link = "font-medium text-accent hover:underline max-sm:inline-flex max-sm:min-h-11 max-sm:items-center";
 
 function useAuthFeedback(serverAction: (state: AuthState, data: FormData) => Promise<AuthState>) {
   const [result, action, pending] = useActionState(serverAction, undefined);

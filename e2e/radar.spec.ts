@@ -9,6 +9,13 @@ test("a discovered job appears with evidence and enters the application workflow
   await expect(page.getByRole("heading", { name: "Job Radar" })).toBeVisible();
   await expect(page.getByText("Tell the agent what is realistic for you")).toBeVisible();
 
+  // The passport fills itself from the CV: no button to press, and nothing about work permission or salary is guessed.
+  await expect(page.getByRole("button", { name: "Fill from my CV" })).toHaveCount(0);
+  await expect(page.getByLabel("Target roles")).not.toHaveValue("");
+  await expect(page.getByLabel("Target locations")).not.toHaveValue("");
+  await expect(page.getByLabel("Minimum annual salary")).toHaveValue("");
+  await expect(page.getByLabel("I need employer sponsorship now or in the future")).not.toBeChecked();
+
   await page.getByLabel("Target roles").fill("Customer Success Lead");
   await page.getByLabel("Target locations").fill("Remote, Asia");
   await page.getByLabel("Countries where you can work").fill("Nepal");

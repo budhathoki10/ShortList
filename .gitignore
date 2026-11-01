@@ -53,4 +53,5 @@ next-env.d.ts
 
 # Local editor settings and test-run screenshots
 /.vscode/
+/.artifacts/
 /tmp/

@@ -11,7 +11,7 @@ export function AuthShell({ title, subtitle, children }: { title: string; subtit
         <div className="wash absolute -left-40 top-10 size-[34rem] max-sm:size-[22rem]" />
       </div>
       <div className="mx-auto w-full max-w-[27rem] px-4 py-10 sm:py-16">
-        <Link href="/" aria-label="Shortlist home" className="rise inline-block rounded">
+        <Link href="/" aria-label="Shortlist Job Radar home" className="rise inline-flex min-h-11 items-center rounded">
           <Logo />
         </Link>
         <h1 className="t-heading rise mt-10" style={{ animationDelay: "60ms" }}>

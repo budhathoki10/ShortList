@@ -14,7 +14,7 @@ const profile = { ...EMPTY_PROFILE, name: "Alex Example", skills: ["JavaScript",
 const postText = "Job title: Python Developer\nCompany: Example Company\nRequirements\n- Python programming is required.\n- At least 3 years of Python experience.\n- Bachelor degree in computer science.\n- Experience with JavaScript and Django.\nPreferred\n- Docker knowledge is preferred.\nResponsibilities\n- Build REST APIs and investigate failures.\nBenefits\n- Paid training and a friendly team.";
 const context = { profile, postText, post: heuristicJob(postText) };
 const company = { sources: [], facts: [], warning: "No company sources." };
-const mocked = (data: unknown) => { vi.stubEnv("OPENROUTER_API_KEY", "test-key"); vi.stubGlobal("fetch", vi.fn(async () => Response.json({ choices: [{ finish_reason: "stop", message: { content: JSON.stringify(data) } }] }))); };
+const mocked = (data: unknown) => { vi.stubEnv("ANTHROPIC_API_KEY", "test-key"); vi.stubGlobal("fetch", vi.fn(async () => Response.json({ type: "message", role: "assistant", stop_reason: "end_turn", content: [{ type: "text", text: JSON.stringify(data) }] }))); };
 afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
 
 describe("evidence-led application plans", () => {
@@ -43,7 +43,7 @@ describe("evidence-led application plans", () => {
     expect(evidenceFit([result]).score).toBe(0);
   });
   it("prioritises the actual missing skill in a mixed requirement and never changes candidate facts", async () => {
-    vi.stubEnv("OPENROUTER_API_KEY", "");
+    vi.stubEnv("ANTHROPIC_API_KEY", "");
     const before = JSON.stringify(profile);
     const plan = await buildApplicationPlan(context, company);
     const mixed = plan.requirements.find((r) => r.text.includes("JavaScript and Django"))!;
@@ -107,7 +107,7 @@ describe("truthful tailoring and feedback", () => {
 
 describe("realistic interview practice", () => {
   it("covers all skills and projects, role gaps, practical assessments and closing questions", async () => {
-    vi.stubEnv("OPENROUTER_API_KEY", "");
+    vi.stubEnv("ANTHROPIC_API_KEY", "");
     const plan = await buildApplicationPlan(context, company);
     const bank = interviewBank(context, plan);
     for (const skill of profile.skills) expect(bank.some((q) => q.coverage?.includes(skill))).toBe(true);
@@ -120,7 +120,7 @@ describe("realistic interview practice", () => {
     expect(queue.length).toBeLessThanOrEqual(9);
   });
   it("provides an unscored checklist when AI is unavailable instead of inventing technical grades", async () => {
-    vi.stubEnv("OPENROUTER_API_KEY", "");
+    vi.stubEnv("ANTHROPIC_API_KEY", "");
     const plan = await buildApplicationPlan(context, company);
     const q = interviewBank(context, plan).find((q) => q.kind === "technical")!;
     const feedback = await evaluateMockAnswer(q, "I built a JavaScript tracker.", context, []);

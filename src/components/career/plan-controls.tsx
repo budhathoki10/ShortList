@@ -54,7 +54,7 @@ export function RefreshAnalysis({ jobId, companyUrl, note, children }: { jobId: 
       <p className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted">
         <span>{note}</span>
         {children}
-        <button type="button" aria-expanded={open} onClick={() => setOpen((o) => !o)} className="rounded text-accent hover:underline focus-visible:outline-2 focus-visible:outline-accent/40 max-sm:min-h-10">
+        <button type="button" aria-expanded={open} onClick={() => setOpen((o) => !o)} className="rounded text-accent hover:underline focus-visible:outline-2 focus-visible:outline-accent/40 max-sm:min-h-11">
           {open ? "Cancel refresh" : "Refresh"}
         </button>
       </p>

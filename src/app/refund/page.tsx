@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
 import { LegalPage } from "@/components/legal-page";
 import { SITE } from "@/lib/site";
+import { publicMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = { title: "Refund Policy" };
+export const metadata: Metadata = publicMetadata({ title: "Refund Policy", description: "Shortlist Job Radar's 14-day money-back guarantee, renewal terms and instructions for requesting a refund.", path: "/refund" });
 
 export default function RefundPage() {
   return (
     <LegalPage title="Refund Policy">
-      <p>If Shortlist isn&apos;t helping your job hunt, you can have your money back.</p>
+      <p>If Shortlist Job Radar isn&apos;t helping your job hunt, you can have your money back.</p>
 
       <h2>14-day money-back guarantee</h2>
       <ul>

@@ -1,8 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { isIP } from "node:net";
 
-export { formatMoney } from "./money";
-
 const ALPHABET = "abcdefghijkmnpqrstuvwxyz23456789";
 
 /** Short, unguessable, URL-friendly id (e.g. for public report links). */

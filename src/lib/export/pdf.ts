@@ -7,7 +7,7 @@ import { linkLabel, textLinks, webUrl } from "@/lib/cv/links";
 /** A real, selectable-text PDF. Pagination and links never depend on browser print settings. */
 export async function cvPdfBuffer(cv: Profile): Promise<Buffer> {
   const doc = new PDFDocument({ size: "A4", margins: { top: 46, bottom: 46, left: 48, right: 48 }, bufferPages: true,
-    info: { Title: `${cv.name} — CV`, Author: cv.name, Creator: "Shortlist" } });
+    info: { Title: `${cv.name} — CV`, Author: cv.name, Creator: "Shortlist Job Radar" } });
   const chunks: Buffer[] = [];
   const complete = new Promise<Buffer>((resolve, reject) => {
     doc.on("data", (chunk: Buffer) => chunks.push(chunk));

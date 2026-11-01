@@ -5,6 +5,7 @@ import { collections } from "@/db/mongo";
 import type { CareerPassportDoc, NotificationDeliveryDoc } from "@/db/types";
 import { noticeMessage, sendEmail } from "@/lib/email";
 import { appUrl } from "@/lib/util";
+import { NOTIFICATIONS_OFF_REASON, notificationsOn } from "@/lib/services/notification-settings";
 import { decryptPushSecret } from "./push-crypto";
 
 function webPushConfigured() {
@@ -18,6 +19,9 @@ function configureWebPush() {
 
 export async function enqueueRecommendationNotifications(passport: CareerPassportDoc, recommendationId: string, notificationVersion: number) {
   const c = await collections();
+  // The account-wide switch in Settings beats the per-channel choices in the Career Passport.
+  const owner = await c.users.findOne({ _id: passport._id }, { projection: { notificationsOff: 1 } });
+  if (!owner || !notificationsOn(owner)) return;
   const now = new Date();
   const channels = [
     { channel: "email" as const, frequency: passport.emailFrequency },
@@ -66,7 +70,7 @@ async function recommendationContext(delivery: NotificationDeliveryDoc) {
   const c = await collections();
   const [recommendation, user, passport] = await Promise.all([
     c.jobRecommendations.findOne({ _id: delivery.recommendationId, userId: delivery.userId }),
-    c.users.findOne({ _id: delivery.userId }, { projection: { email: 1, name: 1, emailVerifiedAt: 1 } }),
+    c.users.findOne({ _id: delivery.userId }, { projection: { email: 1, name: 1, emailVerifiedAt: 1, notificationsOff: 1 } }),
     c.careerPassports.findOne({ _id: delivery.userId }),
   ]);
   if (!recommendation || !user || !passport || recommendation.status === "dismissed" || recommendation.status === "closed") return null;
@@ -105,6 +109,7 @@ const UNCONFIRMED = "Email address not confirmed";
 async function sendOne(delivery: NotificationDeliveryDoc): Promise<{ providerMessageId: string | null; skipped: string | null }> {
   const context = await recommendationContext(delivery);
   if (!context) return { providerMessageId: null, skipped: INACTIVE };
+  if (!notificationsOn(context.user)) return { providerMessageId: null, skipped: NOTIFICATIONS_OFF_REASON };
   // Job-alert email only goes to an address its owner has confirmed; otherwise anyone could sign up with someone else's.
   if (delivery.channel === "email" && !context.user.emailVerifiedAt) return { providerMessageId: null, skipped: UNCONFIRMED };
   const { job, recommendation, user } = context;
@@ -192,7 +197,7 @@ export async function sendDiscoveryDigests() {
     const claimed = await c.notificationDeliveries.updateMany({ _id: { $in: ids }, state: "pending" }, { $set: { state: "sending", lockedUntil: new Date(Date.now() + 2 * 60_000) }, $inc: { attempts: 1 } });
     if (!claimed.modifiedCount) continue;
     const contexts = (await Promise.all(rows.map(recommendationContext)))
-      .filter((value): value is NonNullable<typeof value> => !!value && (first.channel !== "email" || !!value.user.emailVerifiedAt))
+      .filter((value): value is NonNullable<typeof value> => !!value && notificationsOn(value.user) && (first.channel !== "email" || !!value.user.emailVerifiedAt))
       .slice(0, 20);
     try {
       if (contexts.length) {
@@ -200,7 +205,7 @@ export async function sendDiscoveryDigests() {
           const user = contexts[0].user;
           const lines = contexts.map(({ job, recommendation }) => `${stateLabel(recommendation.state)} · ${job.title} at ${job.company}${job.location ? ` · ${job.location}` : ""}`);
           const digestKey = createHash("sha256").update(ids.slice().sort().join("\n")).digest("hex");
-          const result = await sendEmail({ ...noticeMessage(user.email, `${contexts.length} new Shortlist matches`, "Your new job matches", lines, { label: "Open Job Radar", url: appUrl("/app/radar") }), idempotencyKey: `discovery-digest:${digestKey}` });
+          const result = await sendEmail({ ...noticeMessage(user.email, `${contexts.length} new Shortlist Job Radar matches`, "Your new job matches", lines, { label: "Open Job Radar", url: appUrl("/app/radar") }), idempotencyKey: `discovery-digest:${digestKey}` });
           await c.notificationDeliveries.updateMany({ _id: { $in: ids }, state: "sending" }, { $set: { providerMessageId: result.id } });
         } else {
           await sendPushToUser(first.userId, { title: `${contexts.length} new job matches`, body: "Open Job Radar to review your latest shortlist.", url: "/app/radar", tag: "job-match-digest", version: Math.max(...contexts.map(({ recommendation }) => recommendation.notificationVersion)) });
@@ -217,8 +222,18 @@ export async function sendDiscoveryDigests() {
   return { groups: groups.size, sent };
 }
 
+/** Thrown when the account-wide switch is off, so callers can explain it instead of reporting a device failure. */
+export class NotificationsOffError extends Error {
+  constructor() {
+    super(NOTIFICATIONS_OFF_REASON);
+    this.name = "NotificationsOffError";
+  }
+}
+
 export async function sendTestPush(userId: string) {
-  await sendPushToUser(userId, { title: "Shortlist alerts are on", body: "Your next qualified job match can reach this device.", url: "/app/radar", tag: "shortlist-test", version: 1 });
+  const user = await (await collections()).users.findOne({ _id: String(userId) }, { projection: { notificationsOff: 1 } });
+  if (!user || !notificationsOn(user)) throw new NotificationsOffError();
+  await sendPushToUser(userId, { title: "Shortlist Job Radar alerts are on", body: "Your next qualified job match can reach this device.", url: "/app/radar", tag: "shortlist-test", version: 1 });
 }
 
 export const pushConfigured = webPushConfigured;

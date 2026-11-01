@@ -35,7 +35,7 @@ export type SourcePosting = {
  * `partial`: the feed only returns its newest postings, so a job missing from one response may still be open:
  *   those are closed by expiry or age instead of "not listed any more".
  * `minIntervalMinutes`: the politest gap between fetches. Each feed asks not to be hammered.
- * `terms`: what the source asks in return for using its API. Shortlist links every posting back to its source
+ * `terms`: what the source asks in return for using its API. Shortlist Job Radar links every posting back to its source
  *   page (the "View source" link, without nofollow) and names the source on the card.
  *
  * LinkedIn and Nepal's job portals (MeroJob and others) aren't here: their terms forbid automated reading.
@@ -106,7 +106,7 @@ function remoteLocation(restriction: string) {
 
 async function fetchJson(url: string) {
   const response = await fetch(url, {
-    headers: { Accept: "application/json", "User-Agent": "Shortlist Job Discovery/1.0" },
+    headers: { Accept: "application/json", "User-Agent": "Shortlist Job Radar/1.0" },
     signal: AbortSignal.timeout(20_000),
     cache: "no-store",
   });

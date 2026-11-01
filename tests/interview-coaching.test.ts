@@ -15,7 +15,7 @@ const question = { id: "q", kind: "technical" as const, question: interviewRefer
 afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
 
 it("corrects a known technical error with a complete sourced example without inventing an offline grade", async () => {
-  vi.stubEnv("OPENROUTER_API_KEY", "");
+  vi.stubEnv("ANTHROPIC_API_KEY", "");
   const feedback = await evaluateMockAnswer(question, "A missing key with square brackets returns None.", context, []);
   expect(feedback.score).toBeNull();
   expect(feedback.corrections[0]).toContain("raises KeyError");
@@ -27,9 +27,9 @@ it("corrects a known technical error with a complete sourced example without inv
 });
 
 it("keeps a correct new technical concept while blocking fabricated personal experience", async () => {
-  vi.stubEnv("OPENROUTER_API_KEY", "test-key");
+  vi.stubEnv("ANTHROPIC_API_KEY", "test-key");
   const response = { rubric: ["correctness", "depth", "communication", "confidence", "relevance"].map((criterion) => ({ criterion, score: 5, note: "A clear explanation." })), strengths: ["You name the lookup method."], improvements: ["Distinguish a missing key from a present None value."], corrections: [], modelAnswer: "Square brackets raise KeyError for a missing dictionary key.", improvedAnswer: "Square brackets raise KeyError; record.get('status', 'saved') supplies a default.", followUp: "What happens if the key is present with value None?" };
-  const fetcher = vi.fn(async () => Response.json({ choices: [{ finish_reason: "stop", message: { content: JSON.stringify(response) } }] }));
+  const fetcher = vi.fn(async () => Response.json({ type: "message", role: "assistant", stop_reason: "end_turn", content: [{ type: "text", text: JSON.stringify(response) }] }));
   vi.stubGlobal("fetch", fetcher);
   const feedback = await evaluateMockAnswer(question, "A missing key with square brackets returns None.", context, []);
   expect(feedback.method).toBe("ai");
@@ -43,7 +43,7 @@ it("keeps a correct new technical concept while blocking fabricated personal exp
 });
 
 it("groups related skill prompts and distinguishes missing skills from claimed experience", async () => {
-  vi.stubEnv("OPENROUTER_API_KEY", "");
+  vi.stubEnv("ANTHROPIC_API_KEY", "");
   const plan = await buildApplicationPlan(context, { sources: [], facts: [], warning: null });
   const bank = interviewBank(context, plan);
   const asyncPrompts = bank.filter((q) => q.referenceId === "javascript-promises");
@@ -56,7 +56,7 @@ it("groups related skill prompts and distinguishes missing skills from claimed e
 });
 
 it("coaches the user's short collaboration answer without unrelated technical advice or fabricated outcomes", async () => {
-  vi.stubEnv("OPENROUTER_API_KEY", "");
+  vi.stubEnv("ANTHROPIC_API_KEY", "");
   const prompt = "How did you collaborate with a frontend developer and use their feedback?";
   const feedback = await answerFeedback(prompt, "I can collaborate with frontend integrating API, handle data.", profile, context.post);
   expect(feedback.score).toBeNull();

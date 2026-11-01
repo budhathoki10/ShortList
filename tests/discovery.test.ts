@@ -3,7 +3,8 @@ import type { CareerPassportDoc, DiscoveredJobDoc } from "@/db/types";
 import { eligibilityFindings } from "@/lib/discovery/eligibility";
 import { DISCOVERY_RULE_VERSION, evaluateJob, remoteRegionFinding, roleCompatibility } from "@/lib/discovery/match";
 import { configuredSources, fetchSource } from "@/lib/discovery/sources";
-import { isPushServiceEndpoint } from "@/lib/discovery/push-endpoints";
+import { deviceName, isPushServiceEndpoint } from "@/lib/discovery/push-endpoints";
+import { notificationsOn } from "@/lib/services/notification-settings";
 import { passportFromCv } from "@/lib/discovery/passport-from-cv";
 import type { Profile } from "@/lib/model/types";
 
@@ -219,5 +220,22 @@ describe("company boards on Ashby, Workable, SmartRecruiters and Recruitee", () 
     expect(result.postings[0]).toMatchObject({ company: "Bosch Group", location: "Pune, IN", canonicalUrl: "https://jobs.smartrecruiters.com/BoschGroup/1" });
     // One list call and one detail call: not for the stored posting (2) or the unwanted one (3).
     expect(calls).toHaveLength(2);
+  });
+});
+
+describe("notification preferences", () => {
+  it("treats a missing switch as on, and only an explicit off as off", () => {
+    expect(notificationsOn({})).toBe(true);
+    expect(notificationsOn({ notificationsOff: false })).toBe(true);
+    expect(notificationsOn({ notificationsOff: true })).toBe(false);
+    expect(notificationsOn(null)).toBe(true);
+  });
+
+  it("names a push device from its browser", () => {
+    expect(deviceName("Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Mobile Safari/537.36")).toBe("Chrome on Android");
+    expect(deviceName("Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1")).toBe("Safari on iOS");
+    expect(deviceName("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36 Edg/130.0")).toBe("Edge on Windows");
+    expect(deviceName("Mozilla/5.0 (Macintosh; Intel Mac OS X 14.0; rv:131.0) Gecko/20100101 Firefox/131.0")).toBe("Firefox on macOS");
+    expect(deviceName("")).toBe("Browser");
   });
 });

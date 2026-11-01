@@ -3,8 +3,9 @@ import { redirect } from "next/navigation";
 import { AuthShell } from "@/components/auth-shell";
 import { SignupForm } from "@/components/auth-forms";
 import { getCurrentUser } from "@/lib/auth/session";
+import { privateMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = { title: "Create an account" };
+export const metadata: Metadata = privateMetadata("Create an account");
 
 export default async function SignupPage() {
   if (await getCurrentUser()) redirect("/app");

@@ -39,10 +39,6 @@ export async function listMyTemplates(userId: string): Promise<MyTemplate[]> {
   return docs.map(toMine);
 }
 
-export async function countMyTemplates(userId: string) {
-  return (await collections()).cvTemplates.countDocuments({ userId: String(userId) });
-}
-
 export class TemplateLimitError extends Error {}
 
 const cleanName = (name: string) => name.replace(/\s+/g, " ").trim().slice(0, MAX_TEMPLATE_NAME) || "My template";
@@ -69,12 +65,6 @@ export async function saveTemplate(userId: string, input: { id?: string | null; 
     throw new TemplateLimitError(`You can keep up to ${MAX_TEMPLATES} templates. Delete one to make room.`);
   }
   return toMine(doc);
-}
-
-export async function renameTemplate(userId: string, id: string, name: string): Promise<MyTemplate | null> {
-  if (!isUuid(id)) return null;
-  const row = await (await collections()).cvTemplates.findOneAndUpdate({ _id: id, userId: String(userId) }, { $set: { name: cleanName(name), updatedAt: new Date() } }, { returnDocument: "after" });
-  return row ? toMine(row) : null;
 }
 
 /** Delete one of theirs. Jobs and the default that used it fall back to the default template. */

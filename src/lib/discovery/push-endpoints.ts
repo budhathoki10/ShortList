@@ -22,3 +22,36 @@ export function isPushServiceEndpoint(endpoint: string): boolean {
   const host = url.hostname.toLowerCase();
   return EXACT.has(host) || SUFFIXES.some((suffix) => host.endsWith(suffix));
 }
+
+/** A readable name for a saved device, from the browser's user-agent string ("Chrome on Android"). */
+export function deviceName(userAgent: string): string {
+  const ua = String(userAgent ?? "");
+  const browser = /Edg\//.test(ua)
+    ? "Edge"
+    : /OPR\/|Opera/.test(ua)
+      ? "Opera"
+      : /SamsungBrowser/.test(ua)
+        ? "Samsung Internet"
+        : /Firefox\/|FxiOS/.test(ua)
+          ? "Firefox"
+          : /Chrome\/|CriOS/.test(ua)
+            ? "Chrome"
+            : /Safari\//.test(ua)
+              ? "Safari"
+              : null;
+  const system = /Android/.test(ua)
+    ? "Android"
+    : /iPhone|iPad|iPod/.test(ua)
+      ? "iOS"
+      : /Mac OS X|Macintosh/.test(ua)
+        ? "macOS"
+        : /Windows/.test(ua)
+          ? "Windows"
+          : /CrOS/.test(ua)
+            ? "ChromeOS"
+            : /Linux/.test(ua)
+              ? "Linux"
+              : null;
+  if (browser && system) return `${browser} on ${system}`;
+  return browser ?? system ?? "Browser";
+}

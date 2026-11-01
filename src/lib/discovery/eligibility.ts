@@ -33,7 +33,7 @@ export function eligibilityFindings(text: string, profile: Profile, passport: Ca
   if (passport.needsSponsorship && noSponsorship) add({ code: "sponsorship", severity: "blocker", message: "The employer says sponsorship is unavailable.", evidence: noSponsorship });
 
   const citizenship = excerpt(lines, /\b(?:must be|only)\s+(?:a\s+)?(?:u\.?s\.?|uk|canadian|australian)?\s*citizen\b|\bcitizenship (?:is )?required\b/i);
-  if (citizenship) add({ code: "citizenship", severity: "verify", message: "This role states a citizenship requirement that Shortlist cannot confirm from your CV.", evidence: citizenship });
+  if (citizenship) add({ code: "citizenship", severity: "verify", message: "This role states a citizenship requirement that Shortlist Job Radar cannot confirm from your CV.", evidence: citizenship });
 
   const clearance = excerpt(lines, /\b(?:active|current|required|obtain)\s+(?:security\s+)?clearance\b|\bsecurity clearance (?:is )?required\b/i);
   if (clearance) add({ code: "clearance", severity: "verify", message: "Confirm that you meet the stated security-clearance condition.", evidence: clearance });

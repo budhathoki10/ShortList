@@ -22,8 +22,8 @@ export default defineConfig({
     env: {
       FIXTURE_BASE: `http://127.0.0.1:${FIXTURE_PORT}`,
       FETCH_ALLOW_PRIVATE_HOSTS: "1",
-      OPENROUTER_API_KEY: "fake-openrouter-key",
-      OPENROUTER_BASE_URL: `http://127.0.0.1:${FIXTURE_PORT}/openrouter`,
+      ANTHROPIC_API_KEY: "fake-anthropic-key",
+      ANTHROPIC_BASE_URL: `http://127.0.0.1:${FIXTURE_PORT}/anthropic`,
       ...FREEMIUS_TEST_ENV,
       APP_URL: "http://localhost:3000",
     },

@@ -21,6 +21,7 @@ import { sendFollowUpDigests } from "@/lib/services/reminders";
 import { refundAllowance, spendAllowance, trialUsage, usageThisMonth } from "@/lib/services/usage";
 import { findUserById } from "@/lib/services/users";
 import { safeRedirectPath } from "@/lib/util";
+import { consumeAuthToken, createAuthToken, revokeAuthTokens } from "@/lib/auth/tokens";
 import { DAY, makeUser, resetDb } from "./helpers";
 
 const OUTBOX = path.join(os.tmpdir(), `shortlist-integration-outbox-${process.pid}.jsonl`);
@@ -246,24 +247,19 @@ describe("redirects after login", () => {
   });
 });
 
-describe("AI via OpenRouter", () => {
-  const last = async () => (await (await fetch(`${process.env.FIXTURE_BASE}/openrouter/_last`)).json()) as { headers: Record<string, string>; body: { model: string; messages: unknown; response_format: unknown; provider: unknown } };
+describe("AI via the Anthropic API", () => {
+  const last = async () => (await (await fetch(`${process.env.FIXTURE_BASE}/anthropic/_last`)).json()) as { headers: Record<string, string>; body: { model: string; system: string; messages: unknown; output_config: unknown } };
   const answer = z.object({ answer: z.string() });
 
-  it("asks for a JSON-schema answer from providers that support it, and returns only what validates", async () => {
-    // The fake wraps its reply in a code fence, as some models do.
+  it("asks Claude for a JSON-schema answer and returns only what validates", async () => {
     expect(await structured({ task: "read", system: "sys", prompt: "hello", schema: answer })).toEqual({ answer: "ok" });
     const sent = await last();
-    expect(sent.body.model).toBe("openrouter/free");
-    expect(sent.body.messages).toEqual([
-      { role: "system", content: "sys" },
-      { role: "user", content: "hello" },
-    ]);
-    expect(sent.body.response_format).toMatchObject({ type: "json_schema", json_schema: { strict: true, schema: { type: "object", additionalProperties: false } } });
-    expect(sent.body.provider).toEqual({ require_parameters: true, data_collection: "deny" });
-    expect(sent.headers.title).toBe("Shortlist");
+    expect(sent.body.model).toBe("claude-haiku-5-5");
+    expect(sent.body.system).toBe("sys");
+    expect(sent.body.messages).toEqual([{ role: "user", content: "hello" }]);
+    expect(sent.body.output_config).toMatchObject({ format: { type: "json_schema", schema: { type: "object", additionalProperties: false } } });
     await structured({ task: "write", system: "s", prompt: "p", schema: answer });
-    expect((await last()).body.model).toBe("openrouter/free");
+    expect((await last()).body.model).toBe("claude-sonnet-5-5");
   });
 
   it("raises AiUnavailableError for refusals, cut-off answers and answers of the wrong shape", async () => {
@@ -273,14 +269,14 @@ describe("AI via OpenRouter", () => {
   });
 
   it("keeps the CV out of error messages", async () => {
-    const key = process.env.OPENROUTER_API_KEY;
-    process.env.OPENROUTER_API_KEY = "wrong-key";
+    const key = process.env.ANTHROPIC_API_KEY;
+    process.env.ANTHROPIC_API_KEY = "wrong-key";
     try {
       const failure = structured({ task: "read", system: "s", prompt: "SECRET CV TEXT", schema: answer });
-      await expect(failure).rejects.toThrow(/(?:OpenRouter request failed|No model answered).*401/);
+      await expect(failure).rejects.toThrow(/No model answered.*401/);
       await expect(failure).rejects.not.toThrow(/SECRET CV TEXT/);
     } finally {
-      process.env.OPENROUTER_API_KEY = key;
+      process.env.ANTHROPIC_API_KEY = key;
     }
   });
 });
@@ -398,8 +394,8 @@ describe("accounts", () => {
 
 describe("follow-up reminders", () => {
   it("emails each person once, listing their due applications", async () => {
-    const asha = await makeUser({ email: "asha@example.com" });
-    const ram = await makeUser({ email: "ram@example.com" });
+    const asha = await makeUser({ email: "asha@example.com", emailVerifiedAt: new Date() });
+    const ram = await makeUser({ email: "ram@example.com", emailVerifiedAt: new Date() });
     const due1 = await newJob(asha.id);
     const due2 = await createJob(asha.id, { url: null, postText, post: { ...post, title: "Support Manager", company: "Acme" }, match: null });
     const notYet = await newJob(ram.id);
@@ -413,5 +409,19 @@ describe("follow-up reminders", () => {
     expect(mail.subject).toBe("2 applications to follow up on");
     expect(mail.text).toContain("• Customer Success Lead at Northwind Software");
     expect(mail.text).toContain("• Support Manager at Acme");
+  });
+});
+
+describe("password reset links", () => {
+  it("revokes every other unused reset link once one is used", async () => {
+    const user = await makeUser();
+    const first = await createAuthToken(user.id, "reset_password");
+    const second = await createAuthToken(user.id, "reset_password");
+    const verify = await createAuthToken(user.id, "verify_email");
+    expect(await consumeAuthToken(second, "reset_password")).toBe(user.id);
+    await revokeAuthTokens(user.id, "reset_password");
+    expect(await consumeAuthToken(first, "reset_password")).toBeNull();
+    // Other purposes are untouched.
+    expect(await consumeAuthToken(verify, "verify_email")).toBe(user.id);
   });
 });

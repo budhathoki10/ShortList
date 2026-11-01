@@ -13,7 +13,7 @@ const card = "rounded-xl border bg-surface shadow-[0_10px_30px_-14px_rgb(17_19_2
 export function HeroPreview() {
   return (
     <Parallax>
-      <div className="space-y-3.5" role="img" aria-label="Example: Shortlist matches a job post against a CV and blocks a suggested change that adds a skill the CV doesn't have">
+      <div className="space-y-3.5" role="img" aria-label="Example: Shortlist Job Radar matches a job post against a CV and blocks a suggested change that adds a skill the CV doesn't have">
         <div className="rise" style={d(450)}>
           <div className="float" style={d(3200)}>
             <div className={`${card} border-border p-5 text-sm leading-relaxed`}>

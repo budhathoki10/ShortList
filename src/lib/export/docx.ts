@@ -309,7 +309,7 @@ export function cvDocument(cv: Profile, spec: TemplateSpec = DEFAULT_SPEC, photo
   }
 
   return new Document({
-    creator: "Shortlist",
+    creator: "Shortlist Job Radar",
     title: `${cv.name} CV`,
     styles: {
       default: {

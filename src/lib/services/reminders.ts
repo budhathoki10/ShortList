@@ -22,9 +22,9 @@ export async function sendFollowUpDigests() {
           "A week with no answer",
           [
             jobs.map((j) => `• ${j}`).join("\n"),
-            "A short, polite note now often gets a reply. Shortlist has one drafted for each, ready to copy.",
+            "A short, polite note now often gets a reply. Shortlist Job Radar has one drafted for each, ready to copy.",
           ],
-          { label: "Open Shortlist", url: appUrl("/app") },
+          { label: "Open Shortlist Job Radar", url: appUrl("/app") },
         ),
       );
       sent++;

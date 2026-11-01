@@ -1,43 +1,34 @@
 import "server-only";
+import Anthropic from "@anthropic-ai/sdk";
+import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
 
 /**
  * Two jobs for the model: reading (turning a CV or job post into structured data, cheap and
  * fast) and writing (tailoring, cover letters, interview feedback, where quality matters).
- * Both go through OpenRouter's OpenAI-compatible chat API, so any model it hosts will do.
+ * Both call Claude through the official Anthropic SDK; the model for each job is set in env.
  */
-const DEFAULT_MODEL = "openrouter/free";
+const DEFAULT_READ_MODELS = "claude-haiku-5-5,claude-sonnet-5-5";
+const DEFAULT_WRITE_MODELS = "claude-sonnet-5-5,claude-opus-5-5";
 
-/** A comma-separated list in the env var, tried in order: "openai/gpt-4o-mini, anthropic/claude-haiku". */
-export function modelList(raw: string | undefined): string[] {
-  const list = (raw ?? "").split(",").map((m) => m.trim()).filter(Boolean);
-  return list.length ? [...new Set(list)] : [DEFAULT_MODEL];
+/** A comma-separated list in the env var, tried in order: "claude-haiku-5-5, claude-sonnet-5-5". */
+export function modelList(raw: string | undefined, fallback = DEFAULT_WRITE_MODELS): string[] {
+  const parse = (value: string) => value.split(",").map((m) => m.trim()).filter(Boolean);
+  const list = parse(raw ?? "");
+  return [...new Set(list.length ? list : parse(fallback))];
 }
 
 const MODELS = {
-  read: () => modelList(process.env.AI_READ_MODEL),
-  write: () => modelList(process.env.AI_WRITE_MODEL),
+  read: () => modelList(process.env.AI_READ_MODEL, DEFAULT_READ_MODELS),
+  write: () => modelList(process.env.AI_WRITE_MODEL, DEFAULT_WRITE_MODELS),
 };
 
-const baseUrl = () => (process.env.OPENROUTER_BASE_URL || "https://openrouter.ai/api/v1").replace(/\/$/, "");
-
 export function aiEnabled(): boolean {
-  return !!process.env.OPENROUTER_API_KEY;
+  return !!process.env.ANTHROPIC_API_KEY;
 }
 
 /** The model declined, was cut off, or returned something that didn't fit the schema. Callers fall back to plain code. */
 export class AiUnavailableError extends Error {}
-
-type ChatResponse = {
-  choices?: { finish_reason?: string | null; message?: { content?: string | null; refusal?: string | null } }[];
-  error?: { message?: string; code?: number | string };
-};
-
-/** Models sometimes wrap JSON in a code fence even when told not to. */
-function jsonFrom(content: string): unknown {
-  const body = content.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
-  return JSON.parse(body);
-}
 
 /** Why one model attempt failed. Never holds prompt text, CV text or keys. */
 type Attempt = { model: string; status?: number; reason: string };
@@ -49,51 +40,37 @@ class AttemptError extends Error {
   }
 }
 
-async function attemptModel<S extends z.ZodType>(model: string, key: string, jsonSchema: Record<string, unknown>, opts: { task: "read" | "write"; system: string; prompt: string; schema: S; maxTokens?: number }): Promise<z.infer<S>> {
-  let res: Response;
+async function attemptModel<S extends z.ZodType>(model: string, key: string, opts: { task: "read" | "write"; system: string; prompt: string; schema: S; maxTokens?: number }): Promise<z.infer<S>> {
+  // Built per call so tests can swap `fetch`. Retries are off: the model list is the retry policy.
+  const client = new Anthropic({ apiKey: key, baseURL: process.env.ANTHROPIC_BASE_URL || undefined, maxRetries: 0, timeout: 90_000 });
+
+  let message: Anthropic.Message;
   try {
-    res = await fetch(`${baseUrl()}/chat/completions`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${key}`,
-        "Content-Type": "application/json",
-        // Optional attribution headers OpenRouter shows on its dashboards.
-        "HTTP-Referer": process.env.APP_URL || "http://localhost:3000",
-        "X-Title": "Shortlist",
-      },
-      body: JSON.stringify({
-        model,
-        max_tokens: opts.maxTokens ?? 8000,
-        temperature: opts.task === "write" ? 0.4 : 0,
-        messages: [
-          { role: "system", content: opts.system },
-          { role: "user", content: opts.prompt },
-        ],
-        response_format: { type: "json_schema", json_schema: { name: "result", strict: true, schema: jsonSchema } },
-        // Only route to providers that honour the schema, and never to ones that keep prompts or train on them: the prompts hold people's CVs.
-        provider: { require_parameters: true, data_collection: "deny" },
-      }),
-      signal: AbortSignal.timeout(90_000),
+    message = await client.messages.create({
+      model,
+      max_tokens: opts.maxTokens ?? 8000,
+      system: opts.system,
+      messages: [{ role: "user", content: opts.prompt }],
+      output_config: { format: zodOutputFormat(opts.schema) },
     });
   } catch (err) {
-    const timedOut = err instanceof Error && (err.name === "TimeoutError" || err.name === "AbortError");
-    throw new AttemptError(timedOut ? "timeout" : "network error");
+    // Never include the API error body: it can echo prompt text, which holds the user's CV.
+    if (err instanceof Anthropic.APIConnectionTimeoutError) throw new AttemptError("timeout");
+    if (err instanceof Anthropic.APIConnectionError) throw new AttemptError("network error");
+    if (err instanceof Anthropic.APIError) {
+      throw new AttemptError(`HTTP ${err.status}`, err.status, err.status === 401 || err.status === 403);
+    }
+    throw new AttemptError("unexpected error");
   }
 
-  const data = (await res.json().catch(() => ({}))) as ChatResponse;
-  // Never include the response body in the error: it can echo prompt text, which holds the user's CV.
-  if (!res.ok) throw new AttemptError(`HTTP ${res.status}${data.error?.code ? ` (${data.error.code})` : ""}`, res.status, res.status === 401 || res.status === 403);
-  if (data.error) throw new AttemptError(`provider error (${data.error.code ?? "unknown"})`, typeof data.error.code === "number" ? data.error.code : undefined);
-
-  const choice = data.choices?.[0];
-  if (choice?.message?.refusal) throw new AttemptError("the model declined");
-  if (choice?.finish_reason === "length") throw new AttemptError("the answer was cut off");
-  const content = choice?.message?.content;
+  if (message.stop_reason === "refusal") throw new AttemptError("the model declined");
+  if (message.stop_reason === "max_tokens") throw new AttemptError("the answer was cut off");
+  const content = message.content.find((block): block is Anthropic.TextBlock => block.type === "text")?.text;
   if (!content) throw new AttemptError("the model returned nothing");
 
   let raw: unknown;
   try {
-    raw = jsonFrom(content);
+    raw = JSON.parse(content);
   } catch {
     throw new AttemptError("invalid JSON");
   }
@@ -103,11 +80,11 @@ async function attemptModel<S extends z.ZodType>(model: string, key: string, jso
 }
 
 /**
- * One request, one validated JSON answer. The reply is constrained to the schema by the
- * provider, then checked against it again here: nothing the model returns is trusted until
- * it has passed `schema`. Each configured model is tried in order (rate limit, server error,
- * timeout, bad JSON all move on to the next); only when every one has failed does the caller
- * get an AiUnavailableError and fall back to plain code, with one structured warning logged.
+ * One request, one validated JSON answer. The reply is constrained to the schema by the API,
+ * then checked against it again here: nothing the model returns is trusted until it has passed
+ * `schema`. Each configured model is tried in order (rate limit, server error, timeout, bad
+ * JSON all move on to the next); only when every one has failed does the caller get an
+ * AiUnavailableError and fall back to plain code, with one structured warning logged.
  */
 export async function structured<S extends z.ZodType>(opts: {
   task: "read" | "write";
@@ -116,15 +93,13 @@ export async function structured<S extends z.ZodType>(opts: {
   schema: S;
   maxTokens?: number;
 }): Promise<z.infer<S>> {
-  const key = process.env.OPENROUTER_API_KEY;
-  if (!key) throw new AiUnavailableError("OPENROUTER_API_KEY is not set");
+  const key = process.env.ANTHROPIC_API_KEY;
+  if (!key) throw new AiUnavailableError("ANTHROPIC_API_KEY is not set");
 
-  const jsonSchema = z.toJSONSchema(opts.schema) as Record<string, unknown>;
-  delete jsonSchema.$schema;
   const attempts: Attempt[] = [];
   for (const model of opts.task === "write" ? MODELS.write() : MODELS.read()) {
     try {
-      return await attemptModel(model, key, jsonSchema, { ...opts });
+      return await attemptModel(model, key, opts);
     } catch (err) {
       const e = err instanceof AttemptError ? err : new AttemptError("unexpected error");
       attempts.push({ model, status: e.status, reason: e.message });

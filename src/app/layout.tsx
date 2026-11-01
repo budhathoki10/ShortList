@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { cvFontVariables } from "@/components/cv/cv-fonts";
 import { ToastProvider } from "@/components/toast";
+import { DEFAULT_DESCRIPTION, publicRobots } from "@/lib/seo";
+import { SITE } from "@/lib/site";
 import "./globals.css";
 
 // The Content-Security-Policy in src/proxy.ts carries a fresh nonce per request, and Next can only stamp it
@@ -13,9 +15,30 @@ const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: { default: "Shortlist. A CV for every job, without making anything up", template: "%s · Shortlist" },
-  description:
-    "Paste a job post. Shortlist tailors your CV and cover letter to it using only what's true about you, tracks the application, reminds you to follow up and helps you prepare for the interview.",
+  metadataBase: new URL(SITE.url),
+  applicationName: SITE.name,
+  title: { default: "Shortlist Job Radar — Find jobs that fit your CV", template: "%s · Shortlist Job Radar" },
+  description: DEFAULT_DESCRIPTION,
+  manifest: "/manifest.webmanifest",
+  category: "career",
+  robots: publicRobots,
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    siteName: SITE.name,
+    url: "/",
+    title: "Shortlist Job Radar — Find jobs that fit your CV",
+    description: DEFAULT_DESCRIPTION,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Shortlist Job Radar — Find jobs that fit your CV",
+    description: DEFAULT_DESCRIPTION,
+  },
+  verification: {
+    google: process.env.GOOGLE_SITE_VERIFICATION || undefined,
+    other: process.env.BING_SITE_VERIFICATION ? { "msvalidate.01": process.env.BING_SITE_VERIFICATION } : undefined,
+  },
 };
 
 export const viewport: Viewport = {

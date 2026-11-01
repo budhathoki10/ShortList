@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
+import { privateMetadata } from "@/lib/seo";
 import { confirmEmail } from "@/app/actions/auth";
 import { AuthShell } from "@/components/auth-shell";
 import { SubmitButton } from "@/components/submit-button";
 import { ButtonLink } from "@/components/ui";
 import { isTokenValid } from "@/lib/auth/tokens";
 
-export const metadata: Metadata = { title: "Confirm your email", robots: { index: false } };
+export const metadata: Metadata = privateMetadata("Confirm your email");
 
 /**
  * The link in the email only opens this page. The token is used up by pressing the button, which is a POST:
@@ -16,8 +17,8 @@ export default async function VerifyEmailPage({ params }: PageProps<"/verify-ema
   const { token } = await params;
   if (!(await isTokenValid(token, "verify_email"))) {
     return (
-      <AuthShell title="This link has expired" subtitle="Confirmation links work once and last three days. You can send a fresh one from inside Shortlist.">
-        <ButtonLink href="/app">Go to Shortlist</ButtonLink>
+      <AuthShell title="This link has expired" subtitle="Confirmation links work once and last three days. You can send a fresh one from inside Shortlist Job Radar.">
+        <ButtonLink href="/app">Go to Shortlist Job Radar</ButtonLink>
       </AuthShell>
     );
   }

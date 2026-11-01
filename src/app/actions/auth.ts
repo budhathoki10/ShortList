@@ -5,9 +5,9 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { createSession, destroySession, requireUser } from "@/lib/auth/session";
-import { consumeAuthToken, tokensSentRecently } from "@/lib/auth/tokens";
+import { consumeAuthToken, revokeAuthTokens, tokensSentRecently } from "@/lib/auth/tokens";
 import { deleteAllSessions, deleteUser, markEmailVerified, sendPasswordResetEmail, sendVerificationEmail } from "@/lib/services/account";
-import { keyPart, overLimit } from "@/lib/services/rate-limit";
+import { keyPart, limitReached, overLimit } from "@/lib/services/rate-limit";
 import { createUser, findUserByEmail, setPasswordHash } from "@/lib/services/users";
 import { clientIp, safeRedirectPath } from "@/lib/util";
 
@@ -46,11 +46,13 @@ const VERIFY_RESEND_COOLDOWN_MS = 2 * 60 * 1000;
 const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
 const TOO_MANY = "Please wait a few minutes before trying again.";
+/** Wrong passwords allowed per address in 15 minutes. */
+const LOGIN_FAILURES = 10;
 
 /**
  * A per-IP counter. With no address we can trust (see clientIp) there is nothing to count against, so it
  * does not limit: lumping everyone into one "unknown" bucket would lock all users out together.
- * The per-address limits on login don't depend on this.
+ * Login also has a per-account limit (below) that doesn't depend on this.
  */
 async function ipLimit(name: string, limit: number, windowMs: number): Promise<boolean> {
   const address = clientIp(await headers());
@@ -78,8 +80,17 @@ export async function signup(_: AuthState, formData: FormData): Promise<AuthStat
 export async function login(_: AuthState, formData: FormData): Promise<AuthState> {
   const parsed = LoginSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return validationFeedback(parsed.error.issues);
+  // Failed attempts are counted per address, whether or not the account exists, so guessing passwords is slow and
+  // reveals nothing. Successful logins don't count, so someone who logs in often is never locked out.
+  const failedKey = `login-failed:email:${keyPart(parsed.data.email)}`;
+  if ((await limitReached(failedKey, LOGIN_FAILURES, 15 * MINUTE)) || (await ipLimit("login", 100, 15 * MINUTE))) {
+    return { title: "Too many attempts", error: "Too many log-in attempts for this account. Wait 15 minutes, or reset your password.", recovery: { href: "/forgot-password", label: "Reset your password" } };
+  }
   const user = await findUserByEmail(parsed.data.email);
-  if (!user || !(await verifyPassword(parsed.data.password, user.passwordHash))) return { title: "Unable to log in", error: "The email and password don’t match. Check your details and try again." };
+  if (!user || !(await verifyPassword(parsed.data.password, user.passwordHash))) {
+    await overLimit(failedKey, LOGIN_FAILURES, 15 * MINUTE);
+    return { title: "Unable to log in", error: "The email and password don’t match. Check your details and try again." };
+  }
   await createSession(user.id);
   redirect(safeRedirectPath(formData.get("next"), "/app"));
 }
@@ -103,7 +114,7 @@ export async function deleteAccount(_: AuthState, formData: FormData): Promise<A
 
 export async function requestPasswordReset(_: AuthState, formData: FormData): Promise<AuthState> {
   const parsed = email.safeParse(formData.get("email"));
-  if (!parsed.success) return { title: "Check your email address", error: "Enter the email address you use for your Shortlist account.", fields: { email: "Enter a valid email address, such as name@example.com." } };
+  if (!parsed.success) return { title: "Check your email address", error: "Enter the email address you use for your Shortlist Job Radar account.", fields: { email: "Enter a valid email address, such as name@example.com." } };
   if (await ipLimit("reset", 10, HOUR)) return { error: TOO_MANY };
   const user = await findUserByEmail(parsed.data);
   // Same answer whether or not the account exists, so this can't be used to find out who has an account.
@@ -127,6 +138,8 @@ export async function resetPassword(_: AuthState, formData: FormData): Promise<A
 
   await setPasswordHash(userId, await hashPassword(parsed.data.password));
   await deleteAllSessions(userId);
+  // Any other reset link sent before this one stops working too.
+  await revokeAuthTokens(userId, "reset_password");
   // Opening the emailed link proves they own the address.
   await markEmailVerified(userId);
   await createSession(userId);

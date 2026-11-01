@@ -61,7 +61,7 @@ export default async function Today({ searchParams }: PageProps<"/app">) {
 
       <section aria-label="Your next step" className="grid overflow-hidden rounded-xl border border-accent/25 bg-surface shadow-[0_12px_32px_-22px_rgb(47_91_234/0.4)] lg:grid-cols-[minmax(0,1fr)_19rem]">
         <div className="bg-tint p-6 sm:p-7"><p className="t-label text-accent-strong">Your next step</p><h2 className="mt-2 text-xl font-semibold tracking-tight">{next.label}</h2><p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted">{next.note}</p><div className="mt-5"><ButtonLink href={next.href}>{next.action} <span aria-hidden="true">→</span></ButtonLink></div></div>
-        <div className="border-t border-border bg-background p-6 lg:border-l lg:border-t-0"><p className="text-sm font-medium">Your CV foundation</p>{profile ? <><p className="mt-2 text-xs leading-relaxed text-muted">{profile.headline || "Your experience, skills and projects"}</p><dl className="mt-4 grid grid-cols-3 gap-3">{[["Roles", profile.experience.length], ["Projects", profile.projects.length], ["Skills", profile.skills.length]].map(([label, count]) => <div key={label}><dt className="text-xs text-muted">{label}</dt><dd className="mt-1 text-xl font-semibold tabular-nums">{count}</dd></div>)}</dl><Link href="/app/profile" className="mt-5 inline-flex text-xs font-medium text-accent hover:underline">Review profile & links ↗</Link></> : <p className="mt-2 text-sm leading-relaxed text-muted">Keep your projects, experience and links together. You’ll review the extraction before anything is saved.</p>}</div>
+        <div className="border-t border-border bg-background p-6 lg:border-l lg:border-t-0"><p className="text-sm font-medium">Your CV foundation</p>{profile ? <><p className="mt-2 text-xs leading-relaxed text-muted">{profile.headline || "Your experience, skills and projects"}</p><dl className="mt-4 grid grid-cols-3 gap-3">{[["Roles", profile.experience.length], ["Projects", profile.projects.length], ["Skills", profile.skills.length]].map(([label, count]) => <div key={label}><dt className="text-xs text-muted">{label}</dt><dd className="mt-1 text-xl font-semibold tabular-nums">{count}</dd></div>)}</dl><Link href="/app/profile" className="mt-5 inline-flex min-h-8 items-center text-[13px] font-medium text-accent hover:underline max-sm:min-h-11">Review profile & links ↗</Link></> : <p className="mt-2 text-sm leading-relaxed text-muted">Keep your projects, experience and links together. You’ll review the extraction before anything is saved.</p>}</div>
       </section>
 
       {due.length > 0 && (
@@ -117,7 +117,7 @@ export default async function Today({ searchParams }: PageProps<"/app">) {
         <section className="space-y-3">
           <div className="flex items-baseline justify-between">
             <h2 className="text-base font-semibold">In progress</h2>
-            <Link href="/app/jobs" className="text-[13px] text-muted hover:text-foreground hover:underline">
+            <Link href="/app/jobs" className="text-[13px] text-muted hover:text-foreground hover:underline max-sm:inline-flex max-sm:min-h-11 max-sm:items-center">
               All jobs
             </Link>
           </div>
@@ -147,7 +147,7 @@ export default async function Today({ searchParams }: PageProps<"/app">) {
               {usage.plan === "paid" ? "Plan usage this month" : "Your free trial"}
             </h2>
             {usage.plan === "free" && (
-              <Link href="/app/billing" className="text-[13px] text-accent hover:underline">
+              <Link href="/app/billing" className="text-[13px] text-accent hover:underline max-sm:inline-flex max-sm:min-h-11 max-sm:items-center">
                 See paid plans
               </Link>
             )}

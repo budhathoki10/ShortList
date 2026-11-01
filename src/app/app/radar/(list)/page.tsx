@@ -4,12 +4,13 @@ import { dismissRadarMatch, prepareRadarMatch } from "@/app/actions/discovery";
 import { CareerPassportForm, type PassportFormValue } from "@/components/discovery/career-passport-form";
 import { RadarPoller } from "@/components/discovery/radar-poller";
 import { SubmitButton } from "@/components/submit-button";
-import { Badge, ButtonLink, EmptyState, PageHeader } from "@/components/ui";
+import { Badge, ButtonLink, EmptyState, Notice, PageHeader } from "@/components/ui";
 import { requireUser } from "@/lib/auth/session";
 import { formatDay } from "@/lib/dates";
 import { SOURCES } from "@/lib/discovery/sources";
 import { getCareerPassport, getDiscoverySourceStatus, listRecommendations } from "@/lib/services/discovery";
 import { getProfile } from "@/lib/services/profile";
+import { notificationsOn } from "@/lib/services/notification-settings";
 import { passportFromCv } from "@/lib/discovery/passport-from-cv";
 import type { DiscoveredJobDoc, JobRecommendationDoc, RecommendationState } from "@/db/types";
 
@@ -44,14 +45,14 @@ function RecommendationCard({ recommendation, job }: { recommendation: JobRecomm
           <p className="mt-1 text-sm text-muted">{job.company}{job.location ? ` · ${job.location}` : " · Location not stated"}{arrangement && !job.location.toLowerCase().includes(arrangement.toLowerCase()) ? ` · ${arrangement}` : ""}</p>
         </div>
         <div className="flex shrink-0 gap-5 text-right">
-          <div><p className="font-mono text-xl font-medium tabular-nums">{recommendation.evidenceScore}%</p><p className="text-[11px] text-muted">CV evidence</p></div>
-          <div><p className="font-mono text-xl font-medium tabular-nums">{recommendation.preferenceScore}%</p><p className="text-[11px] text-muted">preferences</p></div>
+          <div><p className="font-mono text-xl font-medium tabular-nums">{recommendation.evidenceScore}%</p><p className="text-xs text-muted">CV evidence</p></div>
+          <div><p className="font-mono text-xl font-medium tabular-nums">{recommendation.preferenceScore}%</p><p className="text-xs text-muted">preferences</p></div>
         </div>
       </div>
       <p className="mt-4 text-sm text-foreground">{recommendation.reasons[0]}</p>
       {recommendation.eligibility[0] && <p className={`mt-2 text-[13px] ${recommendation.eligibility[0].severity === "blocker" ? "text-danger" : "text-warning"}`}>{recommendation.eligibility[0].message}</p>}
       {job.post.salary && <p className="mt-2 text-[13px] text-muted">Salary: {job.post.salary}</p>}
-      {recommendation.match.keywords.some((keyword) => keyword.where === "shown") && <div className="mt-3"><p className="text-[11px] font-medium uppercase tracking-wide text-muted">Strongest CV evidence</p><ul className="mt-1 space-y-1 text-[13px] text-muted">{recommendation.match.keywords.filter((keyword) => keyword.where === "shown" && keyword.evidence).slice(0, 3).map((keyword) => <li key={keyword.keyword}><span className="font-medium text-foreground">{keyword.keyword}:</span> {keyword.evidence}</li>)}</ul></div>}
+      {recommendation.match.keywords.some((keyword) => keyword.where === "shown") && <div className="mt-3"><p className="text-xs font-medium uppercase tracking-wide text-muted">Strongest CV evidence</p><ul className="mt-1 space-y-1 text-[13px] text-muted">{recommendation.match.keywords.filter((keyword) => keyword.where === "shown" && keyword.evidence).slice(0, 3).map((keyword) => <li key={keyword.keyword}><span className="font-medium text-foreground">{keyword.keyword}:</span> {keyword.evidence}</li>)}</ul></div>}
       <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-border pt-4">
         {recommendation.trackerJobId ? <ButtonLink href={`/app/jobs/${recommendation.trackerJobId}`} size="sm">Open application</ButtonLink> : recommendation.state !== "blocked" ? <form action={prepareRadarMatch}><input type="hidden" name="recommendationId" value={recommendation._id} /><SubmitButton size="sm" pendingLabel="Saving…">Save and prepare</SubmitButton></form> : null}
         <ButtonLink href={`/app/radar/${recommendation._id}`} variant="secondary" size="sm">Review evidence</ButtonLink>
@@ -59,7 +60,7 @@ function RecommendationCard({ recommendation, job }: { recommendation: JobRecomm
         <form action={dismissRadarMatch} className="ml-auto flex min-w-0 flex-wrap items-center gap-2">
           <input type="hidden" name="recommendationId" value={recommendation._id} />
           <label className="sr-only" htmlFor={`dismiss-${recommendation._id}`}>Dismiss reason</label>
-          <select id={`dismiss-${recommendation._id}`} name="reason" defaultValue="not interested" className="h-8 max-w-44 rounded border border-border bg-surface px-2 text-xs text-muted max-sm:h-10">
+          <select id={`dismiss-${recommendation._id}`} name="reason" defaultValue="not interested" className="h-8 max-w-44 rounded border border-border bg-surface px-2 text-xs text-muted max-sm:h-11">
             {dismissReasons.map((reason) => <option key={reason} value={reason}>{reason}</option>)}
           </select>
           <SubmitButton variant="ghost" size="sm" pendingLabel="Dismissing…">Dismiss</SubmitButton>
@@ -72,9 +73,17 @@ function RecommendationCard({ recommendation, job }: { recommendation: JobRecomm
 export default async function RadarPage() {
   const user = await requireUser();
   const [passport, rows, profile, sourceStatus] = await Promise.all([getCareerPassport(user.id), listRecommendations(user.id, true), getProfile(user.id), getDiscoverySourceStatus()]);
-  // A first passport starts from what the CV states; a saved one keeps the person's choices and offers "Fill from my CV".
+  // The passport fills itself from the CV: a first one starts from it, and a saved one keeps the person's own choices
+  // with any field still empty taken from the CV. Work permission, salary and sponsorship are never filled in.
   const fromCv = passportFromCv(profile);
-  const defaultValue: PassportFormValue = passport ?? {
+  const orCv = <T,>(saved: T[], cv: T[]) => (saved.length ? saved : cv);
+  const defaultValue: PassportFormValue = passport ? {
+    ...passport,
+    targetRoles: orCv(passport.targetRoles, fromCv.targetRoles),
+    locations: orCv(passport.locations, fromCv.locations),
+    employmentTypes: orCv(passport.employmentTypes, fromCv.employmentTypes),
+    graduationDate: passport.graduationDate ?? fromCv.graduationDate,
+  } : {
     targetRoles: fromCv.targetRoles, excludedRoles: [], locations: fromCv.locations, workCountries: [], remoteModes: ["remote", "hybrid", "onsite"], needsSponsorship: false, graduationDate: fromCv.graduationDate, minimumSalary: null, employmentTypes: fromCv.employmentTypes, excludedCompanies: [], discoveryEnabled: true, emailFrequency: "off", pushFrequency: "off", alertStates: ["ready"], quietStart: "22:00", quietEnd: "08:00", timezone: "",
   };
   const groups = (["ready", "stretch", "verify", "blocked"] as const).map((state) => ({ state, rows: rows.filter((row) => row.recommendation.state === state && ["active", "saved"].includes(row.recommendation.status)) }));
@@ -92,6 +101,8 @@ export default async function RadarPage() {
         {sourceStatus.configured === 0 ? <p className="text-muted">No employer feeds are configured yet. Add the launch allowlist before enabling the scheduled worker.</p> : <p><span className="font-medium">{sourceStatus.healthy} of {sourceStatus.configured} employer feeds healthy.</span>{discoveryDelayed ? <span className="text-muted"> Search is delayed while the feeds wait for their next retry.</span> : sourceStatus.lastSuccessAt ? <span className="text-muted"> Last successful check {formatDay(sourceStatus.lastSuccessAt)}.</span> : <span className="text-muted"> Waiting for the first successful check.</span>}</p>}
       </div>
 
+      {!notificationsOn(user) && <Notice tone="warning" title="Notifications are off for your account" action={{ href: "/app/settings#notifications", label: "Turn them on in Settings" }}>The agent keeps finding matches and lists them here, but no email or push alert is sent. Your alert choices in the Career Passport take effect once notifications are back on.</Notice>}
+
       {!passport && <div className="rounded-md border border-accent/30 bg-tint p-5"><h2 className="font-semibold">Tell the agent what is realistic for you</h2><p className="mt-1 max-w-2xl text-sm text-muted">Your CV shows your experience. The Career Passport records the roles, locations and work constraints the agent must respect. Save it before the next discovery run.</p><div className="mt-4 grid gap-2 sm:grid-cols-3">{(["ready", "verify", "blocked"] as const).map((state) => <div key={state} className="rounded border border-border bg-surface/70 p-3"><Badge tone={STATE[state].tone}>{STATE[state].label}</Badge><p className="mt-2 text-xs text-muted">{STATE[state].description}</p></div>)}</div></div>}
 
       {visibleCount === 0 ? <EmptyState title={passport ? "No qualified matches yet" : "Set up your Career Passport first"}>{passport ? "The agent will add source-backed roles here after the next configured discovery run. It will not fill the page with loose keyword matches." : "Once saved, the agent can compare new postings with facts that are not safe to infer from your CV."}</EmptyState> : (
@@ -104,7 +115,7 @@ export default async function RadarPage() {
 
       {dismissedRows.length > 0 && <details className="group rounded-md border border-border bg-surface"><summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 font-medium marker:hidden sm:px-6"><span>Dismissed <span className="ml-1 font-mono text-xs text-muted">{dismissedRows.length}</span></span><span aria-hidden="true" className="text-muted transition-transform group-open:rotate-45">+</span></summary><ul className="divide-y divide-border border-t border-border">{dismissedRows.map(({ recommendation, job }) => <li key={recommendation._id} className="flex flex-wrap items-center gap-3 px-5 py-3 text-sm"><div className="min-w-0 flex-1"><Link href={`/app/radar/${recommendation._id}`} className="font-medium hover:underline">{job.title}</Link><p className="truncate text-xs text-muted">{job.company} · {recommendation.dismissalReason || "Dismissed"}</p></div><a href={job.canonicalUrl} target="_blank" rel="noopener" className="text-xs font-medium text-muted hover:text-foreground">View source</a></li>)}</ul></details>}
 
-      <details className="group rounded-md border border-border bg-surface" open={!passport}>
+      <details id="alert-settings" className="group scroll-mt-20 rounded-md border border-border bg-surface" open={!passport}>
         <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 font-medium marker:hidden sm:px-6"><span>Career Passport and alert settings</span><span aria-hidden="true" className="text-muted transition-transform group-open:rotate-45">+</span></summary>
         <div className="border-t border-border px-5 py-6 sm:px-6"><CareerPassportForm value={defaultValue} fromCv={fromCv} /></div>
       </details>

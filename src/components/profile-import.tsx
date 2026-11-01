@@ -36,7 +36,7 @@ export function ProfileImport({ replacing }: { replacing: boolean }) {
             name="file"
             type="file"
             accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
-            className="block w-full cursor-pointer text-sm text-muted file:mr-3 file:h-9 file:cursor-pointer file:rounded file:border file:border-strong-border file:bg-surface file:px-3.5 file:text-sm file:font-medium file:text-foreground file:transition-colors file:duration-150 hover:file:bg-surface-hover"
+            className="block w-full cursor-pointer text-sm text-muted file:mr-3 file:h-9 file:cursor-pointer max-sm:file:h-11 file:rounded file:border file:border-strong-border file:bg-surface file:px-3.5 file:text-sm file:font-medium file:text-foreground file:transition-colors file:duration-150 hover:file:bg-surface-hover"
           />
           <p className="text-xs text-muted">PDF, Word (.docx) or text, up to 5 MB. Embedded LinkedIn, GitHub and project links are included.</p>
         </div>

@@ -4,7 +4,7 @@ import { ButtonLink, Logo } from "@/components/ui";
 export default function NotFound() {
   return (
     <main id="main" className="mx-auto w-full max-w-md flex-1 px-4 py-16 sm:py-24">
-      <Link href="/" aria-label="Shortlist home" className="inline-block rounded">
+      <Link href="/" aria-label="Shortlist Job Radar home" className="inline-flex min-h-11 items-center rounded">
         <Logo />
       </Link>
       <p className="mt-14 font-mono text-sm text-faint">404</p>

@@ -15,6 +15,11 @@ export type User = {
   name: string;
   createdAt: Date;
   /**
+   * The account-wide switch for non-essential notifications (job-alert email, Web Push, follow-up reminder email).
+   * Missing or false means on. Security email (verification, password reset) ignores it.
+   */
+  notificationsOff?: boolean;
+  /**
    * When paid access from a Freemius subscription ends. Derived on every request from the subscriptions
    * collection (never stored on the user, never sent by the browser); see src/lib/billing/access.ts.
    */

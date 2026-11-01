@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth/session";
+import { overLimit } from "@/lib/services/rate-limit";
 import { MAX_CV_BYTES, readCvFile, UnreadableFileError } from "@/lib/cv/extract-text";
 import { parseCv } from "@/lib/cv/parse";
 import { ProfileSchema, profileError } from "@/lib/cv/profile-schema";
@@ -23,6 +24,8 @@ export type ProfileState = { error?: string; success?: string; preview?: Profile
  */
 export async function importCv(_: ProfileState, formData: FormData): Promise<ProfileState> {
   const user = await requireUser();
+  // Reading a PDF or Word file is work done before the monthly allowance is charged, so it has an hourly ceiling of its own.
+  if (await overLimit(`cv-import:${user.id}`, 20, 60 * 60_000)) return { error: "You’ve imported several CVs in the last hour. Please try again later." };
   const file = formData.get("file");
   const pasted = cleanText(String(formData.get("text") ?? ""));
   let text = pasted;

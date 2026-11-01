@@ -1,7 +1,7 @@
 "use client";
 
 import { ActionToast } from "@/components/toast";
-import { useActionState, useRef, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { removePhotoAction, uploadPhotoAction } from "@/app/actions/templates";
 import { StudioIcon as Icon } from "@/components/icons";
 
@@ -10,6 +10,11 @@ export function PhotoUpload({ photoUrl }: { photoUrl: string | null }) {
   const [state, upload, uploading] = useActionState(uploadPhotoAction, undefined);
   const [removed, remove, removing] = useActionState(removePhotoAction, undefined);
   const form = useRef<HTMLFormElement>(null);
+  const input = useRef<HTMLInputElement>(null);
+  // A photo picked while the page was still loading has no change handler yet: send it once the page is ready.
+  useEffect(() => {
+    if (input.current?.files?.length) form.current?.requestSubmit();
+  }, []);
   // Whichever happened last is the one to confirm, so removing a photo never keeps saying "Photo saved".
   const [last, setLast] = useState<"upload" | "remove">("upload");
   const message = last === "remove" ? removed : state;
@@ -31,10 +36,11 @@ export function PhotoUpload({ photoUrl }: { photoUrl: string | null }) {
             upload(data);
           }}
         >
-          <label className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg border border-strong-border bg-surface px-3 text-[13px] font-medium hover:border-strong-border has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent">
+          <label className="inline-flex h-9 cursor-pointer items-center max-sm:h-11 gap-1.5 rounded-lg border border-strong-border bg-surface px-3 text-[13px] font-medium hover:border-strong-border has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent">
             <Icon name="photo" size={15} />
             {uploading ? "Uploading…" : photoUrl ? "Replace photo" : "Add a photo"}
             <input
+              ref={input}
               type="file"
               name="photo"
               accept="image/jpeg,image/png,image/webp"
@@ -51,7 +57,7 @@ export function PhotoUpload({ photoUrl }: { photoUrl: string | null }) {
               remove();
             }}
           >
-            <button type="submit" disabled={removing} className="text-[13px] text-muted underline underline-offset-4 hover:text-foreground">
+            <button type="submit" disabled={removing} className="text-[13px] text-muted underline underline-offset-4 hover:text-foreground disabled:opacity-50 max-sm:min-h-11">
               Remove photo
             </button>
           </form>
