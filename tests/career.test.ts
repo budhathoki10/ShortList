@@ -147,3 +147,25 @@ describe("realistic interview practice", () => {
     expect(feedback.improvements.join()).toContain("unsupported");
   });
 });
+
+describe("both fit checks agree", () => {
+  it("full analysis recognises 'Kept churn under 3%' as evidence for 'Experience reducing churn'", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { heuristicProfile } = await import("@/lib/cv/heuristic");
+    const { scoreMatch } = await import("@/lib/match/score");
+    const cv = heuristicProfile(readFileSync("tests/fixtures/cv.txt", "utf8"));
+    const text = readFileSync("tests/fixtures/job.txt", "utf8");
+    const post = heuristicJob(text);
+    const instant = scoreMatch(cv, post).requirements.find((r) => /reducing churn/i.test(r.text))!;
+    const row = sourceRequirements(text, post).find((r) => /reducing churn/i.test(r.text))!;
+    const full = assessRequirement(row, cv);
+    expect(instant.status).toBe("shown");
+    expect(full.status).toBe("shown");
+    expect(full.evidence.join(" ")).toContain("Kept churn under 3%");
+  });
+
+  it("does not over-reach: an unrelated requirement stays unverified", () => {
+    const row = sourceRequirements("Requirements\n- Experience negotiating enterprise contracts", heuristicJob(""))[0];
+    expect(assessRequirement(row, profile).status).not.toBe("shown");
+  });
+});

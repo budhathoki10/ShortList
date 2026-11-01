@@ -3,6 +3,7 @@
 import { useActionState, useId, useState } from "react";
 import { addSkillEvidence } from "@/app/actions/profile";
 import { ActionToast } from "@/components/toast";
+import type { CloseGap } from "@/lib/model/types";
 import { FormSubmit } from "./form-submit";
 import { inputClass } from "./ui";
 
@@ -12,11 +13,14 @@ type Role = { id: string; label: string };
  * The honest way to fit a job better: skills the post asks for that your CV doesn't show yet.
  * If you really have one, say where you used it, in your own words, and it goes into your CV.
  */
-export function GapCloser({ gaps, roles }: { gaps: string[]; roles: Role[] }) {
+export function GapCloser({ gaps, roles, closeGaps = [] }: { gaps: string[]; roles: Role[]; closeGaps?: CloseGap[] }) {
   // The list as it was when the page opened: a skill you add stays, marked as added, instead of vanishing.
   const [list] = useState(gaps);
   if (list.length === 0) return null;
+  // Advice only for what is still missing, so it goes away once the skill is genuinely added.
+  const advice = closeGaps.filter((g) => gaps.some((x) => x.toLowerCase() === g.skill.toLowerCase())).slice(0, 3);
   return (
+    <div className="space-y-5">
     <section aria-labelledby="gap-closer" className="space-y-2">
       <div>
         <h2 id="gap-closer" className="text-sm font-semibold">
@@ -30,6 +34,24 @@ export function GapCloser({ gaps, roles }: { gaps: string[]; roles: Role[] }) {
         ))}
       </ul>
     </section>
+    {advice.length > 0 && (
+      <section aria-labelledby="close-gap" className="space-y-2">
+        <div>
+          <h2 id="close-gap" className="text-sm font-semibold">Close the gap</h2>
+          <p className="mt-0.5 text-xs text-muted">Not on your CV, and not claimed there. Ways to earn it first.</p>
+        </div>
+        <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-surface">
+          {advice.map((g) => (
+            <li key={g.skill} className="space-y-1 px-4 py-3 text-sm">
+              <p className="font-medium">{g.skill}</p>
+              <p className="text-muted">{g.action}</p>
+              <p className="text-xs text-muted">{g.describeAs}</p>
+            </li>
+          ))}
+        </ul>
+      </section>
+    )}
+    </div>
   );
 }
 

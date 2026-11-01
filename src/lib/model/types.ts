@@ -42,7 +42,11 @@ export type Profile = {
   linkLabels?: Record<string, string>;
   /** Presentation of an accepted tailored version; never new candidate facts. */
   sectionOrder?: CvSection[];
+  /** Grouped presentation of the same skills (for example "Languages", "Tools"), job-relevant group first. Never adds a skill. */
+  skillGroups?: SkillGroup[];
 };
+
+export type SkillGroup = { label: string; skills: string[] };
 
 export const EMPTY_PROFILE: Profile = {
   name: "",
@@ -85,16 +89,26 @@ export type Match = {
  * One proposed edit to the profile for a specific job. Edits only rephrase or reorder what's
  * already in the profile; anything that introduces a new fact is flagged and can't be accepted.
  */
-export type Change =
-  | { id: string; kind: "summary"; before: string; after: string; reason: string; flags: string[]; accepted: boolean }
-  | { id: string; kind: "bullet"; experienceId: string; index: number; before: string; after: string; reason: string; flags: string[]; accepted: boolean }
-  | { id: string; kind: "bullet-order"; experienceId: string; order: number[]; reason: string; flags: string[]; accepted: boolean }
-  | { id: string; kind: "skills-order"; order: string[]; reason: string; flags: string[]; accepted: boolean }
-  | { id: string; kind: "project-bullet"; projectId: string; index: number; before: string; after: string; reason: string; flags: string[]; accepted: boolean }
-  | { id: string; kind: "projects-order"; order: string[]; reason: string; flags: string[]; accepted: boolean }
-  | { id: string; kind: "section-order"; order: CvSection[]; reason: string; flags: string[]; accepted: boolean };
+type ChangeBase = { id: string; reason: string; flags: string[]; accepted: boolean; /** Off by default and left out of "Use all": shortening or reshuffling the person's history. */ optional?: boolean };
 
-export type TailoredCv = { changes: Change[] };
+export type Change =
+  | (ChangeBase & { kind: "summary"; before: string; after: string })
+  | (ChangeBase & { kind: "headline"; before: string; after: string })
+  | (ChangeBase & { kind: "bullet"; experienceId: string; index: number; before: string; after: string })
+  | (ChangeBase & { kind: "bullet-order"; experienceId: string; order: number[] })
+  | (ChangeBase & { kind: "bullet-drop"; experienceId: string; index: number; before: string })
+  | (ChangeBase & { kind: "experience-order"; order: string[] })
+  | (ChangeBase & { kind: "skills-order"; order: string[] })
+  | (ChangeBase & { kind: "skills-groups"; groups: SkillGroup[] })
+  | (ChangeBase & { kind: "skills-trim"; drop: string[] })
+  | (ChangeBase & { kind: "project-bullet"; projectId: string; index: number; before: string; after: string })
+  | (ChangeBase & { kind: "projects-order"; order: string[] })
+  | (ChangeBase & { kind: "section-order"; order: CvSection[] });
+
+/** A requirement the CV can't honestly claim, with a real way to earn it. Shown beside the CV, never put in it. */
+export type CloseGap = { skill: string; action: string; describeAs: string };
+
+export type TailoredCv = { changes: Change[]; closeGaps?: CloseGap[] };
 
 export type InterviewQuestion = { id: string; question: string; why: string; answer: string; feedback: AnswerFeedback | null; prompt?: import("@/lib/career/types").CareerQuestion };
 

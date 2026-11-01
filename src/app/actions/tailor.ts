@@ -66,7 +66,7 @@ export async function tailorCv(_: TailorState, formData: FormData): Promise<Tail
     return proposeChanges(profile, job.post, match, job.postText, JSON.stringify(plan.requirements));
   });
   if (!result) return { error: LIMIT_MESSAGE };
-  await saveTailoredCv(user.id, job.id, { changes: result.changes });
+  await saveTailoredCv(user.id, job.id, { changes: result.changes, closeGaps: result.closeGaps });
   revalidatePath(`/app/jobs/${job.id}/cv`);
   const blocked = result.changes.filter((c) => c.flags.length > 0).length;
   return {

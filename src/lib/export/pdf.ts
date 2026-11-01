@@ -1,6 +1,7 @@
 import "server-only";
 import PDFDocument from "pdfkit";
 import { CV_SECTIONS, type CvSection, type Profile } from "@/lib/model/types";
+import { skillGroupLines } from "@/lib/cv/presentation";
 import { linkLabel, textLinks, webUrl } from "@/lib/cv/links";
 
 /** A real, selectable-text PDF. Pagination and links never depend on browser print settings. */
@@ -74,7 +75,7 @@ export async function cvPdfBuffer(cv: Profile): Promise<Buffer> {
   }
   const sections: Record<CvSection, () => void> = {
   summary: () => { if (cv.summary) { heading("Profile"); paragraph(cv.summary); } },
-  skills: () => { if (cv.skills.length) { heading("Skills"); paragraph(cv.skills.join(" · ")); } },
+  skills: () => { if (cv.skills.length) { heading("Skills"); const lines = skillGroupLines(cv); if (lines) for (const g of lines) paragraph(`${g.label}: ${g.items}`); else paragraph(cv.skills.join(" · ")); } },
   experience: () => { if (cv.experience.length) {
     heading("Experience", 110);
     for (const e of cv.experience) { entry(e.title, [e.company, e.location].filter(Boolean).join(" · "), [e.start, e.end].filter(Boolean).join(" – ")); points(e.bullets); }

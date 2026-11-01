@@ -63,7 +63,7 @@ All of these are in `.env.example`, with comments.
 | `CRON_JOB_SECRET` | For reminders | Protects `/api/cron-job/*`. Make it long and random: `openssl rand -hex 32` |
 | `LEGAL_OPERATOR_NAME`, `LEGAL_COUNTRY`, `SUPPORT_EMAIL` | Before launch | Shown on Terms, Privacy and Refund. Payment providers may review these pages |
 | `OPENROUTER_API_KEY` | For the real product | OpenRouter reads CVs and job posts, and writes changes, letters and feedback |
-| `AI_READ_MODEL`, `AI_WRITE_MODEL` | No | Any OpenRouter model id that supports structured outputs. Both default to `openrouter/free`; set explicit models to override |
+| `AI_READ_MODEL`, `AI_WRITE_MODEL` | No | One OpenRouter model id that supports structured outputs, or a comma-separated list tried in order (next model on 429, 5xx, timeout or invalid JSON). Both default to `openrouter/free`, which is rate-limited: set paid models |
 | `OPENROUTER_BASE_URL` | No | Only to point at another OpenAI-compatible endpoint |
 | `RESEND_API_KEY`, `EMAIL_FROM` | For email | Confirmations, password resets and follow-up reminders |
 | `FREEMIUS_MODE` | For card payments | `sandbox` (default) or `production`. Production refuses sandbox purchases |
@@ -106,6 +106,17 @@ curl -H "Authorization: Bearer $CRON_JOB_SECRET" "https://YOUR_DOMAIN/api/cron-j
 ```
 
 Each person gets at most one email a day, listing every application that's due.
+
+### 5. AI models (OpenRouter)
+
+Without paid models the app still works, but CV reading, tailoring, cover letters and the full analysis quietly use the plain-code fallbacks, because the free default (`openrouter/free`) is rate-limited. Set `OPENROUTER_API_KEY` and paid models in `.env` **and** on your host:
+
+```
+AI_READ_MODEL=openai/gpt-4o-mini,google/gemini-2.0-flash-001
+AI_WRITE_MODEL=anthropic/claude-sonnet-4.5,openai/gpt-4o
+```
+
+Both accept a comma-separated list. The first model is tried first; a 429, 5xx, timeout or unusable (non-JSON or wrong-shape) answer moves on to the next. Only when every model fails does the app fall back to plain code, and it logs one warning such as `{"event":"ai_fallback","task":"write","attempts":[{"model":"…","status":429,"reason":"HTTP 429"}]}`. Prompts, CV text and keys are never logged. Use a stronger model first for `AI_WRITE_MODEL`: tailoring rebuilds the whole CV in one answer.
 
 ## How it's built
 

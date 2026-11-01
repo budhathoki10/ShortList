@@ -1,4 +1,5 @@
 import type { Profile } from "@/lib/model/types";
+import { skillGroupLines } from "@/lib/cv/presentation";
 import { linkLabel, webUrl } from "@/lib/cv/links";
 
 const dates = (s: string, e: string) => [s, e].filter(Boolean).join(" – ");
@@ -23,7 +24,7 @@ export function CvPreview({ cv }: { cv: Profile }) {
           <p>{cv.summary}</p>
         </>
       )}
-      {cv.skills.length > 0 && <><H>Skills</H><p>{cv.skills.join(", ")}</p></>}
+      {cv.skills.length > 0 && <><H>Skills</H>{skillGroupLines(cv) ? skillGroupLines(cv)!.map((g) => <p key={g.label}><span className="font-semibold">{g.label}:</span> {g.items}</p>) : <p>{cv.skills.join(", ")}</p>}</>}
       {cv.experience.length > 0 && (
         <>
           <H>Experience</H>

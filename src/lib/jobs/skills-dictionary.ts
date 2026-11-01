@@ -4,7 +4,7 @@
  */
 export const SKILL_TERMS = [
   // Software and data
-  "JavaScript", "TypeScript", "Python", "Java", "C#", "C++", "Go", "Rust", "PHP", "Ruby", "Swift", "Kotlin", "SQL", "HTML", "CSS",
+  "JavaScript", "TypeScript", "Python", "Java", "C#", "C++", "C", "R", "Go", "Rust", "PHP", "Ruby", "Swift", "Kotlin", "SQL", "HTML", "CSS",
   "React", "Next.js", "Vue", "Angular", "Svelte", "Node.js", "Express", "Django", "Flask", "FastAPI", "Spring", ".NET", "Laravel", "Rails",
   "GraphQL", "REST", "PostgreSQL", "MySQL", "MongoDB", "Redis", "Elasticsearch", "Kafka", "Docker", "Kubernetes", "Terraform",
   "AWS", "Azure", "Google Cloud", "Linux", "Git", "CI/CD", "Jest", "Playwright", "Cypress", "Tailwind", "Figma", "Sketch",

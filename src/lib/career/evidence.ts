@@ -62,7 +62,13 @@ export function assessRequirement(row: ReturnType<typeof sourceRequirements>[num
     const pool = row.category === "qualification" ? profile.education.map((e) => `${e.degree} ${e.school}`).concat(profile.certifications) : proof;
     const exact = pool.find((s) => normaliseEvidence(s).includes(normaliseEvidence(row.text)));
     if (exact) { status = "shown"; evidence = [exact]; explanation = "The source CV explicitly states this requirement."; }
-    else evidence = pool.filter((s) => overlap(row.text, s) > 0.5).slice(0, 2);
+    else {
+      // Same bar as the instant check on the job page (half the requirement's words, allowing for inflection
+      // and everyday synonyms), so the two never disagree: "Experience reducing churn" vs "Kept churn under 3%".
+      const close = pool.map((s) => ({ s, o: overlap(row.text, s) })).filter((x) => x.o >= 0.5).sort((a, b) => b.o - a.o);
+      evidence = close.slice(0, 2).map((x) => x.s);
+      if (close.length && row.category !== "qualification") { status = "shown"; explanation = "Your CV describes this work in its own words."; }
+    }
   }
   if (/\b\d+\s*\+?\s*(years?|months?)\b|\b(right to work|work authori[sz]ation|visa|citizenship|clearance)\b/i.test(row.text) && status !== "missing") {
     status = "unclear"; explanation = "Duration or eligibility needs explicit verification. Listing a skill does not prove tenure or legal eligibility.";

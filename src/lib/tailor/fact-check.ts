@@ -106,3 +106,45 @@ export function unsupportedExperienceClaims(text: string, profile: Profile, cand
   }
   return [...flags];
 }
+
+/** Words that claim standing or depth. They must already be in the CV's own words: a JavaScript developer is never made a "specialist" or "expert" in anything new. */
+const STRONG_CLAIMS = /\b(expert\w*|specialist\w*|specialis(?:e|ed|es|ing)|specializ(?:e|ed|es|ing)|proficien(?:t|cy)|fluent|fluency|mastery|masterful|advanced|seasoned|veteran|senior|principal|architect\w*|director|head of|chief|certified)\b/gi;
+
+/** Role-family nouns a headline may swap between (Developer ↔ Engineer). They carry no tool, employer or seniority. */
+const ROLE_NOUNS = new Set("engineer developer programmer associate analyst designer consultant representative agent coordinator administrator officer executive technician assistant".split(" "));
+
+const stemOf = (w: string) => w.toLowerCase().replace(/(ing|ed|es|s)$/, "");
+
+/** One-letter languages are easy to slip past a tool check: "C specialist", "R and Python". */
+function unsupportedLetterLanguages(text: string, corpus: string): string[] {
+  const out: string[] = [];
+  for (const lang of ["C", "R"]) {
+    if (!new RegExp(`(^|[^A-Za-z0-9+#])${lang}(?![A-Za-z0-9+#&]|\\.[a-z])`).test(text)) continue;
+    if (!new RegExp(`(^|[^a-z0-9+#])${lang.toLowerCase()}(?![a-z0-9+#&]|\\.[a-z])`).test(corpus)) out.push(lang);
+  }
+  return out;
+}
+
+/** Strong claim words that the profile never uses. */
+export function unsupportedStrongClaims(text: string, profile: Profile): string[] {
+  const corpus = profileCorpus(profile);
+  const corpusStems = new Set((corpus.match(/[a-z]+/g) ?? []).map(stemOf));
+  const flags = new Set<string>();
+  for (const m of text.match(STRONG_CLAIMS) ?? []) {
+    const word = m.toLowerCase();
+    if (!corpusStems.has(stemOf(word.split(" ")[0])) && !corpus.includes(word)) flags.add(m);
+  }
+  return [...flags];
+}
+
+/**
+ * The check for anything written onto the CV (summary, headline, bullets, skill labels): the
+ * ordinary fact check, plus one-letter languages and strong claims like "specialist" or "senior".
+ * `allowRoleNouns` lets a headline say Engineer where the CV says Developer.
+ */
+export function unsupportedCvFacts(text: string, profile: Profile, opts: { allowRoleNouns?: boolean } = {}): string[] {
+  const corpus = profileCorpus(profile);
+  const flags = new Set<string>([...unsupportedFacts(text, profile), ...unsupportedLetterLanguages(text, corpus), ...unsupportedStrongClaims(text, profile)]);
+  if (opts.allowRoleNouns) for (const f of [...flags]) if (ROLE_NOUNS.has(f.toLowerCase())) flags.delete(f);
+  return [...flags];
+}

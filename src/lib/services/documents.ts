@@ -73,6 +73,7 @@ export async function setAllChangesAccepted(userId: string, jobId: string, accep
   await documents.updateOne(
     { userId: String(userId), jobId: String(jobId), kind: "cv" },
     { $set: { "cv.changes.$[c].accepted": accepted, updatedAt: new Date() } },
-    { arrayFilters: [{ "c.flags.0": { $exists: false } }] },
+    // Switching everything on leaves out the optional trims and reorders: those change what the CV says or its date order.
+    { arrayFilters: [accepted ? { "c.flags.0": { $exists: false }, "c.optional": { $ne: true } } : { "c.flags.0": { $exists: false } }] },
   );
 }

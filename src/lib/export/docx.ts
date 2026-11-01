@@ -22,6 +22,7 @@ import {
 } from "docx";
 import { labelFor, linkLabel, linkParts, webUrl } from "@/lib/cv/links";
 import type { Profile } from "@/lib/model/types";
+import { skillGroupLines } from "@/lib/cv/presentation";
 import { FONTS } from "@/lib/templates/fonts";
 import { DEFAULT_SPEC, hasSidebar, PAGE_MM, SECTION_LABELS, type SectionId, type TemplateSpec } from "@/lib/templates/spec";
 
@@ -172,7 +173,7 @@ function section(ctx: Ctx, id: SectionId, cv: Profile, index: number): Paragraph
       case "education":
         return cv.education.flatMap((e) => entry(ctx, e.degree, e.school, "", dates(e.start, e.end), e.details));
       case "skills":
-        return words(ctx, cv.skills, ctx.spec.skillsStyle);
+        return skillGroupLines(cv) ? skillGroupLines(cv)!.map((g) => new Paragraph({ spacing: { after: 40 }, children: [run(ctx, `${g.label}: `, { bold: true }), run(ctx, g.items)] })) : words(ctx, cv.skills, ctx.spec.skillsStyle);
       case "languages":
         return words(ctx, cv.languages, "inline");
       case "certifications":

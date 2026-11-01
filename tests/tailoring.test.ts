@@ -139,10 +139,12 @@ describe("applying changes", () => {
 });
 
 describe("without an AI key", () => {
-  it("tailoring only reorders, so it can't invent anything", async () => {
+  it("tailoring rebuilds around the job using only the person's own words", async () => {
     const { changes, method } = await proposeChanges(profile, post, scoreMatch(profile, post));
     expect(method).toBe("basic");
-    expect(changes.every((c) => c.kind === "bullet-order" || c.kind === "skills-order")).toBe(true);
+    expect(changes.every((c) => c.flags.length === 0)).toBe(true);
+    const own = [profile.summary, ...profile.experience.flatMap((e) => e.bullets)].join(" ");
+    for (const c of changes) if (c.kind === "summary") for (const sentence of c.after.split(/(?<=\.)\s+/)) expect(own).toContain(sentence.replace(/\.$/, ""));
     const cv = applyChanges(profile, changes);
     expect(cv.experience[0].bullets[0]).toMatch(/Zendesk/);
     expect(cv.skills[0]).toBe("Zendesk");
@@ -212,5 +214,32 @@ describe("exports and small helpers", () => {
     expect(isPaid({ subscriptionAccessUntil: null }, now)).toBe(false);
     expect(limitsFor({ subscriptionAccessUntil: null }).docx).toBe(false);
     expect(monthKey(now)).toBe("2026-10");
+  });
+});
+
+describe("fallback cover letter wording and gap list", () => {
+  const sample = "Requirements\n- 3+ years in customer support or customer success\n- Experience with Zendesk and HubSpot\n- Strong written communication in English\n- Comfortable running onboarding calls with business customers\nNice to have\n- Salesforce experience\n- Experience reducing churn";
+  const noisy = { ...heuristicJob(sample), keywords: ["3+ years", "years", "onboarding calls", "business customers", "Zendesk", "HubSpot", "Salesforce", "reducing churn"] };
+
+  it("never treats 'years' or other filler as a skill the candidate worked with", async () => {
+    const post2 = { ...noisy, title: "Customer Success Lead", company: "Northwind" };
+    post2.requirements = [{ text: "3+ years in customer support or customer success", kind: "must", keywords: ["years", "3+ years"] }, ...post2.requirements];
+    const letter = await writeCoverLetter(profile, post2, scoreMatch(profile, post2));
+    expect(letter.text).not.toMatch(/\byears\b.*\bwhich\b|with years|and years/i);
+    expect(letter.text).not.toContain("I've already worked with");
+    expect(letter.text).toMatch(/Zendesk, which is what this role calls for/);
+    expect(letter.flags).toEqual([]);
+  });
+
+  it("offers only concrete addable skills as gaps", async () => {
+    const { cleanPost } = await import("@/lib/jobs/extract");
+    const { isAddableSkill } = await import("@/lib/match/skills");
+    const cleaned = cleanPost(noisy);
+    const gaps = scoreMatch(profile, cleaned).keywords.filter((k) => k.where === "missing" && isAddableSkill(k.keyword)).map((k) => k.keyword);
+    expect(gaps.sort()).toEqual(["HubSpot", "Salesforce"]);
+    // Even without cleaning, the match and gap filter ignore the noise.
+    const raw = scoreMatch(profile, noisy).keywords.filter((k) => k.where === "missing" && isAddableSkill(k.keyword)).map((k) => k.keyword);
+    expect(raw.sort()).toEqual(["HubSpot", "Salesforce"]);
+    expect(scoreMatch(profile, heuristicJob(sample)).keywords.filter((k) => k.where === "missing" && isAddableSkill(k.keyword)).map((k) => k.keyword).sort()).toEqual(["HubSpot", "Salesforce"]);
   });
 });

@@ -17,6 +17,7 @@ import { recommendTemplates } from "@/lib/templates/registry";
 import { usageThisMonth } from "@/lib/services/usage";
 import { jobHasCriteria } from "@/lib/jobs/quality";
 import { scoreMatch } from "@/lib/match/score";
+import { isAddableSkill } from "@/lib/match/skills";
 
 export const metadata: Metadata = { title: "Tailored CV" };
 
@@ -38,18 +39,18 @@ export default async function CvTab({ params }: PageProps<"/app/jobs/[id]/cv">) 
   const left = Math.max(0, limits.tailor - usage.tailor);
   // What the post asks for that your CV doesn't mention at all. Scored live, so an addition disappears at once.
   const gaps = scoreMatch(profile, job.post)
-    .keywords.filter((k) => k.where === "missing")
+    .keywords.filter((k) => k.where === "missing" && isAddableSkill(k.keyword))
     .map((k) => k.keyword)
     .slice(0, 8);
   const roles = profile.experience.map((e) => ({ id: e.id, label: [e.title, e.company].filter(Boolean).join(", ") || "Untitled role" }));
-  const gapCloser = <GapCloser gaps={gaps} roles={roles} />;
+  const gapCloser = <GapCloser gaps={gaps} roles={roles} closeGaps={doc?.cv?.closeGaps} />;
 
   if (!doc || doc.sourceNeedsReview) {
     const intro = (
       <div className="max-w-2xl space-y-4 rounded-md border border-border bg-surface p-5 sm:p-6">
         <h2 className="t-title">Tailor your CV for this job</h2>
         {doc?.sourceNeedsReview && <p className="rounded-md bg-warning-soft p-3 text-sm text-warning">Your CV changed. Suggest changes again so this job uses the latest version.</p>}
-        <p className="text-sm text-muted">We reword and reorder what’s already in your CV to match this job. You approve each change, and nothing new can be added.</p>
+        <p className="text-sm text-muted">We rebuild your CV around this job: a summary and headline for the role, your most relevant work and skills first, and wording that uses the employer’s terms. Only what’s already true in your CV is used. You approve each change.</p>
         <AiActionButton action={tailorCv} jobId={job.id} label="Suggest changes" pendingLabel="Reading the job and your CV…" />
         <p className="text-xs text-muted">
           {left} of {limits.tailor} this month{limits.tailor < 100 ? " on the free plan" : ""}.

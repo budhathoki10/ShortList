@@ -1,5 +1,6 @@
 import type { JobPost, KeywordHit, Match, Profile } from "@/lib/model/types";
 import { canonical, containsTerm, overlap } from "@/lib/text";
+import { isSkillKeyword } from "./skills";
 
 /** Places in a profile that count as evidence: things you did, not just things you list. */
 export function evidenceLines(p: Profile): string[] {
@@ -42,8 +43,9 @@ export function scoreMatch(profile: Profile, post: JobPost): Match {
     const cur = weights.get(key);
     if (!cur || cur.weight < w) weights.set(key, { keyword: cur?.keyword ?? k.trim(), weight: w });
   };
-  for (const r of post.requirements) for (const k of r.keywords) add(k, r.kind === "must" ? 2 : 1);
-  for (const k of post.keywords) add(k, 1);
+  // Durations, activities and audiences ("3+ years", "onboarding calls") are not skills to match.
+  for (const r of post.requirements) for (const k of r.keywords.filter(isSkillKeyword)) add(k, r.kind === "must" ? 2 : 1);
+  for (const k of post.keywords.filter(isSkillKeyword)) add(k, 1);
 
   const keywords = [...weights.values()].map(({ keyword }) => locate(keyword, shown, listed));
   let total = 0;
@@ -55,8 +57,9 @@ export function scoreMatch(profile: Profile, post: JobPost): Match {
   }
 
   const requirements = post.requirements.map((r) => {
-    if (r.keywords.length > 0) {
-      const hits = r.keywords.map((k) => keywords.find((h) => canonical(h.keyword) === canonical(k)) ?? locate(k, shown, listed));
+    const named = r.keywords.filter(isSkillKeyword);
+    if (named.length > 0) {
+      const hits = named.map((k) => keywords.find((h) => canonical(h.keyword) === canonical(k)) ?? locate(k, shown, listed));
       const status = hits.some((h) => h.where === "missing") ? "missing" : hits.some((h) => h.where === "listed") ? "listed" : "shown";
       return { text: r.text, kind: r.kind, status, evidence: hits.find((h) => h.evidence)?.evidence ?? null } as const;
     }

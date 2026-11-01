@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
 import { labelFor, linkParts, shortUrl, webUrl } from "@/lib/cv/links";
 import type { Profile } from "@/lib/model/types";
+import { skillGroupLines } from "@/lib/cv/presentation";
 import { fontStack } from "@/lib/templates/fonts";
 import { hasSidebar, PAGE_MM, SECTION_LABELS, type SectionId, type TemplateSpec } from "@/lib/templates/spec";
 import "./cv.css";
@@ -126,7 +127,17 @@ function Section({ id, cv, spec }: { id: SectionId; cv: Profile; spec: TemplateS
           </Entry>
         ));
       case "skills":
-        return <Words items={cv.skills} style={spec.skillsStyle} />;
+        return skillGroupLines(cv) ? (
+          <div className="cv-skill-groups">
+            {skillGroupLines(cv)!.map((g) => (
+              <p key={g.label} className="cv-words">
+                <strong>{g.label}:</strong> {g.items}
+              </p>
+            ))}
+          </div>
+        ) : (
+          <Words items={cv.skills} style={spec.skillsStyle} />
+        );
       case "languages":
         return <Words items={cv.languages} style={spec.skillsStyle === "tags" ? "tags" : "inline"} />;
       case "certifications":

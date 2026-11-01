@@ -15,7 +15,10 @@ import { Badge, Button, buttonClass, Eyebrow } from "./ui";
 
 function where(c: Change, profile: Profile) {
   if (c.kind === "summary") return "Summary";
-  if (c.kind === "skills-order") return "Skills";
+  if (c.kind === "headline") return "Headline";
+  if (c.kind === "skills-order" || c.kind === "skills-groups") return "Skills";
+  if (c.kind === "skills-trim") return "Skills left out";
+  if (c.kind === "experience-order") return "Role order";
   if (c.kind === "section-order") return "Section order";
   if (c.kind === "projects-order") return "Project order";
   if (c.kind === "project-bullet") return profile.projects.find((p) => p.id === c.projectId)?.name ?? "Project";
@@ -57,7 +60,7 @@ function ChangeCard({ c, profile, onToggle }: { c: Change; profile: Profile; onT
       </div>
       <p className="mt-1 text-[13px] text-muted">{c.reason}</p>
       <div className="mt-3">
-        {(c.kind === "summary" || c.kind === "bullet" || c.kind === "project-bullet") && <Diff before={c.before} after={c.after} blocked={blocked} />}
+        {(c.kind === "summary" || c.kind === "headline" || c.kind === "bullet" || c.kind === "project-bullet") && <Diff before={c.before} after={c.after} blocked={blocked} />}
         {c.kind === "section-order" && <p className="text-sm capitalize">{c.order.join(" → ")}</p>}
         {c.kind === "projects-order" && <ol className="list-decimal space-y-1 pl-5 text-sm">{c.order.map((id) => <li key={id}>{profile.projects.find((p) => p.id === id)?.name}</li>)}</ol>}
         {c.kind === "bullet-order" && exp && (
@@ -68,6 +71,19 @@ function ChangeCard({ c, profile, onToggle }: { c: Change; profile: Profile; onT
               </li>
             ))}
           </ol>
+        )}
+        {c.kind === "bullet-drop" && <p className="text-sm text-faint line-through decoration-faint/60">{c.before}</p>}
+        {c.kind === "experience-order" && <ol className="list-decimal space-y-1 pl-5 text-sm">{c.order.map((id) => { const e = profile.experience.find((x) => x.id === id); return <li key={id}>{[e?.title, e?.company].filter(Boolean).join(", ")}</li>; })}</ol>}
+        {c.kind === "skills-trim" && <p className="text-sm text-muted">{c.drop.join(", ")}</p>}
+        {c.kind === "skills-groups" && (
+          <dl className="space-y-1 text-sm">
+            {c.groups.map((g) => (
+              <div key={g.label} className="flex gap-2">
+                <dt className="shrink-0 font-medium">{g.label}</dt>
+                <dd className="min-w-0 text-muted">{g.skills.join(", ")}</dd>
+              </div>
+            ))}
+          </dl>
         )}
         {c.kind === "skills-order" && (
           <p className="text-sm">
@@ -90,7 +106,7 @@ function ChangeCard({ c, profile, onToggle }: { c: Change; profile: Profile; onT
           onClick={() => onToggle(!c.accepted)}
           className="mt-3 inline-flex h-8 items-center rounded px-2 text-[13px] font-medium text-accent transition-colors duration-150 hover:bg-accent-soft max-sm:h-10"
         >
-          {c.accepted ? "Don't use this" : "Use this"}
+          {c.accepted ? "Don't use this" : c.optional ? "Use this (optional)" : "Use this"}
         </button>
       )}
     </li>
@@ -145,6 +161,8 @@ export function CvWorkbench({
   const cv = presentCv(applyChanges(profile, changes), content);
   const usable = changes.filter((c) => c.flags.length === 0);
   const using = usable.filter((c) => c.accepted).length;
+  // "Use all" skips the optional trims and reorders that change what the CV says or its date order.
+  const everyDefault = usable.filter((c) => !c.optional);
 
   const save = (apply: (cs: Change[]) => Change[], run: (fd: FormData) => Promise<void>, fields: Record<string, string>) => {
     const before = changes;
@@ -164,7 +182,7 @@ export function CvWorkbench({
 
   const toggle = (id: string, accept: boolean) =>
     save((cs) => cs.map((c) => (c.id === id && c.flags.length === 0 ? { ...c, accepted: accept } : c)), toggleChange, { changeId: id, accept: accept ? "1" : "0" });
-  const setAll = (accept: boolean) => save((cs) => cs.map((c) => (c.flags.length === 0 ? { ...c, accepted: accept } : c)), toggleAllChanges, { accept: accept ? "1" : "0" });
+  const setAll = (accept: boolean) => save((cs) => cs.map((c) => (c.flags.length === 0 && (!accept || !c.optional) ? { ...c, accepted: accept } : c)), toggleAllChanges, { accept: accept ? "1" : "0" });
 
   return (
     <div className="grid gap-8 xl:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]">
@@ -177,7 +195,7 @@ export function CvWorkbench({
         </div>
         {usable.length > 1 && (
           <div className="flex gap-1">
-            <Button type="button" variant="ghost" size="sm" onClick={() => setAll(true)} disabled={using === usable.length}>
+            <Button type="button" variant="ghost" size="sm" onClick={() => setAll(true)} disabled={everyDefault.every((c) => c.accepted)}>
               Use all
             </Button>
             <Button type="button" variant="ghost" size="sm" onClick={() => setAll(false)} disabled={using === 0}>

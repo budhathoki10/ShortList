@@ -264,6 +264,12 @@
 }
 
 /* ---------- Skills and languages ---------- */
+.cv-skill-groups > p + p {
+  margin-top: 0.2em;
+}
+.cv-skill-groups strong {
+  font-weight: 600;
+}
 .cv-words-tags {
   display: flex;
   flex-wrap: wrap;

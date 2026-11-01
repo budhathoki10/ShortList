@@ -2,6 +2,8 @@ import "server-only";
 import { z } from "zod";
 import { aiEnabled, AiUnavailableError, quoted, structured } from "@/lib/ai";
 import type { JobPost, Match, Profile } from "@/lib/model/types";
+import { isAddableSkill } from "@/lib/match/skills";
+import { containsTerm } from "@/lib/text";
 import { unsupportedExperienceClaims, unsupportedFacts } from "./fact-check";
 
 const Letter = z.object({ text: z.string().describe("The full letter, plain text, paragraphs separated by a blank line.") });
@@ -20,8 +22,20 @@ function listOf(items: string[]): string {
   return items.length < 2 ? items.join("") : `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
 }
 
-function basicLetter(profile: Profile, post: JobPost, match: Match): string {
-  const strengths = match.keywords.filter((k) => k.where === "shown").slice(0, 3);
+/** Skills and tools the job asks for that the CV really shows: named things, never "years", numbers or soft filler. */
+export function realStrengths(profile: Profile, match: Match) {
+  const cv = [profile.summary, ...profile.skills, ...profile.experience.flatMap((e) => e.bullets), ...profile.projects.flatMap((p) => p.bullets)].join("\n");
+  const seen = new Set<string>();
+  return match.keywords.filter((k) => {
+    const key = k.keyword.trim().toLowerCase();
+    if (k.where !== "shown" || seen.has(key) || !isAddableSkill(k.keyword) || !containsTerm(cv, k.keyword)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+export function basicLetter(profile: Profile, post: JobPost, match: Match): string {
+  const strengths = realStrengths(profile, match).slice(0, 3);
   const role = post.title || "this role";
   const company = post.company || "your team";
   const latest = profile.experience[0];
@@ -31,7 +45,7 @@ function basicLetter(profile: Profile, post: JobPost, match: Match): string {
     `Dear hiring team${post.company ? ` at ${post.company}` : ""},`,
     `I'd like to apply for the ${role} position${post.company ? ` at ${company}` : ""}.`,
     latest
-      ? `${current ? "I work" : "Most recently I worked"} as ${latest.title}${latest.company ? ` at ${latest.company}` : ""}.${strengths.length ? ` I've already worked with ${listOf(strengths.map((s) => s.keyword))}, which this job asks for.` : ""}`
+      ? `${current ? "I work" : "Most recently I worked"} as ${latest.title}${latest.company ? ` at ${latest.company}` : ""}.${strengths.length ? ` Day to day that means ${strengths.length > 1 ? "tools and skills such as" : "working with"} ${listOf(strengths.map((s) => s.keyword))}, which is what this role calls for.` : ""}`
       : profile.summary,
     examples.length ? `A few things from my work so far:\n${examples.map((e) => `- ${e.replace(/[.;]+$/, "")}`).join("\n")}` : "",
     "I'd welcome the chance to talk about how I could help. Thank you for your time.",

@@ -47,6 +47,8 @@ const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
  * "Java" match "JavaScript" or "R" match "React".
  */
 export function containsTerm(text: string, term: string): boolean {
+  // One-letter languages (C, R) only count as capitals standing alone: not "c" in a list, "R&D" or "C++" for C.
+  if (term.trim().length === 1) return new RegExp(`(^|[^A-Za-z0-9+#])${escape(term.trim().toUpperCase())}(?![A-Za-z0-9+#&]|\\.[a-z])`).test(text);
   const hay = text.toLowerCase();
   return spellings(term).some((s) => new RegExp(`(^|[^a-z0-9+#])${escape(s)}(?![a-z0-9+#])`, "i").test(hay));
 }
@@ -64,13 +66,25 @@ export function contentWords(text: string): string[] {
 
 /** Crude English stemming, so "reducing", "reduced" and "reduces" compare equal. */
 export function stem(word: string): string {
-  return word.replace(/(ations?|ings?|ed|es|er|ers|ly|s)$/, "").replace(/(.)\1$/, "$1");
+  const base = word.replace(/(ations?|ings?|ed|es|er|ers|ly|s)$/, "").replace(/(.)\1$/, "$1");
+  // "reduce" and "reducing" share a stem once a trailing silent e goes.
+  return base.length > 4 ? base.replace(/e$/, "") : base;
+}
+
+/**
+ * Everyday ways of saying the same thing in CVs and job posts: "kept churn under 3%", "cut churn" and
+ * "lowered churn" all mean "reduced churn". Only used to compare wording, never to write anything.
+ */
+export function sameMeaning(text: string): string {
+  return text
+    .replace(/\b(kept|keeping|keep|held|holding|hold)\b(?=[^.;]{0,40}\b(under|below|beneath|less than|down|low)\b)/gi, "reduce")
+    .replace(/\b(cut|cutting|lowered|lowering|decreased|decreasing|minimi[sz]ed?|minimi[sz]ing|slashed|shrank|trimmed|reduced|reduces|reducing)\b/gi, "reduce");
 }
 
 export function overlap(a: string, b: string): number {
-  const wa = new Set(contentWords(a).map(stem));
+  const wa = new Set(contentWords(sameMeaning(a)).map(stem));
   if (wa.size === 0) return 0;
-  const wb = new Set(contentWords(b).map(stem));
+  const wb = new Set(contentWords(sameMeaning(b)).map(stem));
   let hit = 0;
   for (const w of wa) if (wb.has(w)) hit++;
   return hit / wa.size;

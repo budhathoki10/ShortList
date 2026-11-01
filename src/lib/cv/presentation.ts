@@ -26,3 +26,9 @@ export function presentCv(profile: Profile, content: CvContent = "full"): Profil
   result.education = result.education.map((e) => ({ ...e, details: e.details.slice(0, 1) }));
   return result;
 }
+
+/** Skills as printable lines: one per group ("Languages: JavaScript, Python") when the CV has grouped skills, otherwise null. */
+export function skillGroupLines(cv: Profile): { label: string; items: string }[] | null {
+  const groups = cv.skillGroups?.filter((g) => g.skills.length > 0);
+  return groups && groups.length > 1 ? groups.map((g) => ({ label: g.label, items: g.skills.join(", ") })) : null;
+}
