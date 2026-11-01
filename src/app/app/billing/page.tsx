@@ -145,9 +145,17 @@ export default async function BillingPage({ searchParams }: PageProps<"/app/bill
     { interval: "yearly", title: "Yearly", price: labels.yearly, note: "Billed once a year. Cancel any time.", badge: saving ? `Save ${saving}%` : null, recommended: true },
   ];
 
+  const summary: Array<[string, string]> = [];
+  if (current && ["active", "past_due", "cancelled", "suspended", "expired"].includes(current.status)) summary.push(["Billing", current.row.interval === "yearly" ? "Yearly subscription" : "Monthly subscription"]);
+  if (current?.status === "active") summary.push(["Next payment", date(current.row.nextPaymentAt ?? current.row.paidThrough) ?? "To be confirmed"]);
+  if (current?.status === "past_due") summary.push(["Paid features until", date(current.until) ?? "To be confirmed"]);
+  if (current?.status === "cancelled") summary.push(["Access until", date(current.row.paidThrough) ?? "To be confirmed"]);
+  if (current?.status === "expired") summary.push(["Ended on", date(current.row.paidThrough) ?? "To be confirmed"]);
+  const canCancel = !!current && !!current.row.freemiusSubscriptionId && ["active", "past_due"].includes(current.status) && !current.row.cancelRequestedAt;
+
   return (
-    <div className="max-w-3xl space-y-10">
-      <PageHeader title="Plan and billing" description="See what your plan includes, upgrade when you’re ready, and manage your subscription." />
+    <div className="max-w-3xl space-y-12">
+      <PageHeader title="Plan and billing" description="Your plan, what you have used, and your payments." />
 
       {(reason === "docx" && !paid) || (configured && billingMode() === "sandbox") ? (
         <div className="space-y-3">
@@ -156,12 +164,12 @@ export default async function BillingPage({ searchParams }: PageProps<"/app/bill
         </div>
       ) : null}
 
-      {/* Where you are now. */}
+      {/* Where you are now: the plan, its dates, and how to end it. */}
       <section aria-labelledby="your-plan" className="rounded-md border border-border bg-surface">
         <div className="flex flex-wrap items-start justify-between gap-3 p-5">
           <div>
             <h2 id="your-plan" className="text-[13px] font-medium text-muted">
-              Your plan
+              Current plan
             </h2>
             <p className="mt-1 text-xl font-semibold tracking-[-0.015em]" data-testid="current-plan">
               {paid ? "Paid" : "Free"}
@@ -170,45 +178,62 @@ export default async function BillingPage({ searchParams }: PageProps<"/app/bill
           {current && <Badge tone={TONE[current.status]}>{LABEL[current.status]}</Badge>}
         </div>
 
-        <div className="space-y-3 border-t border-border p-5">
-          {current?.status === "active" && (
-            <p className="text-sm text-muted">
-              {current.row.interval === "yearly" ? "Yearly" : "Monthly"} subscription. Next payment on {date(current.row.nextPaymentAt ?? current.row.paidThrough)}.
-            </p>
-          )}
-          {current?.status === "past_due" && (
-            <p className="text-sm text-muted">
-              We couldn’t take your last payment. Paid features stay on until {date(current.until)} while it’s retried. Update your card using the link in the email Freemius sent you.
-            </p>
-          )}
-          {current?.status === "cancelled" && <p className="text-sm text-muted">Cancelled, so it won’t renew. You keep paid features until {date(current.row.paidThrough)}.</p>}
-          {current?.status === "suspended" && <p className="text-sm text-muted">This subscription was suspended because a payment couldn’t be completed. Contact support if this looks wrong.</p>}
-          {current?.status === "expired" && <p className="text-sm text-muted">Your last subscription ended on {date(current.row.paidThrough)}. You can subscribe again below.</p>}
-          {waiting && (
-            <div className="flex flex-wrap items-center gap-3">
-              <p className="text-sm text-muted">Waiting for your payment to be confirmed. If you’ve paid, this updates within a minute or two.</p>
-              <CheckAgain />
-            </div>
-          )}
-          {current?.row.cancelRequestedAt && !current.row.cancelledAt && current.status !== "expired" && (
-            <p className="text-sm text-muted">Cancellation requested. We’re waiting for the payment provider to confirm it.</p>
-          )}
+        {summary.length > 0 && (
+          <dl className="divide-y divide-border border-t border-border text-sm">
+            {summary.map(([label, value]) => (
+              <div key={label} className="flex flex-wrap justify-between gap-x-6 gap-y-1 px-5 py-3">
+                <dt className="text-muted">{label}</dt>
+                <dd className="font-medium tabular-nums">{value}</dd>
+              </div>
+            ))}
+          </dl>
+        )}
 
-          {usage.plan === "free" ? <TrialStatus usage={usage} /> : <Meters usage={usage} period="this month" />}
-        </div>
+        {(current || waiting) && (
+          <div className="space-y-3 border-t border-border p-5 text-sm text-muted">
+            {current?.status === "active" && <p>Renews automatically until you cancel.</p>}
+            {current?.status === "past_due" && (
+              <p>We couldn’t take your last payment, and it’s being retried. Update your card using the link in the email Freemius sent you.</p>
+            )}
+            {current?.status === "cancelled" && <p>Cancelled, so it won’t renew. You keep paid features until the date above.</p>}
+            {current?.status === "suspended" && <p>This subscription was suspended because a payment couldn’t be completed. Contact support if this looks wrong.</p>}
+            {current?.status === "expired" && <p>Your last subscription has ended. You can subscribe again below.</p>}
+            {waiting && (
+              <div className="flex flex-wrap items-center gap-3">
+                <p>Waiting for your payment to be confirmed. If you’ve paid, this updates within a minute or two.</p>
+                <CheckAgain />
+              </div>
+            )}
+            {current?.row.cancelRequestedAt && !current.row.cancelledAt && current.status !== "expired" && (
+              <p>Cancellation requested. We’re waiting for the payment provider to confirm it.</p>
+            )}
+          </div>
+        )}
 
-        {current && current.row.freemiusSubscriptionId && ["active", "past_due"].includes(current.status) && !current.row.cancelRequestedAt && (
-          <div className="border-t border-border px-5 py-3">
+        {current && canCancel && (
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-5 py-3">
+            <p className="text-[13px] text-muted">Cancel any time and keep paid features until {date(current.row.paidThrough) ?? "the end of the period you’ve paid for"}.</p>
             <CancelSubscription subscriptionId={current.row.id} paidThrough={date(current.row.paidThrough)} />
           </div>
         )}
+      </section>
+
+      {/* What has been used. */}
+      <section aria-labelledby="usage" className="space-y-4">
+        <div>
+          <h2 id="usage" className="t-title">
+            Usage
+          </h2>
+          <p className="mt-1.5 text-sm text-muted">{usage.plan === "free" ? "Your free trial covers one job." : "Allowances renew every month."}</p>
+        </div>
+        <div className="rounded-md border border-border bg-surface p-5">{usage.plan === "free" ? <TrialStatus usage={usage} /> : <Meters usage={usage} period="this month" />}</div>
       </section>
 
       {/* The offer. */}
       <section aria-labelledby="plans" className="space-y-4">
         <div>
           <h2 id="plans" className="t-title">
-            {paid ? "Your subscription" : "Apply to every job with a paid plan"}
+            {paid ? "Change or renew" : "Upgrade to a paid plan"}
           </h2>
           <p className="mt-1.5 max-w-2xl text-sm text-muted">
             {paid
@@ -222,7 +247,7 @@ export default async function BillingPage({ searchParams }: PageProps<"/app/bill
       {/* Free and paid, side by side. */}
       <section aria-labelledby="compare" className="space-y-4">
         <h2 id="compare" className="t-title">
-          Compare plans
+          Free and paid
         </h2>
 
         {/* Phones: one row per feature, both plans underneath. */}
@@ -235,7 +260,7 @@ export default async function BillingPage({ searchParams }: PageProps<"/app/bill
                 <dd>
                   <Cell value={f.free} />
                 </dd>
-                <dt className="text-accent-strong">Paid</dt>
+                <dt className="text-muted">Paid</dt>
                 <dd>
                   <Cell value={f.paid} emphasis />
                 </dd>
@@ -244,7 +269,7 @@ export default async function BillingPage({ searchParams }: PageProps<"/app/bill
           ))}
         </ul>
 
-        {/* Wider screens: a table, with the paid column tinted. */}
+        {/* Wider screens: a table. */}
         <div className="hidden overflow-hidden rounded-md border border-border bg-surface sm:block">
           <table className="w-full text-sm">
             <caption className="sr-only">What the free and paid plans include</caption>
@@ -256,7 +281,7 @@ export default async function BillingPage({ searchParams }: PageProps<"/app/bill
                 <th scope="col" className="px-4 py-3 font-medium">
                   Free
                 </th>
-                <th scope="col" className="bg-tint px-4 py-3 font-medium text-accent-strong">
+                <th scope="col" className="px-4 py-3 font-medium">
                   Paid
                 </th>
               </tr>
@@ -270,7 +295,7 @@ export default async function BillingPage({ searchParams }: PageProps<"/app/bill
                   <td className="px-4 py-3">
                     <Cell value={f.free} />
                   </td>
-                  <td className="bg-tint px-4 py-3">
+                  <td className="px-4 py-3">
                     <Cell value={f.paid} emphasis />
                   </td>
                 </tr>
@@ -288,11 +313,13 @@ export default async function BillingPage({ searchParams }: PageProps<"/app/bill
         </p>
       </section>
 
-      {payments.length > 0 && (
-        <section aria-labelledby="history" className="space-y-4">
-          <h2 id="history" className="t-title">
-            Payment history
-          </h2>
+      <section aria-labelledby="history" className="space-y-4">
+        <h2 id="history" className="t-title">
+          Payment history
+        </h2>
+        {payments.length === 0 ? (
+          <p className="rounded-md border border-dashed border-strong-border px-5 py-6 text-sm text-muted">No payments yet. They appear here once you subscribe.</p>
+        ) : (
           <div className="overflow-x-auto rounded-md border border-border bg-surface">
             <table className="w-full min-w-[28rem] text-sm">
               <caption className="sr-only">Your payments, newest first</caption>
@@ -326,8 +353,8 @@ export default async function BillingPage({ searchParams }: PageProps<"/app/bill
               </tbody>
             </table>
           </div>
-        </section>
-      )}
+        )}
+      </section>
     </div>
   );
 }
