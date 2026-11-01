@@ -20,12 +20,18 @@ export function InterviewWorkspace({ jobId, questions }: { jobId: string; questi
   }, [unsaved]);
   const current = questions[index] ?? questions[0];
   const done = questions.filter((q) => q.feedback).length;
+  const scores = questions.flatMap((q) => (typeof q.feedback?.practiceScore === "number" ? [q.feedback.practiceScore] : []));
+  const running = scores.length ? Math.round(scores.reduce((n, x) => n + x, 0) / scores.length) : null;
+  const allAi = scores.length > 0 && questions.filter((q) => typeof q.feedback?.practiceScore === "number").every((q) => q.feedback?.scoreMethod === "ai");
   if (!current) return null;
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div><p className="t-label text-accent">Practice room</p><h2 className="t-title mt-1">One question. A better answer.</h2><p className="mt-1 text-sm text-muted">Practised {done} of {questions.length}. Build an example, get feedback, then try it out loud.</p></div>
-        <span className="rounded-full border border-border bg-surface px-3 py-1 text-xs tabular-nums text-muted">Question {index + 1} of {questions.length}</span>
+        <div className="flex flex-wrap items-center gap-2">
+          {running !== null && <span className="rounded-full border border-border bg-surface px-3 py-1 text-xs text-muted" title="Average of your answered questions. A practice guide, not a hiring prediction."><span className="font-medium tabular-nums text-foreground">Practice score {running}/100</span> · {scores.length} answered{allAi ? "" : " · estimate"}</span>}
+          <span className="rounded-full border border-border bg-surface px-3 py-1 text-xs tabular-nums text-muted">Question {index + 1} of {questions.length}</span>
+        </div>
       </div>
       <div className="grid items-start gap-5 lg:grid-cols-[15rem_minmax(0,1fr)]">
         <nav aria-label="Interview questions" className="flex gap-2 overflow-x-auto lg:sticky lg:top-6 lg:max-h-[calc(100dvh-3rem)] lg:flex-col lg:overflow-y-auto">

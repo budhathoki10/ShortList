@@ -117,7 +117,10 @@ describe("realistic interview practice", () => {
     const queue = mockCurriculum(bank);
     expect(queue[0].kind).toBe("introduction");
     expect(queue.at(-1)?.kind).toBe("closing");
-    expect(queue.length).toBeLessThanOrEqual(9);
+    expect(queue.length).toBeLessThanOrEqual(16);
+    // A technical role is about half technical questions, and every other kind stays.
+    expect(queue.filter((q) => q.kind === "technical").length).toBeGreaterThanOrEqual(4);
+    for (const kind of ["introduction", "project", "coding", "scenario", "behavioural", "gap", "closing"] as const) expect(queue.some((q) => q.kind === kind)).toBe(true);
   });
   it("provides an unscored checklist when AI is unavailable instead of inventing technical grades", async () => {
     vi.stubEnv("OPENROUTER_API_KEY", "");

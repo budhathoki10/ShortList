@@ -2,7 +2,8 @@ import "server-only";
 import type { AnswerFeedback, InterviewQuestion, JobPost, Match, Profile } from "@/lib/model/types";
 import { localId } from "@/lib/text";
 import { assessRequirement, evidenceFit, sourceRequirements } from "@/lib/career/evidence";
-import { interviewBank } from "@/lib/career/questions";
+import { interviewBank, technicalCount, technicalSelection } from "@/lib/career/questions";
+import { isTechnicalRole } from "@/lib/career/tech-questions";
 import { promptForQuestion, questionCoaching } from "@/lib/career/coaching";
 import { evaluateMockAnswer } from "@/lib/career/mock";
 import type { ApplicationPlan, CareerQuestion } from "@/lib/career/types";
@@ -22,12 +23,12 @@ export async function interviewQuestions(profile: Profile, post: JobPost, match:
   const bank = interviewBank({ profile, post, postText: text }, plan);
   const chosen: CareerQuestion[] = [];
   const pick = (kind: CareerQuestion["kind"], count: number) => chosen.push(...bank.filter((q) => q.kind === kind).sort((a, b) => Number(!!b.referenceId) - Number(!!a.referenceId)).slice(0, count));
-  pick("introduction", 1); pick("technical", 2); pick("project", 2); pick("behavioural", 1); pick("scenario", 1); pick("gap", 2); pick("closing", 1);
+  pick("introduction", 1); chosen.push(...technicalSelection(bank, technicalCount(bank, isTechnicalRole(post)))); pick("project", 2); pick("behavioural", 1); pick("scenario", 1); pick("gap", 2); pick("closing", 1);
   return chosen.map((prompt) => ({ id: localId("q"), question: prompt.question, why: prompt.assesses, prompt, answer: "", feedback: null }));
 }
 
 /** Practice and mock interviews share the same correctness checks and truthful rewrite rules. */
 export async function answerFeedback(question: string, answer: string, profile: Profile, post: JobPost, prompt?: CareerQuestion, postText = ""): Promise<AnswerFeedback> {
   const review = await evaluateMockAnswer(prompt ?? promptForQuestion(question), answer, { profile, post, postText: postText || JSON.stringify(post) }, []);
-  return { score: review.score, method: review.method, strengths: review.strengths, improve: review.improvements, rewrite: review.improvedAnswer, rubric: review.rubric.map((r) => ({ label: r.criterion, score: r.score, note: r.note })), corrections: review.corrections, modelAnswer: review.modelAnswer, sources: review.sources };
+  return { score: review.score, practiceScore: review.practiceScore, scoreMethod: review.scoreMethod, method: review.method, strengths: review.strengths, improve: review.improvements, rewrite: review.improvedAnswer, rubric: review.rubric.map((r) => ({ label: r.criterion, score: r.score, note: r.note })), corrections: review.corrections, modelAnswer: review.modelAnswer, sources: review.sources };
 }

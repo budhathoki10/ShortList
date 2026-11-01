@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { followUpAction, removeJob } from "@/app/actions/jobs";
 import { PlanBuilder } from "@/components/career/plan-controls";
+import { declaredSkills } from "@/lib/cv/skill-levels";
 import { PlanView } from "@/components/career/plan-view";
 import { ConfirmAction } from "@/components/confirm-action";
 import { CopyButton } from "@/components/copy-button";
@@ -60,7 +61,7 @@ export default async function FitTab({ params }: PageProps<"/app/jobs/[id]">) {
         ) : (
           <>
             {planCurrent ? (
-              <PlanView jobId={job.id} row={planRow!} />
+              <PlanView jobId={job.id} row={planRow!} declared={declaredSkills(profile!).filter((d) => [...job.post.keywords, ...job.post.requirements.flatMap((r) => r.keywords)].some((k) => k.trim().toLowerCase() === d.skill.toLowerCase()))} />
             ) : (
               <>
             <section className="flex flex-wrap items-end gap-x-8 gap-y-4 border-b border-border pb-6">

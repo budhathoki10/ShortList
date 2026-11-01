@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
 import { canonical } from "@/lib/text";
 import { referenceForText } from "./references";
+import { techFor } from "./tech-bank";
+import { pickTechnical, technicalQuestions } from "./tech-questions";
 import type { ApplicationPlan, CareerContext, CareerQuestion, QuestionKind } from "./types";
 
 export const INTERVIEW_QUESTION_VERSION = 2;
@@ -18,9 +20,12 @@ export function interviewBank(context: CareerContext, plan: ApplicationPlan): Ca
   for (const skill of skills) {
     const reference = referenceForText(skill);
     if (reference) { const group = groups.get(reference.id) ?? { reference, skills: [] }; group.skills.push(skill); groups.set(reference.id, group); continue; }
+    // Technologies in the curated bank get their own, deeper questions below.
+    if (techFor(skill)) continue;
     const people = /communication|teamwork|leadership|collaborat|customer|stakeholder|negotiat|english|language|onboarding/i.test(skill);
     add(people ? "behavioural" : "technical", people ? `Describe one real situation where ${skill} helped you complete a task with someone else.` : `What is one practical problem ${skill} helps solve? Use a small example you can explain.`, people ? "A concrete example of your contribution, not a general claim." : `A practical understanding of ${skill}; say clearly what is new to you.`, people ? ["The specific situation", "Your own action", "What changed or what you learned"] : ["The problem", "How the tool or method addresses it", "A limitation or check"], `${profile.skills.includes(skill) ? "CV" : "Job"} skill: ${skill}`, 2, undefined, [skill]);
   }
+  bank.push(...technicalQuestions(context));
   for (const { reference, skills: covered } of groups.values()) add("technical", reference.question, `Explain ${reference.topic.toLowerCase()} with a concrete example.`, reference.checks, `CV/job skills: ${covered.join(", ")}`, 2, reference.id, covered);
   for (const project of profile.projects) {
     const text = project.bullets.join(" ");
@@ -41,9 +46,36 @@ export function interviewBank(context: CareerContext, plan: ApplicationPlan): Ca
   return bank;
 }
 
-export function mockCurriculum(bank: CareerQuestion[], attempt = 0) {
-  const kinds: QuestionKind[] = ["introduction", "technical", "project", "coding", "scenario", "behavioural", "gap", "company", "closing"];
-  return kinds.flatMap((kind) => { const options = bank.filter((q) => q.kind === kind).sort((a, b) => Number(!!b.referenceId) - Number(!!a.referenceId)); return options.length ? [options[attempt % options.length]] : []; });
+/** How many technical questions to ask: about half of the session for a technical role, a couple otherwise. */
+export const technicalCount = (bank: CareerQuestion[], technicalRole: boolean) => (technicalRole ? 6 : 2);
+
+/**
+ * Picks `count` technical questions for practice and mock interviews: technology questions first
+ * (the candidate's declared skills, then the job's stack, then the CV), then the source-backed concept questions.
+ */
+export function technicalSelection(bank: CareerQuestion[], count: number, attempt = 0): CareerQuestion[] {
+  // One slot stays with a source-backed concept question when the bank has one, placed after the first technology question.
+  const concepts = bank.filter((q) => q.kind === "technical" && !q.tech).sort((a, b) => Number(!!b.referenceId) - Number(!!a.referenceId));
+  const reserved = count >= 3 ? concepts.slice(0, 1) : [];
+  const tech = pickTechnical(bank, count - reserved.length, attempt);
+  const picked = [...tech.slice(0, 1), ...reserved, ...tech.slice(1)];
+  return [...picked, ...concepts.filter((q) => !picked.includes(q))].slice(0, count);
+}
+
+export function mockCurriculum(bank: CareerQuestion[], attempt = 0, technicalRole = bank.filter((q) => q.tech).length >= 3) {
+  const one = (kind: QuestionKind) => { const options = bank.filter((q) => q.kind === kind).sort((a, b) => Number(!!b.referenceId) - Number(!!a.referenceId)); return options.length ? [options[attempt % options.length]] : []; };
+  const technical = technicalSelection(bank, technicalCount(bank, technicalRole), attempt);
+  // Behavioural and role questions stay; technical ones are woven through so the session alternates.
+  const others = [...one("introduction"), ...one("project"), ...one("coding"), ...one("scenario"), ...one("behavioural"), ...one("gap"), ...one("company"), ...one("closing")];
+  const opening = others.slice(0, 1);
+  const middle = others.slice(1, -1);
+  const closing = others.slice(-1);
+  const woven: CareerQuestion[] = [];
+  for (let i = 0; i < Math.max(middle.length, technical.length); i++) {
+    if (technical[i]) woven.push(technical[i]);
+    if (middle[i]) woven.push(middle[i]);
+  }
+  return [...opening, ...woven, ...closing];
 }
 
 export function adaptQuestion(question: CareerQuestion, difficulty: 1 | 2 | 3): CareerQuestion {

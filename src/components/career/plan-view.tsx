@@ -38,8 +38,14 @@ function More({ title, count, children }: { title: string; count?: number; child
 }
 
 /** The full analysis of one job, shown on its Fit tab once it has been built and is up to date. */
-export function PlanView({ jobId, row }: { jobId: string; row: PlanRow }) {
+export function PlanView({ jobId, row, declared = [] }: { jobId: string; row: PlanRow; declared?: { skill: string; label: string }[] }) {
   const { plan } = row;
+  // Skills the candidate declared themselves: tagged where the plan already has a task for them, and listed on their own otherwise.
+  const declaredBySkill = new Map(declared.map((d) => [d.skill.toLowerCase(), d]));
+  const planned = new Set(plan.roadmap.map((t) => t.skill.toLowerCase()));
+  const extra = declared.filter((d) => !planned.has(d.skill.toLowerCase()));
+  const interviewHref = `/app/jobs/${jobId}/interview`;
+  const tag = (d: { label: string }) => <Link href={interviewHref} className="shrink-0 rounded-full border border-border px-2 py-0.5 text-[11px] font-medium text-accent hover:bg-accent-soft focus-visible:outline-2 focus-visible:outline-accent/40" title={`${d.label} is on your CV because you declared it. Prepare for interview questions on it.`}>Self-declared · prepare</Link>;
   const complete = plan.roadmap.filter((task) => row.progress[task.id]?.completed).length;
   const requirements = [...plan.requirements].sort((a, b) => (a.priority === b.priority ? 0 : a.priority === "must" ? -1 : 1) || ORDER[a.status] - ORDER[b.status]);
   const base = `/app/jobs/${jobId}`;
@@ -114,7 +120,7 @@ export function PlanView({ jobId, row }: { jobId: string; row: PlanRow }) {
       <section aria-labelledby="learning-roadmap" id="gaps" className="scroll-mt-6 space-y-2">
         <h2 id="learning-roadmap" className="flex items-baseline justify-between gap-2 text-sm font-semibold">
           <span>
-            Gaps to work on <span className="font-normal text-muted">· {plan.roadmap.length}</span>
+            Gaps to work on <span className="font-normal text-muted">· {plan.roadmap.length + extra.length}</span>
           </span>
           {plan.roadmap.length > 0 && (
             <span className="text-xs font-normal text-muted" title="Self-reported. It doesn't change your CV or your score.">
@@ -122,10 +128,17 @@ export function PlanView({ jobId, row }: { jobId: string; row: PlanRow }) {
             </span>
           )}
         </h2>
-        {plan.roadmap.length === 0 ? (
+        {plan.roadmap.length === 0 && extra.length === 0 ? (
           <p className="rounded-lg border border-border bg-surface px-4 py-3 text-sm text-muted">No gaps in the required skills. Prepare examples of your strongest work.</p>
         ) : (
           <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-surface">
+            {extra.map((d) => (
+              <li key={`declared-${d.skill}`} className="flex items-center gap-3 px-4 py-2.5 text-sm">
+                <span aria-hidden="true" className="size-2 shrink-0 rounded-full bg-warning" />
+                <span className="min-w-0 flex-1 truncate font-medium" title={d.label}>{d.label}</span>
+                {tag(d)}
+              </li>
+            ))}
             {plan.roadmap.map((task) => {
               const done = !!row.progress[task.id]?.completed;
               return (
@@ -136,6 +149,7 @@ export function PlanView({ jobId, row }: { jobId: string; row: PlanRow }) {
                       <span className="min-w-0 flex-1 truncate font-medium" title={task.skill}>
                         {task.skill}
                       </span>
+                      {declaredBySkill.has(task.skill.toLowerCase()) && <span onClick={(e) => e.stopPropagation()}>{tag(declaredBySkill.get(task.skill.toLowerCase())!)}</span>}
                       <span className="shrink-0 text-xs text-muted">{done ? "Practised" : task.priority === "must" ? "Required" : "Preferred"}</span>
                       {chevron}
                     </summary>

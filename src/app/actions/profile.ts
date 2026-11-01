@@ -78,7 +78,8 @@ export async function updateProfile(_: ProfileState, formData: FormData): Promis
   const nonEmpty = (xs: string[]) => xs.map((x) => x.trim()).filter(Boolean);
   // The skills list and the declared levels always agree, and a level is never raised.
   const { skills, skillLevels } = reconcileSkills(nonEmpty(p.skills), p.skillLevels);
-  const { skillLevels: _previousLevels, ...rest } = p;
+  const rest: Omit<typeof p, "skillLevels"> & { skillLevels?: typeof p.skillLevels } = { ...p };
+  delete rest.skillLevels;
   const profile: Profile = {
     ...rest,
     links: nonEmpty(p.links),

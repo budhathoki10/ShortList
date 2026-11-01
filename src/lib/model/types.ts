@@ -122,4 +122,6 @@ export type AnswerFeedback = {
   method?: "ai" | "checklist";
   rubric?: { label: string; score: number | null; note: string }[];
   corrections?: string[]; modelAnswer?: string; sources?: { title: string; url: string }[];
+  /** Practice score for this answer, 0 to 100: from the AI rubric, or a plain-code estimate. Not a hiring prediction. */
+  practiceScore?: number; scoreMethod?: "ai" | "estimate";
 };
