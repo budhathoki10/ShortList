@@ -9,6 +9,8 @@ A job-hunt helper for anyone applying for jobs. You add your CV once, then each 
 
 Around them: a **tracker** (Saved, Applied, Interviewing, Offer, Closed, with follow-up reminders on Today and by email), **progress** stats, and **100 CV templates** you can customise and download as a PDF.
 
+Every non-essential message (job-alert email, push alerts and follow-up reminders) can be switched off in one place: **Settings → Notifications**. Account security email (confirmation, password reset) always goes out.
+
 The **Job Radar** adds discovery before preparation. A scheduled agent reads allowlisted employer boards on Greenhouse, Lever, Ashby, Workable, SmartRecruiters and Recruitee, and public remote-job feeds (Remotive, Jobicy, Himalayas, Remote OK, Arbeitnow), rejects or flags explicit eligibility conflicts, ranks the remaining roles against the person's Career Passport and CV evidence, and stores every recommendation before sending email or VAPID Web Push alerts. Candidates still review and submit every application themselves.
 
 The rule everything follows: **Shortlist only uses what's in your profile.** The AI can reword and reorder. It can't add an employer, title, degree, number or skill you don't have. A plain-code check (`src/lib/tailor/fact-check.ts`) catches anything that slips through, so it doesn't rely on the model behaving.
@@ -22,15 +24,19 @@ The rule everything follows: **Shortlist only uses what's in your profile.** The
 
 ## Plans
 
-| | Free | Paid plan |
+| | Free (one-time trial) | Paid plan |
 |---|---|---|
-| Tailored CVs | 3 a month | 200 a month |
-| Cover letters | 3 a month | 200 a month |
-| Interview prep sessions | 3 a month | 200 a month |
+| Jobs with full AI help | 1 job, once per email address (needs a confirmed email) | Every job you apply to |
+| Tailored CVs | 3 runs on the trial job | 200 a month |
+| Cover letters | 3 drafts on the trial job | 200 a month |
+| Feedback on practice answers | 5 on the trial job | 200 a month |
+| Mock interviews | 1 on the trial job | 30 a month |
 | CV imports | 5 a month | 50 a month |
-| Tracker, reminders, PDF | Yes | Yes |
+| Tracker, reminders, Job Radar, PDF | Yes | Yes |
 | Word (.docx) download | No | Yes |
 | Price | $0 | Monthly or yearly subscription through Freemius (prices are set in Freemius) |
+
+The trial is recorded against a hash of the email address, so deleting the account and signing up again doesn't start a new one.
 
 A **subscription** renews until cancelled; cancelling keeps access until the end of the period already paid for. Limits live in `src/lib/plans.ts`; billing details are in [docs/billing-freemius.md](docs/billing-freemius.md).
 
@@ -67,7 +73,8 @@ All of these are in `.env.example`, with comments.
 | `OPENROUTER_API_KEY` | For the real product | OpenRouter reads CVs and job posts, and writes changes, letters and feedback |
 | `AI_READ_MODEL`, `AI_WRITE_MODEL` | No | One OpenRouter model id that supports structured outputs, or a comma-separated list tried in order (next model on 429, 5xx, timeout or invalid JSON). Both default to `openrouter/free`, which is rate-limited: set paid models |
 | `OPENROUTER_BASE_URL` | No | Only to point at another OpenAI-compatible endpoint |
-| `RESEND_API_KEY`, `EMAIL_FROM` | For email | Confirmations, password resets and follow-up reminders |
+| `RESEND_API_KEY`, `EMAIL_FROM` | For email | Confirmations, password resets, follow-up reminders and job alerts |
+| `EMAIL_DEV_OUTBOX` | No | Development and tests only: with no `RESEND_API_KEY`, emails are written to this file (JSON lines) instead of the console |
 | `JOB_SOURCE_BOARDS` | For Job Radar | Comma-separated public boards: `provider:board=Company`, provider one of `greenhouse`, `lever`, `ashby`, `workable`, `smartrecruiters`, `recruitee`. Example: `greenhouse:acme=Acme,ashby:linear=Linear` |
 | `JOB_SOURCE_FEEDS` | For Job Radar | Remote-job feeds to read: `remotive,jobicy,himalayas,remoteok,arbeitnow`, or `all` |
 | `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | For push alerts | VAPID key pair and operator contact URI used for Web Push |

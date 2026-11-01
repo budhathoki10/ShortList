@@ -21,6 +21,7 @@ import { sendFollowUpDigests } from "@/lib/services/reminders";
 import { refundAllowance, spendAllowance, trialUsage, usageThisMonth } from "@/lib/services/usage";
 import { findUserById } from "@/lib/services/users";
 import { safeRedirectPath } from "@/lib/util";
+import { consumeAuthToken, createAuthToken, revokeAuthTokens } from "@/lib/auth/tokens";
 import { DAY, makeUser, resetDb } from "./helpers";
 
 const OUTBOX = path.join(os.tmpdir(), `shortlist-integration-outbox-${process.pid}.jsonl`);
@@ -398,8 +399,8 @@ describe("accounts", () => {
 
 describe("follow-up reminders", () => {
   it("emails each person once, listing their due applications", async () => {
-    const asha = await makeUser({ email: "asha@example.com" });
-    const ram = await makeUser({ email: "ram@example.com" });
+    const asha = await makeUser({ email: "asha@example.com", emailVerifiedAt: new Date() });
+    const ram = await makeUser({ email: "ram@example.com", emailVerifiedAt: new Date() });
     const due1 = await newJob(asha.id);
     const due2 = await createJob(asha.id, { url: null, postText, post: { ...post, title: "Support Manager", company: "Acme" }, match: null });
     const notYet = await newJob(ram.id);
@@ -413,5 +414,19 @@ describe("follow-up reminders", () => {
     expect(mail.subject).toBe("2 applications to follow up on");
     expect(mail.text).toContain("• Customer Success Lead at Northwind Software");
     expect(mail.text).toContain("• Support Manager at Acme");
+  });
+});
+
+describe("password reset links", () => {
+  it("revokes every other unused reset link once one is used", async () => {
+    const user = await makeUser();
+    const first = await createAuthToken(user.id, "reset_password");
+    const second = await createAuthToken(user.id, "reset_password");
+    const verify = await createAuthToken(user.id, "verify_email");
+    expect(await consumeAuthToken(second, "reset_password")).toBe(user.id);
+    await revokeAuthTokens(user.id, "reset_password");
+    expect(await consumeAuthToken(first, "reset_password")).toBeNull();
+    // Other purposes are untouched.
+    expect(await consumeAuthToken(verify, "verify_email")).toBe(user.id);
   });
 });

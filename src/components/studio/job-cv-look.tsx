@@ -123,7 +123,7 @@ export function JobCvLook({
                   <CvMini spec={o.spec} cv={cv} photoUrl={photoUrl} />
                 </div>
                 <p className="mt-1.5 truncate text-[12px] font-medium">{o.name}</p>
-                <p className="text-[11px] text-muted group-hover:text-foreground">Use this look</p>
+                <p className="text-xs text-muted group-hover:text-foreground">Use this look</p>
               </button>
             </li>
           ))}

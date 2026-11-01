@@ -34,7 +34,7 @@ function Checks({ name, values, selected }: { name: string; values: Array<{ valu
   return (
     <div className="flex flex-wrap gap-x-5 gap-y-2">
       {values.map((item) => (
-        <label key={item.value} className="inline-flex min-h-9 items-center gap-2 text-sm">
+        <label key={item.value} className="inline-flex min-h-9 items-center gap-2 text-sm max-sm:min-h-11">
           <input type="checkbox" name={name} value={item.value} defaultChecked={selected.includes(item.value)} className="size-4 accent-accent" />
           {item.label}
         </label>
@@ -105,7 +105,7 @@ export function CareerPassportForm({ value, fromCv }: { value: PassportFormValue
             <input name="workCountries" defaultValue={joined(value.workCountries)} placeholder="Nepal" className={inputClass} />
           </Field>
           {fromCv.country && (
-            <button type="button" onClick={addCountry} className="text-[13px] font-medium text-accent hover:underline">
+            <button type="button" onClick={addCountry} className="text-left text-[13px] font-medium text-accent hover:underline max-sm:min-h-11">
               Add {fromCv.country}, where your CV says you live
             </button>
           )}
@@ -141,7 +141,7 @@ export function CareerPassportForm({ value, fromCv }: { value: PassportFormValue
         <Field label="Email alerts">
           <select name="emailFrequency" defaultValue={value.emailFrequency} className={inputClass}><option value="immediate">Immediate</option><option value="daily">Daily digest</option><option value="off">Off</option></select>
         </Field>
-        <Field label="Push alerts">
+        <Field label="Push alerts" hint="Push also needs to be turned on for each device, in Settings.">
           <select name="pushFrequency" defaultValue={value.pushFrequency} className={inputClass}><option value="immediate">Immediate</option><option value="daily">Daily digest</option><option value="off">Off</option></select>
         </Field>
         <Field label="Quiet hours start">

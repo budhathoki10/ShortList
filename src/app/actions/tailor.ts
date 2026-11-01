@@ -43,7 +43,7 @@ async function context(jobId: FormDataEntryValue | null) {
   if (!profileReady(profile)) redirect("/app/profile?needed=1");
   // Always score against the latest profile.
   const match = scoreMatch(profile, job.post);
-  await setMatch(job.id, match);
+  await setMatch(user.id, job.id, match);
   return { user, job, profile, match };
 }
 

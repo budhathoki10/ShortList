@@ -28,3 +28,10 @@ export async function overLimit(key: string, limit: number, windowMs: number, no
   }
   return false;
 }
+
+/** Whether `key` has already used up `limit` in the current window, without counting an attempt. */
+export async function limitReached(key: string, limit: number, windowMs: number, now = Date.now()): Promise<boolean> {
+  const bucket = Math.floor(now / windowMs);
+  const doc = await (await collections()).rateLimits.findOne({ _id: `${key}:${bucket}` }, { projection: { count: 1 } });
+  return (doc?.count ?? 0) >= limit;
+}

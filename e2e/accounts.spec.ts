@@ -112,3 +112,17 @@ test.describe("on a phone", () => {
     for (const tab of ["", "/cv", "/cover-letter", "/interview"]) await fits(`/app/jobs/${id}${tab}`);
   });
 });
+
+test("repeated wrong passwords for one account are slowed down", async ({ page }) => {
+  const address = `guess-${Date.now()}@example.com`;
+  await signUp(page, address);
+  await page.context().clearCookies();
+  for (let attempt = 0; attempt < 10; attempt++) {
+    await logIn(page, address, `wrong-password-${attempt}`);
+    await expect(page.getByText("Incorrect email or password.")).toBeVisible();
+  }
+  // Even the right password waits once the limit is reached.
+  await logIn(page, address);
+  await expect(page.getByText("Too many log-in attempts for this account")).toBeVisible();
+  await expect(page).toHaveURL(/\/login/);
+});

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth/session";
 import { dismissRecommendation, removePushDevice, saveCareerPassport, saveRecommendationToTracker, subscribePush, unsubscribePush } from "@/lib/services/discovery";
-import { sendTestPush } from "@/lib/discovery/notifications";
+import { NotificationsOffError, sendTestPush } from "@/lib/discovery/notifications";
 import { isPushServiceEndpoint } from "@/lib/discovery/push-endpoints";
 import { overLimit } from "@/lib/services/rate-limit";
 
@@ -109,7 +109,7 @@ export async function removePushSubscription(endpoint: string) {
 export async function removeSavedPushDevice(formData: FormData) {
   const user = await requireUser();
   await removePushDevice(user.id, String(formData.get("subscriptionId") ?? ""));
-  revalidatePath("/app/radar");
+  revalidatePath("/app/settings");
 }
 
 export async function testPushNotification(): Promise<PushResult> {
@@ -118,7 +118,8 @@ export async function testPushNotification(): Promise<PushResult> {
   try {
     await sendTestPush(user.id);
     return { success: true };
-  } catch {
-    return { success: false, error: "No device accepted it. Remove this device and enable alerts again." };
+  } catch (error) {
+    if (error instanceof NotificationsOffError) return { success: false, error: "Notifications are off for your account. Turn them on in Settings first." };
+    return { success: false, error: "No device accepted it. Turn push notifications off and on again on this device." };
   }
 }

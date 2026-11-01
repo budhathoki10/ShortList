@@ -228,10 +228,10 @@ export function KeyboardLayer({ jobs }: { jobs: PaletteJob[] }) {
               setActive(0);
             }}
             onKeyDown={onInputKey}
-            placeholder="Search pages, actions and jobs…"
+            placeholder="Search pages, actions, jobs…"
             className="h-12 w-full bg-transparent text-sm outline-none placeholder:text-faint max-sm:text-base"
           />
-          <Kbd>Esc</Kbd>
+          <Kbd className="pointer-coarse:hidden">Esc</Kbd>
         </div>
         <div id={listId} role="listbox" aria-label="Results" className="max-h-[min(24rem,60dvh)] overflow-y-auto p-1.5">
           {flat.length === 0 && (
@@ -260,7 +260,7 @@ export function KeyboardLayer({ jobs }: { jobs: PaletteJob[] }) {
                       {item.hint && <span className="ml-2 text-muted">{item.hint}</span>}
                     </span>
                     {item.keys && (
-                      <span className="flex gap-0.5" aria-hidden="true">
+                      <span className="flex gap-0.5 pointer-coarse:hidden" aria-hidden="true">
                         {item.keys.map((k) => (
                           <Kbd key={k}>{k}</Kbd>
                         ))}

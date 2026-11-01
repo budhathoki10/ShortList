@@ -469,7 +469,7 @@ export function TemplateEditor({
     </div>
   );
 
-  const toolbarButton = "inline-flex h-9 items-center gap-1.5 rounded-lg border border-border bg-surface px-3 text-[13px] hover:border-strong-border disabled:opacity-40";
+  const toolbarButton = "inline-flex h-9 items-center max-sm:h-11 gap-1.5 rounded-lg border border-border bg-surface px-3 text-[13px] hover:border-strong-border disabled:opacity-40";
 
   return (
     <div className="space-y-4">
@@ -508,7 +508,7 @@ export function TemplateEditor({
           )}
           {ownTemplate ? (
             <>
-              <button type="submit" disabled={saving} className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-accent px-4 text-[13px] font-medium text-on-accent hover:bg-accent-hover disabled:opacity-60">
+              <button type="submit" disabled={saving} className="inline-flex h-9 items-center max-sm:h-11 gap-1.5 rounded-lg bg-accent px-4 text-[13px] font-medium text-on-accent hover:bg-accent-hover disabled:opacity-60">
                 {saving ? "Saving…" : "Save"}
               </button>
               <button type="submit" name="asNew" value="1" disabled={saving} className={toolbarButton}>
@@ -516,7 +516,7 @@ export function TemplateEditor({
               </button>
             </>
           ) : (
-            <button type="submit" name="asNew" value="1" disabled={saving} className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-accent px-4 text-[13px] font-medium text-on-accent hover:bg-accent-hover disabled:opacity-60">
+            <button type="submit" name="asNew" value="1" disabled={saving} className="inline-flex h-9 items-center max-sm:h-11 gap-1.5 rounded-lg bg-accent px-4 text-[13px] font-medium text-on-accent hover:bg-accent-hover disabled:opacity-60">
               {saving ? "Saving…" : "Save as my template"}
             </button>
           )}
@@ -541,7 +541,7 @@ export function TemplateEditor({
             type="button"
             aria-selected={tab === t}
             onClick={() => setTab(t)}
-            className={`h-9 flex-1 rounded-md text-[13px] capitalize ${tab === t ? "bg-accent text-on-accent" : "text-muted"}`}
+            className={`h-9 flex-1 rounded-md text-[13px] capitalize max-sm:h-11 ${tab === t ? "bg-accent text-on-accent" : "text-muted"}`}
           >
             {t}
           </button>

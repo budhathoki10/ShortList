@@ -14,11 +14,11 @@ const VARIANTS: Record<Variant, string> = {
   danger: "border border-danger/40 bg-surface text-danger hover:bg-danger hover:text-on-accent active:bg-danger",
 };
 
-// 36px (32px small) tall on desktop; 44px (40px small) on touch screens.
+// 36px (32px small) tall with a mouse; 44px on phones and any touch screen, small or not, so every button is easy to tap.
 const SIZES: Record<Size, string> = {
-  md: "h-9 px-3.5 text-sm max-sm:h-11",
-  sm: "h-8 px-3 text-[13px] max-sm:h-10",
-  lg: "h-11 px-6 text-[15px] max-sm:h-12",
+  md: "h-9 px-3.5 text-sm max-sm:h-11 pointer-coarse:h-11",
+  sm: "h-8 px-3 text-[13px] max-sm:h-11 pointer-coarse:h-11",
+  lg: "h-11 px-6 text-[15px] max-sm:h-12 pointer-coarse:h-12",
 };
 
 const BASE =
@@ -66,10 +66,6 @@ export function Kbd({ children, className = "" }: { children: ReactNode; classNa
 }
 
 /* ---------- Surfaces ---------- */
-
-export function Card({ className = "", children }: { className?: string; children: ReactNode }) {
-  return <div className={`rounded-md border border-border bg-surface p-5 ${className}`}>{children}</div>;
-}
 
 /** A short muted label above a section or heading. Sentence case. */
 export function Eyebrow({ children, className = "" }: { children: ReactNode; className?: string }) {
@@ -122,12 +118,45 @@ export function Skeleton({ className = "" }: { className?: string }) {
   return <div aria-hidden="true" className={`animate-pulse rounded bg-sunken ${className}`} />;
 }
 
+/* ---------- Switch ---------- */
+
+/**
+ * An on/off control (role="switch"). The track is 24px tall, but the hit area reaches 44px so it is easy to tap.
+ * Pass `busy` while the change is saving: the switch keeps its place, shows a spinner and ignores clicks.
+ */
+export function Switch({
+  checked,
+  busy = false,
+  className = "",
+  disabled,
+  ...props
+}: Omit<ComponentProps<"button">, "role" | "type" | "children"> & { checked: boolean; busy?: boolean }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-busy={busy || undefined}
+      disabled={disabled || busy}
+      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full transition-colors duration-150 after:absolute after:-inset-2.5 after:content-[''] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50 aria-busy:cursor-progress aria-busy:opacity-80 ${checked ? "bg-accent hover:bg-accent-hover" : "bg-strong-border hover:bg-faint"} ${className}`}
+      {...props}
+    >
+      <span
+        aria-hidden="true"
+        className={`inline-flex size-5 items-center justify-center rounded-full bg-white text-accent shadow-sm transition-transform duration-150 motion-reduce:transition-none ${checked ? "translate-x-[22px]" : "translate-x-0.5"}`}
+      >
+        {busy && <Spinner className="size-3 text-faint" />}
+      </span>
+    </button>
+  );
+}
+
 /* ---------- Forms ---------- */
 
 type ControlProps = { id?: string; "aria-describedby"?: string; "aria-invalid"?: boolean };
 
 export const inputClass =
-  "w-full rounded border border-strong-border bg-surface px-3 py-2 text-sm leading-5 transition-colors duration-150 placeholder:text-faint hover:border-faint focus:border-accent focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-accent/30 disabled:cursor-not-allowed disabled:bg-sunken disabled:opacity-60 aria-[invalid=true]:border-danger max-sm:text-base";
+  "w-full rounded border border-strong-border bg-surface px-3 py-2 text-sm leading-5 transition-colors duration-150 placeholder:text-faint hover:border-faint focus:border-accent focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-accent/30 disabled:cursor-not-allowed disabled:bg-sunken disabled:opacity-60 aria-[invalid=true]:border-danger max-sm:min-h-11 max-sm:text-base pointer-coarse:min-h-11";
 
 /**
  * Label above the control, with an optional hint and error. Both are linked with aria-describedby

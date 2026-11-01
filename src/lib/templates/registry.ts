@@ -1,5 +1,5 @@
 import type { JobPost, Profile } from "@/lib/model/types";
-import { BUILTIN_TEMPLATES, CATEGORY_IDS, type BuiltinTemplate, type Category } from "./builtin";
+import { BUILTIN_TEMPLATES, type BuiltinTemplate, type Category } from "./builtin";
 import type { ColourFamily } from "./builtin/palettes";
 import { atsReport, type AtsLevel } from "./checks";
 import { hasSidebar } from "./spec";
@@ -33,9 +33,6 @@ export function filterTemplates(list: BuiltinTemplate[], f: TemplateFilters): Bu
     return true;
   });
 }
-
-export const categoryCounts = () =>
-  Object.fromEntries(CATEGORY_IDS.map((c) => [c, visibleBuiltins().filter((t) => t.categories.includes(c)).length])) as Record<Category, number>;
 
 const FIELD_HINTS: [Category, RegExp][] = [
   ["tech", /\b(developer|engineer|software|data|devops|it support|programmer|analyst|qa|tester|cloud|security|frontend|backend|full[- ]?stack)\b/i],

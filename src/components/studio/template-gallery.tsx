@@ -25,7 +25,7 @@ function Chip({ on, onClick, children }: { on: boolean; onClick: () => void; chi
       type="button"
       aria-pressed={on}
       onClick={onClick}
-      className={`h-8 whitespace-nowrap rounded-full border px-3 text-[13px] transition-colors ${
+      className={`h-8 whitespace-nowrap rounded-full border px-3 text-[13px] transition-colors max-sm:h-11 ${
         on ? "border-accent bg-accent text-on-accent" : "border-border bg-surface text-foreground hover:border-strong-border"
       }`}
     >
@@ -218,7 +218,7 @@ export function TemplateGallery({ cv, photoUrl, mode, initialCategory }: { cv: P
               onChange={(e) => setF((cur) => ({ ...cur, q: e.target.value }))}
               placeholder="Search templates: name, colour, field"
               aria-label="Search templates"
-              className="h-11 w-full rounded-lg border border-border bg-surface pl-9 pr-3 text-sm outline-none focus:border-accent"
+              className="h-11 w-full rounded-lg border border-border bg-surface pl-9 pr-3 text-sm outline-none focus:border-accent focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-accent/30 max-sm:text-base"
             />
           </div>
           <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 lg:hidden">
@@ -249,12 +249,12 @@ export function TemplateGallery({ cv, photoUrl, mode, initialCategory }: { cv: P
                 aria-label={COLOURS[c].label}
                 title={COLOURS[c].label}
                 onClick={() => set("colour", c as ColourFamily)}
-                className={`size-7 rounded-full border-2 transition ${f.colour === c ? "border-foreground scale-110" : "border-surface ring-1 ring-border"}`}
+                className={`relative size-7 rounded-full border-2 transition after:absolute after:-inset-2 after:content-[''] motion-reduce:transition-none ${f.colour === c ? "border-foreground scale-110" : "border-surface ring-1 ring-border"}`}
                 style={{ background: COLOURS[c].accent }}
               />
             ))}
             {filtering && (
-              <button type="button" onClick={() => setF(EMPTY)} className="ml-1 text-[13px] text-muted underline underline-offset-4 hover:text-foreground">
+              <button type="button" onClick={() => setF(EMPTY)} className="ml-1 text-[13px] text-muted underline underline-offset-4 hover:text-foreground max-sm:min-h-11">
                 Clear
               </button>
             )}

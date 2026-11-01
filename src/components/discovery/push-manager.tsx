@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { registerPushSubscription, removePushSubscription, type SerializedPushSubscription } from "@/app/actions/discovery";
+import Link from "next/link";
+import { registerPushSubscription, removePushSubscription, testPushNotification, type SerializedPushSubscription } from "@/app/actions/discovery";
 import { useToast } from "@/components/toast";
+import { Button, Switch } from "@/components/ui";
 
 function applicationServerKey(value: string) {
   const padding = "=".repeat((4 - (value.length % 4)) % 4);
@@ -25,10 +27,11 @@ function subscribeError(error: unknown) {
 }
 
 /** One switch: on subscribes this device to push alerts, off removes it. */
-export function PushManager({ publicKey, configured }: { publicKey: string; configured: boolean }) {
+export function PushManager({ publicKey, configured, accountOn = true }: { publicKey: string; configured: boolean; accountOn?: boolean }) {
   const [supported, setSupported] = useState<boolean | null>(configured ? null : false);
   const [subscription, setSubscription] = useState<PushSubscription | null>(null);
   const [busy, setBusy] = useState(false);
+  const [testing, setTesting] = useState(false);
   const toast = useToast();
 
   useEffect(() => {
@@ -81,27 +84,50 @@ export function PushManager({ publicKey, configured }: { publicKey: string; conf
     }
   }
 
+  async function sendTest() {
+    setTesting(true);
+    try {
+      const result = await testPushNotification();
+      if (result.success) toast.show({ tone: "success", message: "Test notification sent", description: "It should appear on this device in a few seconds." });
+      else toast.show({ tone: "error", message: "Test notification not sent", description: result.error });
+    } catch {
+      toast.show({ tone: "error", message: "Test notification not sent", description: "Check your connection and try again." });
+    } finally {
+      setTesting(false);
+    }
+  }
+
   const on = Boolean(subscription);
-  const hint = !configured ? "Not set up on this server." : supported === false ? "Not supported in this browser." : null;
+  const hint = !configured ? "Not set up on this server." : supported === false ? "Not supported in this browser." : "Job Radar alerts on this device. Choose which alerts in your Career Passport.";
 
   return (
-    <div className="flex items-center justify-between gap-4">
-      <div className="min-w-0">
-        <p id="push-label" className="text-base font-semibold">Push notifications</p>
-        {hint && <p className="mt-0.5 text-sm text-muted">{hint}</p>}
+    <div>
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h3 id="push-label" className="text-sm font-semibold">
+            Push notifications on this device
+          </h3>
+          <p id="push-hint" className="mt-0.5 text-sm text-muted">
+            {hint}
+          </p>
+        </div>
+        <Switch checked={on} busy={busy || (configured && supported === null)} disabled={!supported} onClick={toggle} aria-labelledby="push-label" aria-describedby="push-hint" className="mt-0.5" />
       </div>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={on}
-        aria-labelledby="push-label"
-        aria-busy={busy || supported === null}
-        disabled={busy || !supported}
-        onClick={toggle}
-        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50 ${on ? "bg-accent hover:bg-accent-hover" : "bg-strong-border hover:bg-faint"}`}
-      >
-        <span aria-hidden="true" className={`inline-block size-5 rounded-full bg-white shadow-sm transition-transform duration-150 ${on ? "translate-x-[22px]" : "translate-x-0.5"}`} />
-      </button>
+      {on && !accountOn && (
+        <p className="mt-3 text-[13px] text-warning">
+          This device stays registered, but nothing is sent while notifications are off for your account.
+        </p>
+      )}
+      {on && accountOn && (
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <Button type="button" variant="secondary" size="sm" loading={testing} onClick={sendTest}>
+            {testing ? "Sending…" : "Send a test notification"}
+          </Button>
+          <Link href="/app/radar#alert-settings" className="text-[13px] font-medium text-accent hover:underline max-sm:inline-flex max-sm:min-h-11 max-sm:items-center">
+            Alert settings
+          </Link>
+        </div>
+      )}
     </div>
   );
 }

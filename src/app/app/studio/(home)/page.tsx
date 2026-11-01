@@ -38,7 +38,7 @@ export default async function Studio({ searchParams }: PageProps<"/app/studio">)
         title="CV Studio"
         description="Choose from 100 templates or design your own. The facts always come from your CV."
         actions={
-          <Link href="/app/studio/templates" className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-accent px-3.5 text-sm font-medium text-on-accent hover:bg-accent-hover">
+          <Link href="/app/studio/templates" className="inline-flex h-9 items-center max-sm:h-11 gap-1.5 rounded-lg bg-accent px-3.5 text-sm font-medium text-on-accent hover:bg-accent-hover">
             <Icon name="studio" size={16} /> Browse templates
           </Link>
         }
@@ -72,10 +72,10 @@ export default async function Studio({ searchParams }: PageProps<"/app/studio">)
             </div>
             <p className="text-sm text-muted">New jobs use this look. You can change it for any single job on its Tailored CV tab.</p>
             <div className="flex flex-wrap gap-2">
-              <Link href="/app/studio/templates" className="inline-flex h-9 items-center rounded-lg border border-strong-border px-3 text-[13px] font-medium hover:border-strong-border">
+              <Link href="/app/studio/templates" className="inline-flex h-9 items-center max-sm:h-11 rounded-lg border border-strong-border px-3 text-[13px] font-medium hover:border-strong-border">
                 Change
               </Link>
-              <Link href={`/app/studio/edit/${style.template.id}`} className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-strong-border px-3 text-[13px] font-medium hover:border-strong-border">
+              <Link href={`/app/studio/edit/${style.template.id}`} className="inline-flex h-9 items-center max-sm:h-11 gap-1.5 rounded-lg border border-strong-border px-3 text-[13px] font-medium hover:border-strong-border">
                 <Icon name="sparkle" size={15} /> Customise
               </Link>
             </div>
@@ -100,7 +100,7 @@ export default async function Studio({ searchParams }: PageProps<"/app/studio">)
           <div className="rounded-xl border border-dashed border-strong-border p-8 text-center">
             <p className="font-medium">Make a template that&apos;s yours</p>
             <p className="mx-auto mt-1 max-w-md text-sm text-muted">Open any template, change the layout, fonts, colours and sections, then save it here.</p>
-            <Link href={`/app/studio/edit/${style.template.id}`} className="mt-4 inline-flex h-9 items-center gap-1.5 rounded-lg bg-accent px-4 text-[13px] font-medium text-on-accent hover:bg-accent-hover">
+            <Link href={`/app/studio/edit/${style.template.id}`} className="mt-4 inline-flex h-9 items-center max-sm:h-11 gap-1.5 rounded-lg bg-accent px-4 text-[13px] font-medium text-on-accent hover:bg-accent-hover">
               <Icon name="sparkle" size={15} /> Start from your default
             </Link>
           </div>
@@ -147,7 +147,7 @@ export default async function Studio({ searchParams }: PageProps<"/app/studio">)
           <h2 id="rec" className="text-base font-semibold">
             Picked for you
           </h2>
-          <Link href="/app/studio/templates" className="text-[13px] underline underline-offset-4">
+          <Link href="/app/studio/templates" className="text-[13px] underline underline-offset-4 hover:text-accent max-sm:inline-flex max-sm:min-h-11 max-sm:items-center">
             See all 100
           </Link>
         </div>

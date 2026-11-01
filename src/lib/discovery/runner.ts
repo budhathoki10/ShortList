@@ -106,7 +106,8 @@ async function matchChangedJobs(jobs: DiscoveredJobDoc[]) {
         { upsert: true },
       );
       if (!existing) created += 1;
-      if ((!existing || existing.jobContentHash !== job.contentHash) && passport.alertStates.includes(decision.state)) {
+      // A dismissed match stays quiet even when the employer edits the posting.
+      if (existing?.status !== "dismissed" && (!existing || existing.jobContentHash !== job.contentHash) && passport.alertStates.includes(decision.state)) {
         await enqueueRecommendationNotifications(passport, recommendationId, notificationVersion);
       }
     }

@@ -43,7 +43,7 @@ export function AddJobForm() {
         )}
       </div>
       {!showText ? (
-        <button type="button" onClick={() => setPaste(true)} className="rounded text-[13px] text-muted transition-colors duration-150 hover:text-foreground hover:underline max-sm:min-h-10">
+        <button type="button" onClick={() => setPaste(true)} className="rounded text-[13px] text-muted transition-colors duration-150 hover:text-foreground hover:underline max-sm:min-h-11">
           Or paste the job description
         </button>
       ) : (
