@@ -109,7 +109,7 @@ export async function removePushSubscription(endpoint: string) {
 export async function removeSavedPushDevice(formData: FormData) {
   const user = await requireUser();
   await removePushDevice(user.id, String(formData.get("subscriptionId") ?? ""));
-  revalidatePath("/app/radar");
+  revalidatePath("/app/settings");
 }
 
 export async function testPushNotification(): Promise<PushResult> {

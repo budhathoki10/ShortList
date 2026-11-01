@@ -67,10 +67,6 @@ export function Kbd({ children, className = "" }: { children: ReactNode; classNa
 
 /* ---------- Surfaces ---------- */
 
-export function Card({ className = "", children }: { className?: string; children: ReactNode }) {
-  return <div className={`rounded-md border border-border bg-surface p-5 ${className}`}>{children}</div>;
-}
-
 /** A short muted label above a section or heading. Sentence case. */
 export function Eyebrow({ children, className = "" }: { children: ReactNode; className?: string }) {
   return <p className={`text-[13px] font-medium text-muted ${className}`}>{children}</p>;

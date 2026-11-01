@@ -8,7 +8,6 @@ import { deletePhoto, PhotoError, savePhoto } from "@/lib/services/photos";
 import {
   deleteTemplate,
   getTemplate,
-  renameTemplate,
   saveTemplate,
   setDefaultTemplate,
   setJobStyle,
@@ -45,14 +44,6 @@ export async function saveTemplateAction(_: TemplateState, formData: FormData): 
     if (err instanceof TemplateLimitError) return { error: err.message };
     throw err;
   }
-}
-
-export async function renameTemplateAction(_: TemplateState, formData: FormData): Promise<TemplateState> {
-  const user = await requireUser();
-  const row = await renameTemplate(user.id, field(formData, "id"), field(formData, "name"));
-  if (!row) return { error: "This template is no longer available. Return to Templates and select another." };
-  revalidatePath("/app/studio", "layout");
-  return { success: "Template name updated." };
 }
 
 export async function deleteTemplateAction(formData: FormData) {
