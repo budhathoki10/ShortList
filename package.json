@@ -8,7 +8,7 @@
     "start": "next start",
     "db:setup": "tsx --env-file-if-exists=.env scripts/setup-db.mts",
     "lint": "eslint",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
     "test:e2e": "playwright test",
     "test:integration": "vitest run --config vitest.integration.config.ts",
