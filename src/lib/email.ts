@@ -10,6 +10,8 @@ export type Email = {
   from?: string;
   replyTo?: string;
   headers?: Record<string, string>;
+  /** Provider-level duplicate protection for retryable transactional sends. */
+  idempotencyKey?: string;
 };
 
 /** Resend's API, overridable so tests can point at a fake. */
@@ -26,7 +28,7 @@ export async function sendEmail(email: Email): Promise<{ id: string | null }> {
   if (key) {
     const res = await fetch(`${resendApiBase()}/emails`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json", ...(email.idempotencyKey ? { "Idempotency-Key": email.idempotencyKey.slice(0, 256) } : {}) },
       body: JSON.stringify({
         from,
         to: email.to,

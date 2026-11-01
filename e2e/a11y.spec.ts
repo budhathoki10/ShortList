@@ -28,7 +28,7 @@ for (const scheme of ["light", "dark"] as const) {
 
 test("signed-in pages have no WCAG A/AA violations", async ({ page }) => {
   await signUp(page, email);
-  for (const path of ["/app", "/app/jobs", "/app/profile", "/app/studio", "/app/studio/templates", "/app/progress", "/app/settings", "/app/billing"]) {
+  for (const path of ["/app", "/app/radar", "/app/jobs", "/app/profile", "/app/studio", "/app/studio/templates", "/app/progress", "/app/settings", "/app/billing"]) {
     await page.goto(path);
     await page.getByRole("heading", { level: 1 }).first().waitFor();
     expect(await violations(page), path).toEqual([]);
@@ -38,7 +38,7 @@ test("signed-in pages have no WCAG A/AA violations", async ({ page }) => {
 test("the signed-in app is also clean in dark mode", async ({ browser }) => {
   const page = await (await browser.newContext({ colorScheme: "dark", reducedMotion: "reduce" })).newPage();
   await logIn(page, email);
-  for (const path of ["/app", "/app/jobs", "/app/billing"]) {
+  for (const path of ["/app", "/app/radar", "/app/jobs", "/app/billing"]) {
     await page.goto(path);
     await page.getByRole("heading", { level: 1 }).first().waitFor();
     expect(await violations(page), `${path} (dark)`).toEqual([]);

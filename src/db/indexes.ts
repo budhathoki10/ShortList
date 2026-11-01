@@ -31,5 +31,23 @@ export async function ensureIndexes(db: Db) {
     db.collection("cv_imports").createIndexes([{ key: { userId: 1 } }, { key: { expiresAt: 1 }, expireAfterSeconds: 0 }]),
     db.collection("career_plans").createIndex({ userId: 1 }),
     db.collection("mock_sessions").createIndexes([{ key: { userId: 1, jobId: 1, createdAt: -1 } }, { key: { userId: 1, jobId: 1 }, unique: true, partialFilterExpression: { status: "active" }, name: "one_active_mock_per_job" }]),
+    db.collection("discovered_jobs").createIndexes([
+      { key: { sourceType: 1, sourceKey: 1, externalId: 1 }, unique: true },
+      { key: { closedAt: 1, lastSeenAt: -1 } },
+    ]),
+    db.collection("job_recommendations").createIndexes([
+      { key: { userId: 1, discoveredJobId: 1 }, unique: true },
+      { key: { userId: 1, status: 1, createdAt: -1 } },
+    ]),
+    db.collection("push_subscriptions").createIndexes([
+      { key: { endpointHash: 1 }, unique: true },
+      { key: { userId: 1, updatedAt: -1 } },
+    ]),
+    db.collection("notification_deliveries").createIndexes([
+      { key: { state: 1, frequency: 1, nextAttemptAt: 1 } },
+      { key: { userId: 1, createdAt: -1 } },
+    ]),
+    db.collection("discovery_runs").createIndex({ startedAt: -1 }),
+    db.collection("job_sources").createIndexes([{ key: { type: 1, key: 1 }, unique: true }, { key: { enabled: 1, nextAttemptAt: 1 } }]),
   ]);
 }

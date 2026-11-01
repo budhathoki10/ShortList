@@ -41,13 +41,14 @@ export default function TermsPage() {
       <h2>Plans and payment</h2>
       <ul>
         <li>
-          The free plan includes {LIMITS.free.tailor} tailored CVs, {LIMITS.free.cover} cover letters and {LIMITS.free.interview} interview sessions each
-          calendar month.
+          The free plan includes a one-time trial on one job of your choice: up to {LIMITS.free.tailor} tailoring runs, {LIMITS.free.cover} cover letter drafts,
+          {LIMITS.free.interview} practice answer reviews and {LIMITS.free.mock} mock interview for that job. The trial starts on the first job you use one of these features on, and doesn&apos;t
+          renew. CV imports are limited to {LIMITS.free.import} each calendar month.
         </li>
         <li>
           A paid plan is a monthly or yearly subscription that renews automatically until you cancel. You can cancel at any time from the billing page: it
-          then stops renewing, and you keep paid features until the end of the period you&apos;ve already paid for. Paid plans have a fair-use limit of{" "}
-          {LIMITS.paid.tailor} tailored CVs a month.
+          then stops renewing, and you keep paid features until the end of the period you&apos;ve already paid for. Paid plans have fair-use limits of{" "}
+          {LIMITS.paid.tailor} tailored CVs, {LIMITS.paid.cover} cover letters, {LIMITS.paid.interview} practice answer reviews and {LIMITS.paid.mock} mock interviews a month.
         </li>
         <li>
           Subscription payments are handled by Freemius, which acts as the seller of record, and Freemius&apos;s terms apply to the payment.

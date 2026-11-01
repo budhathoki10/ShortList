@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { DeleteAccountForm, VerifyEmailBanner } from "@/components/auth-forms";
+import { PushManager } from "@/components/discovery/push-manager";
 import { buttonClass, PageHeader } from "@/components/ui";
 import { requireUser } from "@/lib/auth/session";
+import { pushConfigured } from "@/lib/discovery/notifications";
 
 export const metadata: Metadata = { title: "Settings" };
 
@@ -13,6 +15,10 @@ export default async function SettingsPage() {
       <section aria-label="Email verification" className="rounded-xl border border-border bg-surface p-5 sm:p-6">
         <h2 className="text-base font-semibold">Email address</h2>
         {user.emailVerifiedAt ? <p className="mt-2 text-sm text-success">Verified · {user.email}</p> : <VerifyEmailBanner email={user.email} />}
+      </section>
+
+      <section aria-label="Notifications" className="rounded-xl border border-border bg-surface p-5 sm:p-6">
+        <PushManager publicKey={process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? ""} configured={pushConfigured()} />
       </section>
 
       <section aria-labelledby="your-data" className="space-y-3 border-t border-border pt-8">

@@ -9,29 +9,12 @@ import { jobHasCriteria } from "@/lib/jobs/quality";
 import { profileNeedsRepair } from "@/lib/cv/quality";
 import { requireUser } from "@/lib/auth/session";
 import { formatDay } from "@/lib/dates";
-import { limitsFor } from "@/lib/plans";
 import { dueFollowUps, isStatus, listJobs, progress, STATUS_LABELS } from "@/lib/services/jobs";
 import { getProfile, profileReady } from "@/lib/services/profile";
-import { usageThisMonth } from "@/lib/services/usage";
+import { planUsage } from "@/lib/services/usage";
+import { UsageMeter } from "@/components/usage-meter";
 
 export const metadata: Metadata = { title: "Today" };
-
-function Meter({ label, used, max }: { label: string; used: number; max: number }) {
-  const pct = Math.min(100, Math.round((used / Math.max(1, max)) * 100));
-  return (
-    <div className="min-w-0">
-      <div className="flex items-baseline justify-between gap-2 text-[13px]">
-        <span className="truncate text-muted">{label}</span>
-        <span className="tabular-nums">
-          {used} of {max}
-        </span>
-      </div>
-      <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-sunken" role="img" aria-label={`${used} of ${max} ${label} used this month`}>
-        <div className={`h-full rounded-full ${pct >= 100 ? "bg-danger" : "bg-accent"}`} style={{ width: `${pct}%` }} />
-      </div>
-    </div>
-  );
-}
 
 export default async function Today({ searchParams }: PageProps<"/app">) {
   const user = await requireUser();
@@ -41,10 +24,9 @@ export default async function Today({ searchParams }: PageProps<"/app">) {
     listJobs(user.id),
     dueFollowUps(user.id),
     progress(user.id),
-    usageThisMonth(user.id),
+    planUsage(user),
   ]);
   const ready = profileReady(profile);
-  const limits = limitsFor(user);
   const recent = jobs.filter((j) => j.status === "saved" || j.status === "interview").slice(0, 6);
   const givenName = (profile?.name || user.name).split(" ")[0];
   const firstName = givenName === givenName.toUpperCase() ? givenName.charAt(0) + givenName.slice(1).toLowerCase() : givenName;
@@ -160,21 +142,50 @@ export default async function Today({ searchParams }: PageProps<"/app">) {
 
       {ready && (
         <section aria-labelledby="usage" className="space-y-4 rounded-xl border border-border bg-surface p-5">
-          <div className="flex items-baseline justify-between gap-3">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
             <h2 id="usage" className="text-base font-semibold">
-              Plan usage this month
+              {usage.plan === "paid" ? "Plan usage this month" : "Your free trial"}
             </h2>
-            {limits.tailor < 100 && (
+            {usage.plan === "free" && (
               <Link href="/app/billing" className="text-[13px] text-accent hover:underline">
                 See paid plans
               </Link>
             )}
           </div>
-          <div className="grid gap-x-8 gap-y-4 sm:grid-cols-3">
-            <Meter label="Tailored CVs" used={usage.tailor} max={limits.tailor} />
-            <Meter label="Cover letters" used={usage.cover} max={limits.cover} />
-            <Meter label="Interview sessions" used={usage.interview} max={limits.interview} />
-          </div>
+          {usage.plan === "free" && (
+            <p className="text-sm text-muted">
+              {usage.trialJob ? (
+                <>
+                  Running on{" "}
+                  <Link href={`/app/jobs/${usage.trialJob.id}`} className="font-medium text-foreground hover:underline">
+                    {usage.trialJob.title}
+                    {usage.trialJob.company ? ` at ${usage.trialJob.company}` : ""}
+                  </Link>
+                  . Upgrade to do the same for every job you apply to.
+                </>
+              ) : !usage.trialClaimed && !usage.verified ? (
+                <>
+                  Confirm your email to start it: analysis, a tailored CV, a cover letter and interview practice for one job, free.{" "}
+                  <Link href="/app/settings" className="font-medium text-accent hover:underline">
+                    Resend the link
+                  </Link>
+                </>
+              ) : usage.trialClaimed ? (
+                "Your free trial has been used. Upgrade to tailor CVs, write cover letters and practise interviews for every job."
+              ) : (
+                "Pick one job and get the full application for it, free: analysis, a tailored CV, a cover letter and interview practice."
+              )}
+            </p>
+          )}
+          {/* Before the trial starts the bars read 0 of N: they show what the trial includes. Hidden only once it's spent. */}
+          {(usage.plan === "paid" || usage.trialJob || !usage.trialClaimed) && (
+            <div className="grid gap-x-8 gap-y-4 sm:grid-cols-2 lg:grid-cols-4">
+              <UsageMeter label="Tailoring runs" used={usage.used.tailor} max={usage.limits.tailor} period={usage.plan === "paid" ? "this month" : "in your free trial"} />
+              <UsageMeter label="Cover letter drafts" used={usage.used.cover} max={usage.limits.cover} period={usage.plan === "paid" ? "this month" : "in your free trial"} />
+              <UsageMeter label="Answer feedback" used={usage.used.interview} max={usage.limits.interview} period={usage.plan === "paid" ? "this month" : "in your free trial"} />
+              <UsageMeter label="Mock interviews" used={usage.used.mock} max={usage.limits.mock} period={usage.plan === "paid" ? "this month" : "in your free trial"} />
+            </div>
+          )}
         </section>
       )}
     </div>

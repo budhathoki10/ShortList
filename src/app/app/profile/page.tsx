@@ -33,8 +33,6 @@ export default async function ProfilePage({ searchParams }: PageProps<"/app/prof
         {needed === "1" && !ready && <Notice title="Add your experience to continue">Upload your CV or add at least one role, project or qualification to prepare an application.</Notice>}
       </div>
 
-      {row?.original?.type === "application/pdf" ? <div className="rounded-lg border border-border bg-surface px-5 py-4 text-sm"><p className="font-medium">Original formatting is your default</p><p className="mt-1 text-muted">Your uploaded PDF downloads unchanged, including its fonts, layout and clickable links. Profile edits and AI suggestions are available in the separate tailored version.</p>{!row.original.matchesProfile && <p className="mt-2 text-warning">Your saved profile has changed since this PDF was uploaded. Upload a revised PDF to update the original.</p>}</div> : ready && <p className="rounded-lg border border-border bg-surface px-5 py-4 text-sm text-muted">Upload your original PDF to preserve its exact formatting. Extracted text alone cannot restore the original design.</p>}
-
       {profile && profileNeedsRepair(profile) && <Notice tone="warning" title="Review your CV import">Some project descriptions appear in title fields. Upload your original CV below to recover the structure and embedded links. Your saved profile stays in place until you approve the replacement.</Notice>}
       {profile ? (
         <details open={profileNeedsRepair(profile)} className="group rounded-md border border-border bg-surface">

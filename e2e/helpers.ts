@@ -23,9 +23,18 @@ export async function signUp(page: Page, address: string, name = "Asha Gurung") 
   await expect(page).toHaveURL(/\/app\/profile\?welcome=1/);
 }
 
-/** Sign up and import the fixture CV. */
+/** Follow the confirmation email's link and confirm, as a person would. */
+export async function confirmEmail(page: Page, address: string) {
+  await page.goto(latestEmailLink(address, "Confirm"));
+  await page.getByRole("button", { name: "Confirm my email" }).click();
+  await expect(page.getByText("Email confirmed.")).toBeVisible();
+}
+
+/** Sign up, confirm the email (the free trial needs it) and import the fixture CV. */
 export async function setUpJobSeeker(page: Page, address: string) {
   await signUp(page, address);
+  await confirmEmail(page, address);
+  await page.goto("/app/profile?welcome=1");
   await page.locator("input[type=file][name=file]").setInputFiles(CV_PDF);
   await page.getByRole("button", { name: "Read my CV" }).click();
   await expect(page.getByRole("status").filter({ hasText: "CV imported" })).toBeVisible({ timeout: 20_000 });

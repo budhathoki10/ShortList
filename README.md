@@ -9,6 +9,8 @@ A job-hunt helper for anyone applying for jobs. You add your CV once, then each 
 
 Around them: a **tracker** (Saved, Applied, Interviewing, Offer, Closed, with follow-up reminders on Today and by email), **progress** stats, and **100 CV templates** you can customise and download as a PDF.
 
+The **Job Radar** adds discovery before preparation. A scheduled agent reads allowlisted employer boards on Greenhouse, Lever, Ashby, Workable, SmartRecruiters and Recruitee, and public remote-job feeds (Remotive, Jobicy, Himalayas, Remote OK, Arbeitnow), rejects or flags explicit eligibility conflicts, ranks the remaining roles against the person's Career Passport and CV evidence, and stores every recommendation before sending email or VAPID Web Push alerts. Candidates still review and submit every application themselves.
+
 The rule everything follows: **Shortlist only uses what's in your profile.** The AI can reword and reorder. It can't add an employer, title, degree, number or skill you don't have. A plain-code check (`src/lib/tailor/fact-check.ts`) catches anything that slips through, so it doesn't rely on the model behaving.
 
 ![Match check](docs/screenshots/match.png)
@@ -66,6 +68,9 @@ All of these are in `.env.example`, with comments.
 | `AI_READ_MODEL`, `AI_WRITE_MODEL` | No | One OpenRouter model id that supports structured outputs, or a comma-separated list tried in order (next model on 429, 5xx, timeout or invalid JSON). Both default to `openrouter/free`, which is rate-limited: set paid models |
 | `OPENROUTER_BASE_URL` | No | Only to point at another OpenAI-compatible endpoint |
 | `RESEND_API_KEY`, `EMAIL_FROM` | For email | Confirmations, password resets and follow-up reminders |
+| `JOB_SOURCE_BOARDS` | For Job Radar | Comma-separated public boards: `provider:board=Company`, provider one of `greenhouse`, `lever`, `ashby`, `workable`, `smartrecruiters`, `recruitee`. Example: `greenhouse:acme=Acme,ashby:linear=Linear` |
+| `JOB_SOURCE_FEEDS` | For Job Radar | Remote-job feeds to read: `remotive,jobicy,himalayas,remoteok,arbeitnow`, or `all` |
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | For push alerts | VAPID key pair and operator contact URI used for Web Push |
 | `FREEMIUS_MODE` | For card payments | `sandbox` (default) or `production`. Production refuses sandbox purchases |
 | `FREEMIUS_PRODUCT_ID`, `FREEMIUS_API_KEY`, `FREEMIUS_SECRET_KEY`, `FREEMIUS_PUBLIC_KEY` | For card payments | From the Freemius Developer Dashboard. **Server secrets**: never put them in a `NEXT_PUBLIC_` variable |
 | `FREEMIUS_PLAN_ID`, `FREEMIUS_PRICING_ID_MONTHLY`, `FREEMIUS_PRICING_ID_YEARLY` | For card payments | The paid plan and its monthly and yearly pricing records |
@@ -107,6 +112,13 @@ curl -H "Authorization: Bearer $CRON_JOB_SECRET" "https://YOUR_DOMAIN/api/cron-j
 
 Each person gets at most one email a day, listing every application that's due.
 
+For Job Radar, create two additional authenticated schedules:
+
+- `/api/cron-job/discovery` every 15 minutes to refresh employer sources, create recommendations, and deliver immediate alerts;
+- `/api/cron-job/discovery-daily` once each morning to deliver users' daily email and push digests.
+
+Set `JOB_SOURCE_BOARDS` and/or `JOB_SOURCE_FEEDS` before enabling the first schedule. Boards and feeds are only stored for job titles someone's Career Passport targets, at most 40 new postings are read with AI per run, and each feed waits its polite interval (Remotive 6 hours, the others 1 hour) between fetches. Each feed's terms ask for a followed link back and its name on the posting; the Radar shows both. LinkedIn and Nepal job portals such as MeroJob forbid automated reading in their terms, so there are no adapters for them. Fetching is source-based, not user-based: each employer board is read once per run and its changed jobs are then matched against active Career Passports. Generate the Web Push key pair once with `npx web-push generate-vapid-keys`; expose only the public key to the browser.
+
 ### 5. AI models (OpenRouter)
 
 Without paid models the app still works, but CV reading, tailoring, cover letters and the full analysis quietly use the plain-code fallbacks, because the free default (`openrouter/free`) is rate-limited. Set `OPENROUTER_API_KEY` and paid models in `.env` **and** on your host:
@@ -138,6 +150,7 @@ Where things live:
 | `src/app/app/print/` | Print pages for saving as PDF: a job's CV (`cv/[id]`), its cover letter (`letter/[id]`), and your own CV in any template (`profile`) |
 | `src/db/` | MongoDB connection, collection types and indexes |
 | `src/lib/services/` | Database reads and writes, and rate limits |
+| `src/lib/discovery/` | Employer-source adapters, eligibility checks, recommendation rules, scheduled discovery, email and Web Push delivery |
 | `src/lib/billing/` | Freemius: checkout, webhooks, access policy |
 | `src/app/app/` | The signed-in app |
 | `src/components/` | UI: `ui.tsx` primitives, `toast.tsx`, the sidebar, and the command palette (`command-palette.tsx`) |

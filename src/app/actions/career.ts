@@ -15,10 +15,10 @@ import { ownedJob } from "@/lib/services/jobs";
 import { getProfile, profileReady } from "@/lib/services/profile";
 import { advanceMockSession, createMockSession, getCareerPlan, getMockSession, listMockSessions, recordMockAnswer, saveCareerPlan, updateLearningProgress } from "@/lib/services/career";
 import { overLimit } from "@/lib/services/rate-limit";
-import { refundAllowance, spendAllowance } from "@/lib/services/usage";
+import { denialMessage, refundAllowance, spendAllowance } from "@/lib/services/usage";
 import { collections } from "@/db/mongo";
 
-export type CareerState = { error?: string; success?: string } | undefined;
+export type CareerState = { error?: string; success?: string; upgrade?: true; verify?: true } | undefined;
 async function contextFor(form: FormData) {
   const user = await requireUser();
   const job = await ownedJob(user.id, String(form.get("jobId") ?? ""));
@@ -34,13 +34,14 @@ export async function prepareApplicationPlan(_: CareerState, form: FormData): Pr
   if (await overLimit(`career-plan:${user.id}`, 8, 60 * 60_000)) return { error: "Please wait before analysing another application plan." };
   const website = String(form.get("companyUrl") ?? "").trim().slice(0, 2000);
   if (website && !webUrl(website)) return { error: "Enter a valid public company website URL, or leave it blank." };
-  if (!(await spendAllowance(user, "tailor"))) return { error: "Your tailoring allowance is used for this month. Existing plans remain available." };
+  const spend = await spendAllowance(user, "tailor", { jobId: job.id });
+  if (!spend.ok) return denialMessage(user, "tailor", spend.reason);
   try {
     const company = await researchCompany(website);
     const plan = await buildApplicationPlan(context, company);
-    if (!plan.requirements.length) { await refundAllowance(user.id, "tailor"); return { error: "No source-backed requirements could be mapped. Add the complete job description first." }; }
+    if (!plan.requirements.length) { await refundAllowance(user, "tailor"); return { error: "No source-backed requirements could be mapped. Add the complete job description first." }; }
     await saveCareerPlan(user.id, job.id, plan);
-  } catch { await refundAllowance(user.id, "tailor"); return { error: "The application plan could not be saved. Your allowance was returned; try again." }; }
+  } catch { await refundAllowance(user, "tailor"); return { error: "The application plan could not be saved. Your allowance was returned; try again." }; }
   revalidatePath(`/app/jobs/${job.id}`, "layout");
   revalidatePath("/app/strategy");
   return { success: "Full analysis ready. Start with the required gaps." };
@@ -72,14 +73,15 @@ export async function startMockInterview(_: CareerState, form: FormData): Promis
   const active = sessions.find((s) => s.status === "active");
   if (active) redirect(`/app/jobs/${job.id}/interview/mock/${active._id}`);
   if (await overLimit(`mock-start:${user.id}`, 10, 60 * 60_000)) return { error: "Please wait before starting another mock interview." };
-  if (!(await spendAllowance(user, "interview"))) return { error: "This month’s interview allowance is used. Your past reports remain available." };
+  const spend = await spendAllowance(user, "mock", { jobId: job.id });
+  if (!spend.ok) return denialMessage(user, "mock", spend.reason);
   const requestedId = randomUUID();
   let session;
   try {
     const attempt = await (await collections()).mockSessions.countDocuments({ userId: user.id, jobId: job.id });
     session = await createMockSession(user.id, job.id, row.plan.fingerprint, mockCurriculum(interviewBank(context, row.plan), attempt), requestedId);
-  } catch { await refundAllowance(user.id, "interview"); return { error: "The session could not be started. Your allowance was returned; try again." }; }
-  if (!session || session._id !== requestedId) await refundAllowance(user.id, "interview");
+  } catch { await refundAllowance(user, "mock"); return { error: "The session could not be started. Your allowance was returned; try again." }; }
+  if (!session || session._id !== requestedId) await refundAllowance(user, "mock");
   if (!session) return { error: "The session could not be started. Your allowance was returned; try again." };
   revalidatePath(`/app/jobs/${job.id}/interview`);
   redirect(`/app/jobs/${job.id}/interview/mock/${session._id}`);

@@ -19,7 +19,7 @@ test("all main pages work on desktop and phone, without the global verification 
   await expect(page.getByRole("region", { name: "Current interview question" })).toBeVisible();
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
-  const paths = ["/app", "/app/jobs", "/app/jobs?view=board", "/app/profile", "/app/progress", "/app/settings", "/app/billing", jobUrl, `${jobUrl}/cv`, `${jobUrl}/cover-letter`, `${jobUrl}/interview`, jobUrl.replace("/jobs/", "/print/cv/") + "?layout=redesigned"];
+  const paths = ["/app", "/app/radar", "/app/jobs", "/app/jobs?view=board", "/app/profile", "/app/progress", "/app/settings", "/app/billing", jobUrl, `${jobUrl}/cv`, `${jobUrl}/cover-letter`, `${jobUrl}/interview`, jobUrl.replace("/jobs/", "/print/cv/") + "?layout=redesigned"];
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 900 });
     for (let i = 0; i < paths.length; i++) {

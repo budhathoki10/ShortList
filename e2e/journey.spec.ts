@@ -127,13 +127,13 @@ test("the free allowance runs out, and a Freemius subscription lifts it and unlo
   await page.getByRole("link", { name: "Tailored CV" }).click();
   await page.getByRole("button", { name: "Tailored version", exact: true }).click();
 
-  // One tailoring used already; two more reach the free limit of 3.
+  // One tailoring used already; two more reach the free trial's 3 runs on this job.
   for (let i = 0; i < 2; i++) {
     await page.getByRole("button", { name: "Suggest again" }).click();
     await expect(page.getByText(/suggested change/)).toBeVisible();
   }
   await page.getByRole("button", { name: "Suggest again" }).click();
-  await expect(page.getByRole("alert").filter({ hasText: "You’ve reached your monthly allowance" })).toBeVisible();
+  await expect(page.getByRole("alert").filter({ hasText: "You’ve used the free trial’s tailoring for this job" })).toBeVisible();
 
   // Subscribing: checkout opens, then Freemius (not the browser) confirms the purchase by webhook.
   await page.goto("/app/billing");

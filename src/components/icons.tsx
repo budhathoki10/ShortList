@@ -22,6 +22,14 @@ export const icons = {
       <rect width="20" height="14" x="2" y="6" rx="2" />
     </Icon>
   ),
+  radar: (p: SVGProps<SVGSVGElement>) => (
+    <Icon {...p}>
+      <circle cx="12" cy="12" r="9" />
+      <circle cx="12" cy="12" r="5" />
+      <path d="M12 3v4M12 17v4M3 12h4M17 12h4" />
+      <circle cx="12" cy="12" r="1" fill="currentColor" stroke="none" />
+    </Icon>
+  ),
   cv: (p: SVGProps<SVGSVGElement>) => (
     <Icon {...p}>
       <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />

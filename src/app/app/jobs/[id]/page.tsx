@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { followUpAction, removeJob } from "@/app/actions/jobs";
 import { PlanBuilder } from "@/components/career/plan-controls";
+import { TrialNote } from "@/components/trial-note";
 import { PlanView } from "@/components/career/plan-view";
 import { ConfirmAction } from "@/components/confirm-action";
 import { CopyButton } from "@/components/copy-button";
@@ -120,7 +121,10 @@ export default async function FitTab({ params }: PageProps<"/app/jobs/[id]">) {
                 Your CV or the job changed since the full analysis. Refresh it below.
               </p>
             )}
-            <PlanBuilder jobId={job.id} exists={!!planRow} companyUrl={planRow?.plan.company.sources[0]?.url} />
+            <div className="space-y-2">
+              <PlanBuilder jobId={job.id} exists={!!planRow} companyUrl={planRow?.plan.company.sources[0]?.url} />
+              <TrialNote user={user} jobId={job.id} kind="tailor" />
+            </div>
               </>
             )}
 

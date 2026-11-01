@@ -170,7 +170,8 @@ export type ProfileDoc = { _id: string; data: Profile; updatedAt: Date; /** A bu
 export type InterviewDoc = { _id: string; userId: string; questions: InterviewQuestion[]; updatedAt: Date; sourceNeedsReview?: boolean; questionVersion?: number; previousQuestions?: InterviewQuestion[] };
 
 /** AI actions per user per calendar month (UTC), for plan limits. `_id` is `userId:month:kind`. */
-export type UsageDoc = { _id: string; userId: string; month: string; kind: string; count: number };
+/** `month` is "2026-10" for monthly counts, or "trial" for the free trial's one-time counts. The trial's job claim row also carries `jobId`. */
+export type UsageDoc = { _id: string; userId: string; month: string; kind: string; count: number; jobId?: string };
 
 /** Fixed-window counters for brute-force protection. `_id` is `key:window`. */
 export type RateLimitDoc = { _id: string; count: number; expiresAt: Date };
@@ -180,3 +181,154 @@ export type CvTemplateDoc = { _id: string; userId: string; name: string; basedOn
 
 /** A profile photo, re-encoded to WebP without metadata. `_id` is the user's id, so there is at most one. Served only to its owner. */
 export type PhotoDoc = { _id: string; image: Uint8Array; updatedAt: Date };
+
+export type AlertFrequency = "immediate" | "daily" | "off";
+export type RecommendationState = "ready" | "stretch" | "verify" | "blocked";
+export type RecommendationStatus = "active" | "dismissed" | "saved" | "closed";
+
+/** Search facts the CV cannot answer safely. `_id` is the user id. */
+export type CareerPassportDoc = {
+  _id: string;
+  targetRoles: string[];
+  excludedRoles: string[];
+  locations: string[];
+  workCountries: string[];
+  remoteModes: Array<"remote" | "hybrid" | "onsite">;
+  needsSponsorship: boolean;
+  graduationDate: string | null;
+  minimumSalary: number | null;
+  employmentTypes: string[];
+  excludedCompanies: string[];
+  discoveryEnabled: boolean;
+  emailFrequency: AlertFrequency;
+  pushFrequency: AlertFrequency;
+  alertStates: RecommendationState[];
+  quietStart: string;
+  quietEnd: string;
+  timezone: string;
+  version: number;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type EligibilityFinding = {
+  code: "sponsorship" | "citizenship" | "location" | "experience" | "degree" | "clearance" | "graduation";
+  severity: "blocker" | "verify";
+  message: string;
+  evidence: string;
+};
+
+/** Company careers boards (one employer each) and public remote-job feeds (many employers, read in one call). */
+export type JobSourceType =
+  | "greenhouse"
+  | "lever"
+  | "ashby"
+  | "workable"
+  | "smartrecruiters"
+  | "recruitee"
+  | "remotive"
+  | "jobicy"
+  | "himalayas"
+  | "remoteok"
+  | "arbeitnow";
+
+export type DiscoveredJobDoc = {
+  _id: string;
+  sourceType: JobSourceType;
+  sourceKey: string;
+  externalId: string;
+  canonicalUrl: string;
+  company: string;
+  title: string;
+  location: string;
+  text: string;
+  post: JobPost;
+  contentHash: string;
+  sourceUpdatedAt: Date | null;
+  /** When the source says the posting expires (feeds that give it). Used to close postings a partial feed no longer lists. */
+  expiresAt?: Date | null;
+  firstSeenAt: Date;
+  lastSeenAt: Date;
+  closedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type JobSourceDoc = {
+  _id: string;
+  type: JobSourceType;
+  key: string;
+  company: string;
+  enabled: boolean;
+  failureCount: number;
+  lastRunAt: Date | null;
+  lastSuccessAt: Date | null;
+  nextAttemptAt: Date | null;
+  lastFailureReason: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type JobRecommendationDoc = {
+  _id: string;
+  userId: string;
+  discoveredJobId: string;
+  state: RecommendationState;
+  status: RecommendationStatus;
+  evidenceScore: number;
+  preferenceScore: number;
+  match: Match;
+  eligibility: EligibilityFinding[];
+  reasons: string[];
+  ruleVersion: number;
+  profileUpdatedAt: Date;
+  passportVersion: number;
+  jobContentHash: string;
+  notificationVersion: number;
+  trackerJobId: string | null;
+  dismissalReason: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type PushSubscriptionDoc = {
+  _id: string;
+  userId: string;
+  endpointHash: string;
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+  deviceLabel: string;
+  createdAt: Date;
+  updatedAt: Date;
+  lastSuccessAt: Date | null;
+};
+
+export type NotificationDeliveryDoc = {
+  /** `recommendationId:channel:notificationVersion`. */
+  _id: string;
+  userId: string;
+  recommendationId: string;
+  channel: "email" | "push";
+  frequency: Exclude<AlertFrequency, "off">;
+  state: "pending" | "sending" | "sent" | "failed";
+  attempts: number;
+  nextAttemptAt: Date;
+  lockedUntil: Date | null;
+  providerMessageId: string | null;
+  failureReason: string | null;
+  createdAt: Date;
+  sentAt: Date | null;
+};
+
+export type DiscoveryRunDoc = {
+  _id: string;
+  source: string;
+  status: "running" | "complete" | "failed";
+  found: number;
+  changed: number;
+  recommendations: number;
+  failureReason: string | null;
+  startedAt: Date;
+  completedAt: Date | null;
+};

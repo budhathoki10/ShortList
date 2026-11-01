@@ -3,11 +3,10 @@ import { collections } from "@/db/mongo";
 import type { Profile } from "@/lib/model/types";
 import { CV_READER_VERSION } from "@/lib/cv/quality";
 import type { OriginalCvFile } from "@/db/types";
-import { profileHash } from "@/lib/cv/original";
 
 export async function getProfileRow(userId: string) {
   const doc = await (await collections()).profiles.findOne({ _id: String(userId) }, { projection: { "original.bytes": 0 } });
-  return doc ? { userId: doc._id, data: doc.data, updatedAt: doc.updatedAt, original: doc.original ? { name: doc.original.name, type: doc.original.type, matchesProfile: doc.original.profileHash === profileHash(doc.data) } : null } : null;
+  return doc ? { userId: doc._id, data: doc.data, updatedAt: doc.updatedAt, original: doc.original ? { name: doc.original.name, type: doc.original.type } : null } : null;
 }
 
 export async function getProfile(userId: string): Promise<Profile | null> {
