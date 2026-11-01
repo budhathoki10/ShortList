@@ -40,6 +40,10 @@ export async function deleteUser(userId: string) {
     c.authTokens.deleteMany({ userId: id }),
     c.cvTemplates.deleteMany({ userId: id }),
     c.photos.deleteOne({ _id: id }),
+    c.careerPassports.deleteOne({ _id: id }),
+    c.jobRecommendations.deleteMany({ userId: id }),
+    c.pushSubscriptions.deleteMany({ userId: id }),
+    c.notificationDeliveries.deleteMany({ userId: id }),
   ]);
   await c.users.deleteOne({ _id: id });
 }
@@ -52,7 +56,7 @@ export async function deleteAllSessions(userId: string) {
 /** Everything stored about the user (right of access and portability). Internal ids and the password hash are left out. */
 export async function exportUserData(user: User) {
   const c = await collections();
-  const [profile, jobs, documents, interviews, payments, subscriptions, templates, photo, careerPlans, mockSessions] = await Promise.all([
+  const [profile, jobs, documents, interviews, payments, subscriptions, templates, photo, careerPlans, mockSessions, careerPassport, recommendations, notificationDeliveries] = await Promise.all([
     c.profiles.findOne({ _id: user.id }),
     c.jobs.find({ userId: user.id }).sort({ createdAt: 1 }).toArray(),
     c.documents.find({ userId: user.id }).sort({ createdAt: 1 }).toArray(),
@@ -63,6 +67,9 @@ export async function exportUserData(user: User) {
     c.photos.findOne({ _id: user.id }),
     c.careerPlans.find({ userId: user.id }).toArray(),
     c.mockSessions.find({ userId: user.id }).sort({ createdAt: 1 }).toArray(),
+    c.careerPassports.findOne({ _id: user.id }),
+    c.jobRecommendations.find({ userId: user.id }).sort({ createdAt: 1 }).toArray(),
+    c.notificationDeliveries.find({ userId: user.id }, { projection: { failureReason: 0 } }).sort({ createdAt: 1 }).toArray(),
   ]);
   return {
     exportedAt: new Date().toISOString(),
@@ -75,6 +82,9 @@ export async function exportUserData(user: User) {
     originalCv: profile?.original ? { name: profile.original.name, type: profile.original.type, sha256: profile.original.sha256, base64: originalBytes(profile.original).toString("base64") } : null,
     applicationPlans: careerPlans.map((p) => ({ jobId: p._id, plan: p.plan, progress: p.progress, updatedAt: p.updatedAt })),
     mockInterviews: mockSessions.map((session) => ({ ...session, userId: undefined })),
+    careerPassport: careerPassport ? { ...careerPassport, _id: undefined } : null,
+    jobRecommendations: recommendations.map((row) => ({ ...row, userId: undefined })),
+    notificationDeliveries: notificationDeliveries.map((row) => ({ ...row, userId: undefined })),
     jobs: jobs.map((d) => ({ ...fromDoc<Job>(d), userId: undefined })),
     documents: documents.map((d) => ({ ...fromDoc<Document>(d), userId: undefined })),
     interviews: interviews.map((i) => ({ jobId: i._id, questions: i.questions, previousQuestions: i.previousQuestions ?? [], questionVersion: i.questionVersion ?? 1, updatedAt: i.updatedAt })),

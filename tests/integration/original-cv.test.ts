@@ -19,7 +19,7 @@ describe("original CV preservation", () => {
     const user = await makeUser();
     await saveProfile(user.id, profile, "source text", original());
     const row = (await getProfileRow(user.id))!;
-    expect(row.original).toEqual({ name: 'My "original" CV.pdf', type: "application/pdf", matchesProfile: true });
+    expect(row.original).toEqual({ name: 'My "original" CV.pdf', type: "application/pdf" });
     expect(JSON.stringify(row)).not.toContain("bytes");
     const saved = (await getOriginalCv(user.id))!;
     expect(originalBytes(saved)).toEqual(bytes);
@@ -31,11 +31,10 @@ describe("original CV preservation", () => {
     expect(await getOriginalCv("another-user")).toBeNull();
   });
 
-  it("retains the original on profile edits, reports changed content, and removes it on a pasted replacement", async () => {
+  it("retains the original on profile edits and removes it on a pasted replacement", async () => {
     const user = await makeUser();
     await saveProfile(user.id, profile, "source", original());
     await saveProfile(user.id, { ...profile, summary: "Edited profile wording." });
-    expect((await getProfileRow(user.id))?.original?.matchesProfile).toBe(false);
     expect(originalBytes((await getOriginalCv(user.id))!)).toEqual(bytes);
     await saveProfile(user.id, profile, "replacement source", null);
     expect(await getOriginalCv(user.id)).toBeNull();

@@ -5,9 +5,10 @@ import { useRef, useState } from "react";
 import { abandonCheckoutAction, cancelSubscriptionAction, confirmCheckout, startCheckout } from "@/app/actions/subscription";
 import { ConfirmAction } from "./confirm-action";
 import { useToast } from "./toast";
-import { Button, Notice } from "./ui";
+import { Badge, Button, Notice } from "./ui";
 
-export type PlanChoice = { interval: "monthly" | "yearly"; title: string; price: string | null; note: string };
+/** `badge` is a short fact about the price ("Save 17%"); `recommended` gives that choice the primary button. */
+export type PlanChoice = { interval: "monthly" | "yearly"; title: string; price: string | null; note: string; badge?: string | null; recommended?: boolean };
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -77,13 +78,23 @@ export function SubscribePlans({ plans, disabledReason }: { plans: PlanChoice[];
     <div className="space-y-3">
       <div className="grid gap-3 sm:grid-cols-2">
         {plans.map((p) => (
-          <div key={p.interval} className="flex flex-col justify-between gap-4 rounded-md border border-border bg-surface p-5">
+          <div key={p.interval} className={`flex flex-col justify-between gap-5 rounded-md border p-5 ${p.recommended ? "border-accent/45 bg-tint" : "border-border bg-surface"}`}>
             <div>
-              <p className="font-medium">{p.title}</p>
-              <p className="mt-1 text-2xl font-semibold tracking-tight tabular-nums">{p.price ?? "Price shown at checkout"}</p>
-              <p className="mt-1 text-sm text-muted">{p.note}</p>
+              <div className="flex min-h-5 items-center justify-between gap-2">
+                <p className={`text-sm font-medium ${p.recommended ? "text-accent-strong" : ""}`}>{p.title}</p>
+                {p.badge && <Badge tone="accent">{p.badge}</Badge>}
+              </div>
+              <p className="mt-2 text-2xl font-semibold tracking-[-0.02em] tabular-nums">{p.price ?? "Price shown at checkout"}</p>
+              <p className="mt-1 text-[13px] text-muted">{p.note}</p>
             </div>
-            <Button type="button" onClick={() => open(p.interval)} loading={busy === p.interval} disabled={!!disabledReason || waiting || busy !== null}>
+            <Button
+              type="button"
+              variant={p.recommended ? "primary" : "secondary"}
+              className="w-full"
+              onClick={() => open(p.interval)}
+              loading={busy === p.interval}
+              disabled={!!disabledReason || waiting || busy !== null}
+            >
               {busy === p.interval ? "Opening checkout…" : `Subscribe ${p.interval}`}
             </Button>
           </div>

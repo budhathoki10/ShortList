@@ -89,7 +89,7 @@ test("signed-in pages run under the strict policy with no violations", async ({ 
   }
   // The meter on Today is a style="" attribute: it must still draw.
   await page.goto("/app");
-  expect(await page.getByRole("img", { name: /Tailored CVs used this month/ }).locator("div").evaluate((el) => (el as HTMLElement).style.width)).toMatch(/%$/);
+  expect(await page.getByRole("img", { name: /tailoring runs used/i }).locator("div").evaluate((el) => (el as HTMLElement).style.width)).toMatch(/%$/);
   expect(blocked).toEqual([]);
 });
 
@@ -201,19 +201,21 @@ test("a suggestion switches off and on at once, and the choice is saved", async 
   const card = page.getByRole("listitem").filter({ hasText: "Leads with the skills in the job post" });
 
   await expect(card.getByText("Using")).toBeVisible();
+  // The plain-code tailoring makes several suggestions; count relative to where it starts.
+  const before = Number((await using.textContent())?.match(/^Using (\d+)/)?.[1]);
   // The change shows at once and saves in the background; wait for that save before reloading.
   const saved = page.waitForResponse((r) => r.request().method() === "POST" && r.url().includes("/cv"));
   await card.getByRole("button", { name: "Don't use this" }).click();
   await expect(card.getByText("Not using")).toBeVisible();
   await saved;
-  await expect(using).toHaveText(/^Using 0 of/);
+  await expect(using).toHaveText(new RegExp(`^Using ${before - 1} of`));
 
   // It was saved, not just shown.
   await page.reload();
   await expect(page.getByRole("listitem").filter({ hasText: "Leads with the skills in the job post" }).getByText("Not using")).toBeVisible();
 
-  await page.getByRole("button", { name: "Use this" }).click();
-  await expect(page.getByText(/^Using 1 of/)).toBeVisible();
+  await page.getByRole("listitem").filter({ hasText: "Leads with the skills in the job post" }).getByRole("button", { name: "Use this" }).click();
+  await expect(page.getByText(new RegExp(`^Using ${before} of`))).toBeVisible();
 });
 
 test("deleting a job names what is lost and can be cancelled with Escape", async ({ page }) => {

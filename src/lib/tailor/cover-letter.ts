@@ -54,8 +54,11 @@ export function basicLetter(profile: Profile, post: JobPost, match: Match): stri
   return lines.filter(Boolean).join("\n\n");
 }
 
-/** A cover letter plus any facts in it the profile and job post don't support, for the user to check. */
-export async function writeCoverLetter(profile: Profile, post: JobPost, match: Match, companyContext = ""): Promise<{ text: string; flags: string[]; method: "ai" | "basic" }> {
+/**
+ * A cover letter plus any facts in it the profile and job post don't support, for the user to check. `aiFailed` is true
+ * when the AI was configured but no model answered, so the plain-code letter stands in for one the user didn't get.
+ */
+export async function writeCoverLetter(profile: Profile, post: JobPost, match: Match, companyContext = ""): Promise<{ text: string; flags: string[]; method: "ai" | "basic"; aiFailed: boolean }> {
   const allowed = JSON.stringify(post);
   if (aiEnabled()) {
     try {
@@ -74,13 +77,13 @@ export async function writeCoverLetter(profile: Profile, post: JobPost, match: M
       const claimFlags = unsupportedExperienceClaims(text, profile);
       if (claimFlags.length) {
         const safe = basicLetter(profile, post, match);
-        return { text: safe, flags: unsupportedExperienceClaims(safe, profile), method: "basic" };
+        return { text: safe, flags: unsupportedExperienceClaims(safe, profile), method: "basic", aiFailed: false };
       }
-      return { text: text.trim(), flags: unsupportedFacts(text, profile, `${allowed}\n${companyContext}`), method: "ai" };
+      return { text: text.trim(), flags: unsupportedFacts(text, profile, `${allowed}\n${companyContext}`), method: "ai", aiFailed: false };
     } catch (err) {
       if (!(err instanceof AiUnavailableError)) console.error("AI cover letter failed", err);
     }
   }
   const text = basicLetter(profile, post, match);
-  return { text, flags: unsupportedFacts(text, profile, allowed), method: "basic" };
+  return { text, flags: unsupportedFacts(text, profile, allowed), method: "basic", aiFailed: aiEnabled() };
 }

@@ -196,7 +196,8 @@ function split(text: string, title?: string): Pick<ToastInput, "message" | "desc
   return parts ? { message: parts[1], description: parts[2] } : { message: text };
 }
 
-type Outcome = { error?: string | null; success?: string | null } | null | undefined;
+/** `upgrade`: a paid plan lifts this refusal. `verify`: confirming the email does. Either way the toast offers the way there. */
+type Outcome = { error?: string | null; success?: string | null; upgrade?: boolean; verify?: boolean } | null | undefined;
 
 /**
  * Turns a server action's result into one toast, once per result: errors as error toasts, confirmations as success
@@ -208,7 +209,7 @@ export function ActionToast({ state, only, errorTitle, toastKey }: { state: Outc
   useEffect(() => {
     if (!state || state === seen.current) return;
     seen.current = state;
-    if (state.error && only !== "success") show({ tone: "error", key: toastKey, ...split(state.error, errorTitle) });
+    if (state.error && only !== "success") show({ tone: "error", key: toastKey, ...split(state.error, errorTitle), ...(state.upgrade ? { action: { label: "See plans", href: "/app/billing" } } : state.verify ? { action: { label: "Resend link", href: "/app/settings" } } : {}) });
     else if (state.success && only !== "error") show({ tone: "success", key: toastKey, ...split(state.success) });
   }, [state, only, errorTitle, toastKey, show]);
   return null;

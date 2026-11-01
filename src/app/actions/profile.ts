@@ -38,10 +38,10 @@ export async function importCv(_: ProfileState, formData: FormData): Promise<Pro
     }
   }
   if (text.length < 80) return { error: "Upload your CV, or paste at least a few lines of it." };
-  if (!(await spendAllowance(user, "import"))) return { error: "You’ve reached your monthly CV import limit. You can still edit your saved profile below." };
+  if (!(await spendAllowance(user, "import")).ok) return { error: "You’ve reached this month’s CV import limit. You can still edit your saved profile below." };
 
   const { profile: read, method } = await parseCv(text).catch(async (err) => {
-    await refundAllowance(user.id, "import");
+    await refundAllowance(user, "import");
     throw err;
   });
   if (!read.email) read.email = user.email;

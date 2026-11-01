@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { writeCover } from "@/app/actions/tailor";
 import { AiActionButton } from "@/components/ai-action-button";
 import { CoverLetterEditor } from "@/components/cover-letter-editor";
+import { TrialNote } from "@/components/trial-note";
 import { ButtonLink, EmptyState } from "@/components/ui";
 import { requireUser } from "@/lib/auth/session";
 import { getCoverLetter } from "@/lib/services/documents";
@@ -34,12 +35,12 @@ export default async function CoverTab({ params }: PageProps<"/app/jobs/[id]/cov
           Short, specific and in plain words: why this job, and two or three things you’ve actually done that it needs. Nothing invented. Edit it until it sounds like you.
         </p>
         <AiActionButton action={writeCover} jobId={job.id} label="Write a draft" pendingLabel="Writing…" />
+        <TrialNote user={user} jobId={job.id} kind="cover" />
       </div>
     );
   }
   return (
     <div className="space-y-4">
-      {doc.sourceNeedsReview && <p className="rounded-lg border border-warning/25 bg-warning-soft px-4 py-3 text-sm text-warning">Your CV has changed since this letter was written. Your edits are preserved; review this draft or write a new version from your corrected profile.</p>}
       {doc.generationMethod === "basic" && <p className="rounded-lg border border-warning/25 bg-warning-soft px-4 py-3 text-sm text-warning">AI drafting was unavailable. This is a local draft built from your CV; review the examples and wording before sending.</p>}
       <CoverLetterEditor key={doc.id} jobId={job.id} initial={doc.text} flags={unsupportedFacts(doc.text, profile, JSON.stringify(job.post))} email={user.email} role={job.post.title} recipient={job.postText.match(/[\w.+-]+@[\w-]+\.[\w.-]+/)?.[0] ?? ""} />
     </div>

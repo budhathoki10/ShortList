@@ -9,7 +9,7 @@ import { ScrollWords } from "@/components/landing/scroll-words";
 import { SiteFooter, SiteHeader } from "@/components/site-chrome";
 import { ButtonLink } from "@/components/ui";
 import { priceLabels } from "@/lib/billing/config";
-import { LIMITS } from "@/lib/plans";
+import { PLAN_FEATURES } from "@/lib/plans";
 
 const STEPS = [
   ["Add your CV once", "Upload a PDF or Word file, or paste it. Check what we read. From then on, it’s the only source of facts about you."],
@@ -70,14 +70,8 @@ function Arrow() {
 export default async function Home({ searchParams }: PageProps<"/">) {
   const { deleted } = await searchParams;
   const prices = priceLabels();
-  const rows = [
-    ["Tailored CVs with match check", `${LIMITS.free.tailor} a month`, `${LIMITS.paid.tailor} a month`],
-    ["Cover letters", `${LIMITS.free.cover} a month`, `${LIMITS.paid.cover} a month`],
-    ["Interview practice", `${LIMITS.free.interview} sessions a month`, `${LIMITS.paid.interview} sessions a month`],
-    ["Application tracker and follow-up reminders", "Yes", "Yes"],
-    ["PDF download", "Yes", "Yes"],
-    ["Word (.docx) download", "No", "Yes"],
-  ] as const;
+  const cell = (v: string | boolean) => (v === true ? "Yes" : v === false ? "No" : v);
+  const rows = PLAN_FEATURES.map((f) => [f.feature, cell(f.free), cell(f.paid)] as const);
   return (
     <>
       <SiteHeader />
@@ -112,7 +106,7 @@ export default async function Home({ searchParams }: PageProps<"/">) {
                   Start free
                   <Arrow />
                 </ButtonLink>
-                <span className="text-sm text-muted">{LIMITS.free.tailor} tailored CVs a month free. No card.</span>
+                <span className="text-sm text-muted">Free for your first job. No card.</span>
               </div>
             </div>
             <HeroPreview />
@@ -142,7 +136,7 @@ export default async function Home({ searchParams }: PageProps<"/">) {
           <div className="mx-auto max-w-5xl px-4 py-16 sm:px-6 sm:py-24">
             <Reveal>
               <h2 className={h2}>Pricing</h2>
-              <p className="mt-3 text-muted">Start free. Upgrade monthly or yearly when you need more applications, and cancel whenever you like.</p>
+              <p className="mt-3 text-muted">Try everything free on your first job. Upgrade monthly or yearly to use it on every job you apply to, and cancel whenever you like.</p>
             </Reveal>
             <div className="mt-8 grid gap-4 sm:hidden">
               {[
@@ -239,7 +233,7 @@ export default async function Home({ searchParams }: PageProps<"/">) {
                   Start free
                   <Arrow />
                 </ButtonLink>
-                <span className="text-sm opacity-90">{LIMITS.free.tailor} tailored CVs a month free. No card.</span>
+                <span className="text-sm opacity-90">Free for your first job. No card.</span>
               </div>
             </div>
           </Reveal>

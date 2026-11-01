@@ -14,7 +14,8 @@ import { photoUrl } from "@/lib/services/photos";
 import { getProfileRow, profileReady } from "@/lib/services/profile";
 import { listMyTemplates, resolveCvStyle } from "@/lib/services/templates";
 import { recommendTemplates } from "@/lib/templates/registry";
-import { usageThisMonth } from "@/lib/services/usage";
+import { planUsage, trialStateFor } from "@/lib/services/usage";
+import { TrialNote } from "@/components/trial-note";
 import { jobHasCriteria } from "@/lib/jobs/quality";
 import { scoreMatch } from "@/lib/match/score";
 import { isAddableSkill } from "@/lib/match/skills";
@@ -24,7 +25,7 @@ export const metadata: Metadata = { title: "Tailored CV" };
 export default async function CvTab({ params }: PageProps<"/app/jobs/[id]/cv">) {
   const user = await requireUser();
   const { id } = await params;
-  const [job, row, doc, usage] = await Promise.all([ownedJob(user.id, id), getProfileRow(user.id), getTailoredCv(user.id, id), usageThisMonth(user.id)]);
+  const [job, row, doc, usage] = await Promise.all([ownedJob(user.id, id), getProfileRow(user.id), getTailoredCv(user.id, id), planUsage(user)]);
   const profile = row?.data ?? null;
   if (!job) notFound();
   if (!jobHasCriteria(job.post)) return <EmptyState title="Add this vacancy’s requirements first" action={<ButtonLink href={`/app/jobs/${job.id}#job-description`}>Add job description</ButtonLink>}>A search-results page does not tell us what this employer needs. Add the actual description before tailoring.</EmptyState>;
@@ -36,7 +37,7 @@ export default async function CvTab({ params }: PageProps<"/app/jobs/[id]/cv">) 
     );
   }
   const limits = limitsFor(user);
-  const left = Math.max(0, limits.tailor - usage.tailor);
+  const trial = trialStateFor(usage, job.id);
   // What the post asks for that your CV doesn't mention at all. Scored live, so an addition disappears at once.
   const gaps = scoreMatch(profile, job.post)
     .keywords.filter((k) => k.where === "missing" && isAddableSkill(k.keyword))
@@ -49,12 +50,13 @@ export default async function CvTab({ params }: PageProps<"/app/jobs/[id]/cv">) 
     const intro = (
       <div className="max-w-2xl space-y-4 rounded-md border border-border bg-surface p-5 sm:p-6">
         <h2 className="t-title">Tailor your CV for this job</h2>
-        {doc?.sourceNeedsReview && <p className="rounded-md bg-warning-soft p-3 text-sm text-warning">Your CV changed. Suggest changes again so this job uses the latest version.</p>}
         <p className="text-sm text-muted">We rebuild your CV around this job: a summary and headline for the role, your most relevant work and skills first, and wording that uses the employer’s terms. Only what’s already true in your CV is used. You approve each change.</p>
-        <AiActionButton action={tailorCv} jobId={job.id} label="Suggest changes" pendingLabel="Reading the job and your CV…" />
-        <p className="text-xs text-muted">
-          {left} of {limits.tailor} this month{limits.tailor < 100 ? " on the free plan" : ""}.
-        </p>
+        {trial === "other-job" ? (
+          <ButtonLink href="/app/billing">See paid plans</ButtonLink>
+        ) : (
+          <AiActionButton action={tailorCv} jobId={job.id} label="Suggest changes" pendingLabel="Reading the job and your CV…" />
+        )}
+        <TrialNote user={user} jobId={job.id} kind="tailor" />
       </div>
     );
     return (
@@ -83,8 +85,12 @@ export default async function CvTab({ params }: PageProps<"/app/jobs/[id]/cv">) 
       action={
         <>
           <div className="mb-5 empty:hidden">{gapCloser}</div>
-          <AiActionButton action={tailorCv} jobId={job.id} label="Suggest again" pendingLabel="Working…" variant="secondary" />
-          <p className="mt-1.5 text-xs text-muted">Uses one of your {left} tailorings left this month. Replaces the suggestions above.</p>
+          {trial === "other-job" ? (
+            <ButtonLink href="/app/billing" variant="secondary">See paid plans</ButtonLink>
+          ) : (
+            <AiActionButton action={tailorCv} jobId={job.id} label="Suggest again" pendingLabel="Working…" variant="secondary" />
+          )}
+          <TrialNote user={user} jobId={job.id} kind="tailor" suffix=" Replaces the suggestions above." className="mt-1.5" />
         </>
       }
     />

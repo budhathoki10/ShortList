@@ -18,7 +18,7 @@ import { createJob, deleteJob, dueFollowUpCount, dueFollowUps, listJobs, ownedJo
 import { getProfile, saveProfile } from "@/lib/services/profile";
 import { overLimit } from "@/lib/services/rate-limit";
 import { sendFollowUpDigests } from "@/lib/services/reminders";
-import { refundAllowance, spendAllowance, usageThisMonth } from "@/lib/services/usage";
+import { refundAllowance, spendAllowance, trialUsage, usageThisMonth } from "@/lib/services/usage";
 import { findUserById } from "@/lib/services/users";
 import { safeRedirectPath } from "@/lib/util";
 import { DAY, makeUser, resetDb } from "./helpers";
@@ -45,33 +45,54 @@ afterAll(() => rmSync(OUTBOX, { force: true }));
 
 const newJob = (userId: string) => createJob(userId, { url: null, postText, post, match: null });
 
-describe("monthly allowance", () => {
-  it("allows the free amount, then stops, and a refund gives one back", async () => {
-    const user = await makeUser();
-    for (let i = 0; i < LIMITS.free.tailor; i++) expect(await spendAllowance(user, "tailor")).toBe(true);
-    expect(await spendAllowance(user, "tailor")).toBe(false);
-    expect((await usageThisMonth(user.id)).tailor).toBe(LIMITS.free.tailor);
-    await refundAllowance(user.id, "tailor");
-    expect(await spendAllowance(user, "tailor")).toBe(true);
+describe("usage allowance", () => {
+  it("allows the free trial amount on one job, then stops, and a refund gives one back", async () => {
+    const user = await makeUser({ emailVerifiedAt: new Date() });
+    for (let i = 0; i < LIMITS.free.tailor; i++) expect((await spendAllowance(user, "tailor", { jobId: "job-a" })).ok).toBe(true);
+    expect(await spendAllowance(user, "tailor", { jobId: "job-a" })).toEqual({ ok: false, reason: "limit" });
+    expect((await trialUsage(user.id)).used.tailor).toBe(LIMITS.free.tailor);
+    await refundAllowance(user, "tailor");
+    expect((await spendAllowance(user, "tailor", { jobId: "job-a" })).ok).toBe(true);
     // Other kinds are counted separately.
-    expect(await spendAllowance(user, "cover")).toBe(true);
+    expect((await spendAllowance(user, "cover", { jobId: "job-a" })).ok).toBe(true);
+    expect(await spendAllowance(user, "cover", { jobId: "job-b" })).toEqual({ ok: false, reason: "other-job" });
   });
 
   it("can't be overspent by requests arriving at the same time", async () => {
-    const user = await makeUser();
-    const results = await Promise.all(Array.from({ length: 10 }, () => spendAllowance(user, "tailor")));
-    expect(results.filter(Boolean)).toHaveLength(LIMITS.free.tailor);
+    const user = await makeUser({ emailVerifiedAt: new Date() });
+    const results = await Promise.all(Array.from({ length: 10 }, () => spendAllowance(user, "tailor", { jobId: "job-a" })));
+    expect(results.filter((result) => result.ok)).toHaveLength(LIMITS.free.tailor);
   });
 
-  it("resets each month and is higher on a paid plan", async () => {
-    const user = await makeUser();
+  it("resets monthly features each month and gives paid accounts the paid ceiling", async () => {
+    const user = await makeUser({ emailVerifiedAt: new Date() });
     const lastMonth = new Date(Date.now() - 40 * DAY);
-    for (let i = 0; i < LIMITS.free.tailor; i++) await spendAllowance(user, "tailor", lastMonth);
-    expect(await spendAllowance(user, "tailor")).toBe(true);
+    for (let i = 0; i < LIMITS.free.import; i++) expect((await spendAllowance(user, "import", { now: lastMonth })).ok).toBe(true);
+    expect((await spendAllowance(user, "import")).ok).toBe(true);
     expect(monthKey(lastMonth)).not.toBe(monthKey());
 
     const paid = await makeUser({ subscriptionAccessUntil: new Date(Date.now() + 10 * DAY) });
-    for (let i = 0; i < LIMITS.free.tailor + 2; i++) expect(await spendAllowance(paid, "tailor")).toBe(true);
+    for (let i = 0; i < LIMITS.free.tailor + 2; i++) expect((await spendAllowance(paid, "tailor")).ok).toBe(true);
+    expect((await usageThisMonth(paid.id)).tailor).toBe(LIMITS.free.tailor + 2);
+  });
+
+  it("needs a confirmed email before the free trial starts", async () => {
+    const user = await makeUser();
+    expect(await spendAllowance(user, "tailor", { jobId: "job-a" })).toEqual({ ok: false, reason: "unverified" });
+    expect((await trialUsage(user.id)).jobId).toBeNull();
+    // CV imports aren't part of the trial, so they still work.
+    expect((await spendAllowance(user, "import")).ok).toBe(true);
+  });
+
+  it("gives an email address one free trial, even after the account is deleted and made again", async () => {
+    const first = await makeUser({ email: "Asha.Gurung+jobs@gmail.com", emailVerifiedAt: new Date() });
+    expect((await spendAllowance(first, "tailor", { jobId: "job-a" })).ok).toBe(true);
+    await deleteUser(first.id);
+    const again = await makeUser({ email: "ashagurung@googlemail.com", emailVerifiedAt: new Date() });
+    expect(await spendAllowance(again, "tailor", { jobId: "job-b" })).toEqual({ ok: false, reason: "trial-used" });
+    // A different person is unaffected.
+    const other = await makeUser({ emailVerifiedAt: new Date() });
+    expect((await spendAllowance(other, "tailor", { jobId: "job-c" })).ok).toBe(true);
   });
 });
 
@@ -255,7 +276,9 @@ describe("AI via OpenRouter", () => {
     const key = process.env.OPENROUTER_API_KEY;
     process.env.OPENROUTER_API_KEY = "wrong-key";
     try {
-      await expect(structured({ task: "read", system: "s", prompt: "SECRET CV TEXT", schema: answer })).rejects.toThrow(/^OpenRouter request failed \(401, 401\)$/);
+      const failure = structured({ task: "read", system: "s", prompt: "SECRET CV TEXT", schema: answer });
+      await expect(failure).rejects.toThrow(/(?:OpenRouter request failed|No model answered).*401/);
+      await expect(failure).rejects.not.toThrow(/SECRET CV TEXT/);
     } finally {
       process.env.OPENROUTER_API_KEY = key;
     }
@@ -358,7 +381,7 @@ describe("accounts", () => {
     await saveTailoredCv(user.id, job.id, { changes: [] });
     await saveCoverLetter(user.id, job.id, "letter");
     await saveInterview(user.id, job.id, []);
-    await spendAllowance(user, "tailor");
+    await spendAllowance(user, "tailor", { jobId: job.id });
     await recordPayment({ userId: user.id, provider: "freemius", ref: "freemius:payment:77", status: "completed", amountMinor: 1500, currency: "USD" });
 
     await deleteUser(user.id);

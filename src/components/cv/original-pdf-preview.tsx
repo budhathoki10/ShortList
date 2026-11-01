@@ -54,7 +54,7 @@ export function OriginalPdfPreview() {
   if (error) return <p role="status" className="text-sm text-muted">The inline preview is unavailable. Use “Open original PDF” to review the exact file in your PDF viewer.</p>;
   return (
     <div className="space-y-3" aria-label="Original PDF preview">
-      <div className="flex items-center justify-between gap-2 text-xs text-muted">
+      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted">
         <button type="button" disabled={page <= 1 || !ready} onClick={() => setPage((p) => p - 1)} className="min-h-10 rounded-md border border-border px-3 hover:bg-surface-hover disabled:opacity-40">Previous page</button>
         <p role="status">{pdf ? `Page ${page} of ${pdf.numPages}` : "Loading original PDF…"}</p>
         <button type="button" disabled={!pdf || page >= pdf.numPages || !ready} onClick={() => setPage((p) => p + 1)} className="min-h-10 rounded-md border border-border px-3 hover:bg-surface-hover disabled:opacity-40">Next page</button>

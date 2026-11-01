@@ -130,7 +130,7 @@ export function CvWorkbench({
   profile: Profile;
   initial: Change[];
   docx: boolean;
-  original: { name: string; type: string; matchesProfile: boolean } | null;
+  original: { name: string; type: string } | null;
   /** The job's CV template, the person's photo and the looks they can try. */
   look: { photoUrl: string | null; current: { id: string; name: string }; spec: TemplateSpec; fitted: boolean; fitKey: string; options: LookOption[] };
   /** The "Suggest again" control, rendered on the server. */
@@ -184,9 +184,10 @@ export function CvWorkbench({
     save((cs) => cs.map((c) => (c.id === id && c.flags.length === 0 ? { ...c, accepted: accept } : c)), toggleChange, { changeId: id, accept: accept ? "1" : "0" });
   const setAll = (accept: boolean) => save((cs) => cs.map((c) => (c.flags.length === 0 && (!accept || !c.optional) ? { ...c, accepted: accept } : c)), toggleAllChanges, { accept: accept ? "1" : "0" });
 
+  // minmax(0,1fr) on phones too: an auto column grows to fit wide content (the PDF preview while it loads) and scrolls the page sideways.
   return (
-    <div className="grid gap-8 xl:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]">
-      <section className="space-y-4">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-8 xl:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]">
+      <section className="min-w-0 space-y-4">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="text-base font-semibold">Suggested changes</h2>
           <p className="text-[13px] text-muted tabular-nums" aria-live="polite">
@@ -255,7 +256,6 @@ export function CvWorkbench({
               <p className="min-w-0 truncate text-sm font-medium" title={original?.name}>{original?.name ?? "Your uploaded PDF"}</p>
               <Link href="/app/download/original?inline=1" target="_blank" className={buttonClass("secondary", "sm")}>Open</Link>
             </div>
-            {original && !original.matchesProfile && <p className="text-xs text-warning">You edited your CV after this upload; those edits aren&apos;t in this PDF.</p>}
             <OriginalPdfPreview />
           </div>
         ) : (<>

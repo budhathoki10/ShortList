@@ -2,7 +2,7 @@ import "server-only";
 import { MongoClient, type Db } from "mongodb";
 import { ensureIndexes } from "./indexes";
 import type { CareerPlanDoc, MockSessionDoc } from "@/lib/career/types";
-import type { AuthTokenDoc, CvImportDoc, CvTemplateDoc, DocumentDoc, InterviewDoc, JobDoc, PaymentDoc, PhotoDoc, ProfileDoc, RateLimitDoc, SessionDoc, Stored, SubscriptionDoc, UsageDoc, UserDoc, WebhookEventRecord } from "./types";
+import type { AuthTokenDoc, CareerPassportDoc, CvImportDoc, CvTemplateDoc, DiscoveredJobDoc, DiscoveryRunDoc, DocumentDoc, InterviewDoc, JobDoc, JobRecommendationDoc, JobSourceDoc, NotificationDeliveryDoc, PaymentDoc, PhotoDoc, ProfileDoc, PushSubscriptionDoc, RateLimitDoc, SessionDoc, Stored, SubscriptionDoc, UsageDoc, UserDoc, WebhookEventRecord } from "./types";
 
 type Cache = { client?: MongoClient; ready?: Promise<Db> };
 // One connection pool per server process, reused across hot reloads in development.
@@ -47,6 +47,13 @@ export async function collections() {
     rateLimits: db.collection<RateLimitDoc>("rate_limits"),
     cvTemplates: db.collection<CvTemplateDoc>("cv_templates"),
     photos: db.collection<PhotoDoc>("profile_photos"),
+    careerPassports: db.collection<CareerPassportDoc>("career_passports"),
+    discoveredJobs: db.collection<DiscoveredJobDoc>("discovered_jobs"),
+    jobRecommendations: db.collection<JobRecommendationDoc>("job_recommendations"),
+    pushSubscriptions: db.collection<PushSubscriptionDoc>("push_subscriptions"),
+    notificationDeliveries: db.collection<NotificationDeliveryDoc>("notification_deliveries"),
+    discoveryRuns: db.collection<DiscoveryRunDoc>("discovery_runs"),
+    jobSources: db.collection<JobSourceDoc>("job_sources"),
   };
 }
 
