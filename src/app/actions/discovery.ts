@@ -64,7 +64,7 @@ export async function updateCareerPassport(_: DiscoveryState, formData: FormData
     timezone: validTimezone(String(formData.get("timezone") ?? "UTC")),
   });
   revalidatePath("/app/radar");
-  if (emailFrequency !== "off" && !user.emailVerifiedAt) return { success: "Career Passport saved. Confirm your email address to start receiving job-alert emails; until then they are held back." };
+  if (emailFrequency !== "off" && !user.emailVerifiedAt) return { success: "Career Passport saved. Log out and sign in again with Google to confirm your email address; until then job-alert emails are held back." };
   return { success: "Career Passport saved. New source runs will use these choices." };
 }
 

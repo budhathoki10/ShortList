@@ -25,12 +25,7 @@ export async function TrialNote({ user, jobId, kind, suffix = "", className = ""
     );
   if (state === "unverified")
     return (
-      <p className={cls}>
-        Confirm your email to start your free trial.{" "}
-        <Link href="/app/settings" className={link}>
-          Resend the link
-        </Link>
-      </p>
+      <p className={cls}>Log out and sign in again with Google to confirm your email and start your free trial.</p>
     );
   if (state === "unclaimed") return <p className={cls}>This starts your free trial on this job: analysis, tailored CV, cover letter and interview practice for this one role.</p>;
   if (state === "other-job")

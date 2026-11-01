@@ -10,8 +10,10 @@ import type { CvStyle } from "@/lib/templates/style";
 export type User = {
   id: string;
   email: string;
+  /** Set when Google confirms the address at sign-in. Only null on an old account that hasn't signed in with Google yet. */
   emailVerifiedAt: Date | null;
-  passwordHash: string;
+  /** Google's stable id for this person (the `sub` claim), which accounts are matched on. Missing only on an old account until its first Google sign-in. */
+  googleId?: string;
   name: string;
   createdAt: Date;
   /**
@@ -157,15 +159,6 @@ export type SubscriptionDoc = Stored<Subscription>;
 export type SessionDoc = { _id: string; userId: string; expiresAt: Date };
 
 /** One-time tokens sent by email (password reset, email verification). `_id` is the token's SHA-256. */
-export type AuthTokenDoc = {
-  _id: string;
-  userId: string;
-  purpose: string;
-  expiresAt: Date;
-  usedAt: Date | null;
-  createdAt: Date;
-};
-
 /** The user's CV as structured data. `_id` is the user id. Every tailored version is built from this and nothing else. */
 export type OriginalCvFile = { name: string; type: string; bytes: Uint8Array; sha256: string; profileHash: string };
 export type CvImportDoc = { _id: string; userId: string; profile: Profile; sourceText: string; method: "ai" | "basic"; original: OriginalCvFile | null; expiresAt: Date };

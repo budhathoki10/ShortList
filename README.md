@@ -9,7 +9,7 @@ A job-hunt helper for anyone applying for jobs. You add your CV once, then each 
 
 Around them: a **tracker** (Saved, Applied, Interviewing, Offer, Closed, with follow-up reminders on Today and by email), **progress** stats, and **100 CV templates** you can customise and download as a PDF.
 
-Every non-essential message (job-alert email, push alerts and follow-up reminders) can be switched off in one place: **Settings → Notifications**. Account security email (confirmation, password reset) always goes out.
+Every non-essential message (job-alert email, push alerts and follow-up reminders) can be switched off in one place: **Settings → Notifications**. Emails about the account itself always go out.
 
 The **Job Radar** adds discovery before preparation. A scheduled agent reads allowlisted employer boards on Greenhouse, Lever, Ashby, Workable, SmartRecruiters and Recruitee, and public remote-job feeds (Remotive, Jobicy, Himalayas, Remote OK, Arbeitnow), rejects or flags explicit eligibility conflicts, ranks the remaining roles against the person's Career Passport and CV evidence, and stores every recommendation before sending email or VAPID Web Push alerts. Candidates still review and submit every application themselves.
 
@@ -26,7 +26,7 @@ The rule everything follows: **Shortlist Job Radar only uses what's in your prof
 
 | | Free (one-time trial) | Paid plan |
 |---|---|---|
-| Jobs with full AI help | 1 job, once per email address (needs a confirmed email) | Every job you apply to |
+| Jobs with full AI help | 1 job, once per email address (Google confirms it at sign-in) | Every job you apply to |
 | Tailored CVs | 3 runs on the trial job | 200 a month |
 | Cover letters | 3 drafts on the trial job | 200 a month |
 | Feedback on practice answers | 5 on the trial job | 200 a month |
@@ -46,7 +46,7 @@ You need Node 20 or newer and a MongoDB 5.0 or newer (Atlas free tier, a local i
 
 ```bash
 npm install
-cp .env.example .env            # then set MONGODB_URI (and ANTHROPIC_API_KEY for the real AI)
+cp .env.example .env            # then set MONGODB_URI, the GOOGLE_* keys (nobody can log in without them) and ANTHROPIC_API_KEY for the real AI
 npm run dev                      # http://localhost:3000
 ```
 
@@ -55,7 +55,8 @@ The app creates its collections and indexes the first time it connects. To creat
 Everything works without any keys except the database:
 
 - **No `ANTHROPIC_API_KEY`:** CVs and job posts are read with plain code, and tailoring only reorders bullets and skills. Cover letters and interview feedback use simple templates. It's useful for development, but not what you'd sell.
-- **No `RESEND_API_KEY`:** emails are printed to the console, so you can click confirmation and reset links from there.
+- **No `RESEND_API_KEY`:** emails (follow-up reminders and job alerts) are printed to the console.
+- **No `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`:** nobody can log in. Google is the only way in, and the login page says so (see [Google sign-in](#2-sign-in-with-google)).
 - **No payment keys:** the billing page shows the plans, but subscribing is off.
 
 ## Environment variables
@@ -66,7 +67,9 @@ All of these are in `.env.example`, with comments.
 |---|---|---|
 | `MONGODB_URI` | Yes | MongoDB connection string |
 | `MONGODB_DB` | No | Database name inside that server. Default `shortlist` |
-| `APP_URL` | Yes in production | Public URL, used in email links and payment return URLs |
+| `APP_URL` | Yes | Public URL, used for the Google sign-in redirect, email links and payment return URLs |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Yes | The OAuth client for "Continue with Google". The only way to log in |
+| `GOOGLE_AUTH_URL`, `GOOGLE_TOKEN_URL` | Tests only | Point sign-in at a local stand-in for Google (the e2e suite does). Leave unset in production |
 | `SEO_INDEXING_ENABLED` | Before launch | Leave empty for the safe automatic rule, set `false` on previews/staging, and `true` only on the canonical production deployment |
 | `GOOGLE_SITE_VERIFICATION`, `BING_SITE_VERIFICATION` | No | Ownership tokens from Google Search Console and Bing Webmaster Tools |
 | `TRUSTED_PROXY_HOPS` | No | How many proxies sit in front of the app, to find the real client IP for rate limits. Default `1`. Use `0` when nothing is in front, and the IP header is ignored |
@@ -74,8 +77,9 @@ All of these are in `.env.example`, with comments.
 | `LEGAL_OPERATOR_NAME`, `LEGAL_COUNTRY`, `SUPPORT_EMAIL` | Before launch | Shown on Terms, Privacy and Refund. Payment providers may review these pages |
 | `ANTHROPIC_API_KEY` | For the real product | Claude reads CVs and job posts, and writes changes, letters and feedback |
 | `AI_READ_MODEL`, `AI_WRITE_MODEL` | No | One Claude model id, or a comma-separated list tried in order (next model on 429, 5xx, timeout or invalid JSON). Defaults: read `claude-haiku-5-5,claude-sonnet-5-5`, write `claude-sonnet-5-5,claude-opus-5-5` |
+| `AI_CALLS_PER_MINUTE`, `AI_GLOBAL_PER_HOUR` | No | Spending guards. AI calls allowed per account per minute (default `2`) and for the whole app per hour (default `200`) |
 | `ANTHROPIC_BASE_URL` | No | Only to route through a proxy or gateway |
-| `RESEND_API_KEY`, `EMAIL_FROM` | For email | Confirmations, password resets, follow-up reminders and job alerts |
+| `RESEND_API_KEY`, `EMAIL_FROM` | For email | Follow-up reminders and job alerts |
 | `EMAIL_DEV_OUTBOX` | No | Development and tests only: with no `RESEND_API_KEY`, emails are written to this file (JSON lines) instead of the console |
 | `JOB_SOURCE_BOARDS` | For Job Radar | Comma-separated public boards: `provider:board=Company`, provider one of `greenhouse`, `lever`, `ashby`, `workable`, `smartrecruiters`, `recruitee`. Example: `greenhouse:acme=Acme,ashby:linear=Linear` |
 | `JOB_SOURCE_FEEDS` | For Job Radar | Remote-job feeds to read: `remotive,jobicy,himalayas,remoteok,arbeitnow`, or `all` |
@@ -92,7 +96,19 @@ All of these are in `.env.example`, with comments.
 
 Deploy to Vercel (or anywhere that runs Next.js), with MongoDB Atlas or any MongoDB 5.0+. Set `MONGODB_URI`; indexes are created on first connect, and `npm run db:setup` does it ahead of time. If the app sits behind a proxy that rewrites the `Host` header, list your public host under `experimental.serverActions.allowedOrigins` in `next.config.ts`, or form submissions will be refused as cross-origin.
 
-### 2. Email (Resend)
+### 2. Sign in with Google
+
+Google is the only way to log in; there are no passwords. In the [Google Cloud Console](https://console.cloud.google.com/apis/credentials):
+
+1. Configure the **OAuth consent screen** (External). The only scopes used are `openid`, `email` and `profile`, which need no Google review. Set the app name, support email, and links to your /privacy and /terms pages. While the app is in "Testing", only the test users you list can log in; **Publish** it to let everyone in.
+2. Create an **OAuth client ID** of type *Web application*. Under **Authorized redirect URIs** add `https://YOUR_DOMAIN/api/auth/google/callback` (and `http://localhost:3000/api/auth/google/callback` for local work). It must match `APP_URL` exactly.
+3. Set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` on your host and in `.env`.
+
+How it behaves: Google tells us the person's name, email address and a stable account id, and only accounts whose email Google has verified can sign in. A first sign-in creates the account (and counts as confirming the email, so the free trial is open straight away). An account that existed before Google sign-in is claimed by the first Google sign-in with the same email address, keeping its CV, jobs and subscription. An email that is already tied to a *different* Google account is refused rather than taken over.
+
+**Moving an existing database over:** run `npm run db:migrate-google` once. It removes the stored password hashes, drops the old reset/confirmation link collection, signs everyone out, and builds the new unique index on the Google account id. Old `/forgot-password`, `/reset-password/…` and `/verify-email/…` links redirect to the login page.
+
+### 2b. Email (Resend)
 
 1. Create an account at resend.com and verify your sending domain.
 2. Set `RESEND_API_KEY`, and set `EMAIL_FROM` to an address on that domain.
@@ -155,7 +171,7 @@ After deployment:
 ## How it's built
 
 - **Next.js 16** App Router with server actions, **MongoDB** (official driver, no ORM), Tailwind 4.
-- **Accounts:** email and password, with database sessions in httpOnly cookies, email confirmation, password reset, data export and account deletion.
+- **Accounts:** Google sign-in only (OpenID Connect, authorization-code flow with PKCE, `src/lib/auth/google.ts` and `src/app/api/auth/google/`), with database sessions in httpOnly cookies, data export and account deletion.
 - **AI:** Claude through the official Anthropic SDK, with JSON-schema structured outputs (`src/lib/ai.ts`). Every answer is validated against its schema again in code, and every AI feature has a plain-code fallback.
 - **Data:** each collection and its indexes are defined in `src/db/` (`types.ts`, `indexes.ts`, `mongo.ts`). Everything that reads or writes goes through `src/lib/services/`.
 
@@ -185,12 +201,12 @@ PDF imports retain their original bytes after the review is confirmed. **Origina
 - Every job, document and download is checked against the signed-in user, in the query itself (`{ _id, userId }`). The tests try to open another person's pages and downloads.
 - **Injection:** there is no SQL. Database values only ever come from typed server code; ids from requests are coerced to strings, and every id or email from a signed webhook payload must be a plain string or number before it reaches a query. React escapes everything it renders, email HTML is escaped, and a nonce-based Content-Security-Policy (set in `src/proxy.ts`) blocks inline scripts and styles even if markup ever slipped through. The one page that relaxes style rules, and allows Freemius's checkout iframe, is billing; that exception has not been confirmed against a full live checkout (see the billing guide).
 - **CSRF:** the session cookie is `SameSite=Lax` and httpOnly (`Secure` in production); every mutation is a Next.js server action, which refuses requests whose `Origin` doesn't match the host. The only GET routes with side effects take an unguessable one-time token.
-- **Rate limits:** sign-ups and password resets are limited per IP, adding jobs per user, and account deletion per user, with counters in MongoDB (`rate_limits`, cleared by a TTL index). The client IP is read from the right end of `X-Forwarded-For` (the part our own proxy wrote, controlled by `TRUSTED_PROXY_HOPS`), never from what a client sends itself. **Login is deliberately plain** (email and password, scrypt-hashed, no lockout) because Google sign-in is planned; add attempt limits back if password login stays.
+- **Rate limits:** starting Google sign-in, its callback and new accounts are limited per IP, AI calls per account per minute (and for the whole app per hour), adding jobs per user, and account deletion per user, with counters in MongoDB (`rate_limits`, cleared by a TTL index). The client IP is read from the right end of `X-Forwarded-For` (the part our own proxy wrote, controlled by `TRUSTED_PROXY_HOPS`), never from what a client sends itself. **There is no password to guess:** Google does the authenticating, so there is no password reset or login lockout to maintain.
 - Job links are fetched with `safeFetch`, which refuses private and internal addresses in every spelling (including IPv6-wrapped IPv4), re-checks every redirect, limits size and time, and never sends cookies.
 - CV and job text is passed to the model as quoted data, with instructions to ignore any instructions inside it.
 - Monthly allowances are counted with a single atomic database update, so parallel requests can't go past the limit. A failed AI call gives the allowance back.
 - Webhook signatures are verified (Freemius events by the official SDK, HMAC-SHA256), each event is processed once however often it is delivered, and payment amounts come from the payment provider, not from the browser.
-- **Sign-up is instant, and says so when an address is taken.** That is a deliberate product choice (no extra step before people can use the app); the cost is that the form can confirm an address has an account. It is limited per IP, and an unconfirmed email shows a banner until the person presses the button on the confirmation page. Confirmation links open a page and a button press (a POST) uses them up, so mail scanners that fetch links can't burn them. If you ever want sign-up that reveals nothing, create the account only when an emailed link is confirmed.
+- **Google sign-in checks:** the callback only trusts a response that carries the one-time `state` we set in an HttpOnly cookie, the PKCE verifier and a `nonce` echoed in the ID token; the token's issuer, audience and expiry are checked, and an unverified Google email is refused. The `next` redirect is restricted to paths on this site. Sign-up reveals nothing about who has an account.
 
 ## Limits worth knowing
 

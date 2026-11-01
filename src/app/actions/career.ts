@@ -14,7 +14,7 @@ import { jobHasCriteria } from "@/lib/jobs/quality";
 import { ownedJob } from "@/lib/services/jobs";
 import { getProfile, profileReady } from "@/lib/services/profile";
 import { advanceMockSession, createMockSession, getCareerPlan, getMockSession, listMockSessions, recordMockAnswer, saveCareerPlan, updateLearningProgress } from "@/lib/services/career";
-import { overLimit } from "@/lib/services/rate-limit";
+import { aiThrottle, overLimit } from "@/lib/services/rate-limit";
 import { denialMessage, refundAllowance, spendAllowance } from "@/lib/services/usage";
 import { collections } from "@/db/mongo";
 
@@ -32,6 +32,8 @@ async function contextFor(form: FormData) {
 export async function prepareApplicationPlan(_: CareerState, form: FormData): Promise<CareerState> {
   const { user, job, context } = await contextFor(form);
   if (await overLimit(`career-plan:${user.id}`, 8, 60 * 60_000)) return { error: "Please wait before analysing another application plan." };
+  const slow = await aiThrottle(user.id);
+  if (slow) return { error: slow };
   const website = String(form.get("companyUrl") ?? "").trim().slice(0, 2000);
   if (website && !webUrl(website)) return { error: "Enter a valid public company website URL, or leave it blank." };
   const spend = await spendAllowance(user, "tailor", { jobId: job.id });
@@ -96,6 +98,8 @@ export async function submitMockAnswer(_: CareerState, form: FormData): Promise<
   const answer = String(form.get("answer") ?? "").trim();
   if (answer.length < 3 || answer.length > 12_000) return { error: "Write a starting answer between 3 and 12,000 characters. It is fine to say what you do not know." };
   if (await overLimit(`mock-answer:${user.id}`, 50, 60 * 60_000)) return { error: "Please wait before submitting another interview answer." };
+  const slow = await aiThrottle(user.id);
+  if (slow) return { error: slow };
   const feedback = await evaluateMockAnswer(session.turns.at(-1)!.question, answer, context, session.turns.slice(0, -1));
   if (!(await recordMockAnswer(user.id, session._id, version, answer, feedback))) return { error: "Another submission already updated this session. Reload to see the saved answer." };
   revalidatePath(`/app/jobs/${job.id}/interview/mock/${session._id}`);

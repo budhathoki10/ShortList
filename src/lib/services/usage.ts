@@ -168,7 +168,7 @@ const FEATURE: Record<UsageKind, string> = { tailor: "tailoring", cover: "cover 
 export function denialMessage(user: Allowed, kind: UsageKind, reason: Denial): { error: string; upgrade?: true; verify?: true } {
   if (kind === "import") return { error: "You’ve reached this month’s CV import limit. You can still edit your saved profile below." };
   if (isPaid(user)) return { error: `You’ve used this month’s ${FEATURE[kind]} allowance. Everything you’ve already made stays available.` };
-  if (reason === "unverified") return { error: `Confirm your email to start your free trial. We sent a link to ${user.email}; you can send a new one from Settings.`, verify: true };
+  if (reason === "unverified") return { error: "Log out and sign in again with Google to confirm your email and start your free trial." };
   if (reason === "trial-used") return { error: "This email address has already used its free trial. Upgrade to tailor CVs, write cover letters and practise interviews for every job.", upgrade: true };
   if (reason === "other-job") return { error: "Your free trial is already in use on another job. Upgrade to tailor CVs, write cover letters and practise interviews for every job.", upgrade: true };
   return { error: `You’ve used the free trial’s ${FEATURE[kind]} for this job. Upgrade to keep going; everything you’ve made stays available.`, upgrade: true };

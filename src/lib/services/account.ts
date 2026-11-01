@@ -1,27 +1,10 @@
 import "server-only";
 import { collections, fromDoc } from "@/db/mongo";
 import type { Document, Job, Payment, Subscription, User } from "@/db/types";
-import { createAuthToken } from "@/lib/auth/tokens";
-import { resetPasswordMessage, sendEmail, verifyEmailMessage } from "@/lib/email";
-import { appUrl } from "@/lib/util";
 import { originalBytes } from "@/lib/cv/original";
 import { notificationsOn } from "./notification-settings";
 
-export async function sendVerificationEmail(user: Pick<User, "id" | "email" | "name">) {
-  const token = await createAuthToken(user.id, "verify_email");
-  await sendEmail(verifyEmailMessage(user.email, user.name, appUrl(`/verify-email/${token}`)));
-}
-
-export async function sendPasswordResetEmail(user: Pick<User, "id" | "email">) {
-  const token = await createAuthToken(user.id, "reset_password");
-  await sendEmail(resetPasswordMessage(user.email, appUrl(`/reset-password/${token}`)));
-}
-
-export async function markEmailVerified(userId: string) {
-  await (await collections()).users.updateOne({ _id: String(userId) }, { $set: { emailVerifiedAt: new Date() } });
-}
-
-/** Delete the user and everything that belongs to them: the profile, jobs, documents, interviews, usage, payments, sessions and tokens. */
+/** Delete the user and everything that belongs to them: the profile, jobs, documents, interviews, usage, payments and sessions. */
 export async function deleteUser(userId: string) {
   const id = String(userId);
   const c = await collections();
@@ -38,7 +21,6 @@ export async function deleteUser(userId: string) {
     c.payments.deleteMany({ userId: id }),
     c.subscriptions.deleteMany({ userId: id }),
     c.sessions.deleteMany({ userId: id }),
-    c.authTokens.deleteMany({ userId: id }),
     c.cvTemplates.deleteMany({ userId: id }),
     c.photos.deleteOne({ _id: id }),
     c.careerPassports.deleteOne({ _id: id }),
@@ -49,12 +31,7 @@ export async function deleteUser(userId: string) {
   await c.users.deleteOne({ _id: id });
 }
 
-/** Sign the user out on every device. */
-export async function deleteAllSessions(userId: string) {
-  await (await collections()).sessions.deleteMany({ userId: String(userId) });
-}
-
-/** Everything stored about the user (right of access and portability). Internal ids and the password hash are left out. */
+/** Everything stored about the user (right of access and portability). Internal ids are left out. */
 export async function exportUserData(user: User) {
   const c = await collections();
   const [profile, jobs, documents, interviews, payments, subscriptions, templates, photo, careerPlans, mockSessions, careerPassport, recommendations, notificationDeliveries] = await Promise.all([

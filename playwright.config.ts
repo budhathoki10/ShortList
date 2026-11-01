@@ -26,6 +26,11 @@ const appEnv = {
   // Every test browser shares one address, so the per-IP sign-up limit (10 an hour) would block a suite that makes more accounts than that.
   // Zero means "no proxy we trust", which switches the per-IP limits off. The limit's own behaviour is covered by unit tests.
   TRUSTED_PROXY_HOPS: "0",
+  // Sign-in with Google goes to the fixture server's stand-in (e2e/fixture-sites/server.mjs), never to Google.
+  GOOGLE_CLIENT_ID: "e2e-google-client",
+  GOOGLE_CLIENT_SECRET: "e2e-google-secret",
+  GOOGLE_AUTH_URL: `${FIXTURE_BASE}/google/authorize`,
+  GOOGLE_TOKEN_URL: `${FIXTURE_BASE}/google/token`,
   // No AI key: the plain-code fallbacks run, so results are deterministic.
   ANTHROPIC_API_KEY: "",
   CRON_JOB_SECRET: "e2e-cron-job-secret",

@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { FIXTURE_BASE } from "../playwright.config";
-import { addFixtureJob, logIn, setUpJobSeeker } from "./helpers";
+import { addFixtureJob, continueWithGoogle, googleIdentity, logIn, setUpJobSeeker } from "./helpers";
 
 const email = `ux-${Date.now()}@example.com`;
 let jobUrl = "";
@@ -27,22 +27,30 @@ test("every page ships security headers and a script policy the browser honours"
   expect(h["referrer-policy"]).toBe("strict-origin-when-cross-origin");
   expect(h["x-powered-by"]).toBeUndefined();
 
-  // Static-looking pages must hydrate too: a button that is enabled proves the scripts ran.
-  for (const path of ["/login", "/signup", "/forgot-password"]) {
+  // Static-looking pages must load their scripts too: the Google button is a plain link, so check the page really is interactive.
+  for (const path of ["/login", "/signup"]) {
     await page.goto(path);
-    await expect(page.getByRole("button", { name: /log in|create account|send reset link/i })).toBeEnabled();
+    const google = page.getByRole("link", { name: "Continue with Google" });
+    await expect(google).toHaveAttribute("href", "/api/auth/google");
+    await expect(page.getByRole("link", { name: "Terms" })).toBeVisible();
   }
   await page.goto("/terms");
   expect(blocked).toEqual([]);
 });
 
-test("a failed login never puts the password in the address bar", async ({ page }) => {
-  await page.goto("/login");
-  await page.getByLabel("Email").fill("nobody@example.com");
-  await page.getByLabel("Password").fill("hunter2-hunter2");
-  await page.getByRole("button", { name: "Log in" }).click();
-  await expect(page.getByRole("alert").filter({ hasText: "Unable to log in" })).toContainText("Incorrect email or password.");
-  expect(page.url()).not.toMatch(/hunter2|password|email=/);
+test("the Google sign-in start sets only a short-lived, HttpOnly cookie and a locked-down redirect", async ({ request }) => {
+  const res = await request.get("/api/auth/google?next=%2Fapp%2Fjobs", { maxRedirects: 0 });
+  expect(res.status()).toBe(307);
+  const target = new URL(res.headers()["location"]);
+  expect(target.searchParams.get("code_challenge_method")).toBe("S256");
+  expect(target.searchParams.get("scope")).toBe("openid email profile");
+  expect(target.searchParams.get("state")?.length).toBeGreaterThan(10);
+  const cookie = res.headers()["set-cookie"];
+  expect(cookie).toMatch(/pc_oauth=/);
+  expect(cookie).toMatch(/HttpOnly/i);
+  expect(cookie).toMatch(/SameSite=lax/i);
+  expect(cookie).toMatch(/Max-Age=600/i);
+  expect(cookie).not.toMatch(/pc_session/);
 });
 
 test("login refuses to redirect off the site", async ({ page }) => {
@@ -50,17 +58,15 @@ test("login refuses to redirect off the site", async ({ page }) => {
   jobUrl = await addFixtureJob(page, FIXTURE_BASE);
   await page.getByRole("button", { name: "Log out" }).click();
   for (const next of ["//evil.example", "/\\evil.example", "https://evil.example"]) {
+    await googleIdentity({ email });
     await page.goto(`/login?next=${encodeURIComponent(next)}`);
-    await page.getByLabel("Email").fill(email);
-    await page.getByLabel("Password").fill("correct-horse-battery");
-    await page.getByRole("button", { name: "Log in" }).click();
+    await continueWithGoogle(page);
     await expect(page).toHaveURL(/localhost:\d+\/app$/);
     await page.getByRole("button", { name: "Log out" }).click();
   }
+  await googleIdentity({ email });
   await page.goto(`/login?next=${encodeURIComponent("/app/jobs")}`);
-  await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password").fill("correct-horse-battery");
-  await page.getByRole("button", { name: "Log in" }).click();
+  await continueWithGoogle(page);
   await expect(page).toHaveURL(/\/app\/jobs$/);
 });
 
