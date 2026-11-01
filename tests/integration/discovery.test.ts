@@ -11,7 +11,7 @@ import { createJob, setStatus } from "@/lib/services/jobs";
 import { addDays } from "@/lib/dates";
 import { today } from "@/lib/plans";
 import { runJobDiscovery } from "@/lib/discovery/runner";
-import { removePushDevice, saveCareerPassport, saveRecommendationToTracker, subscribePush } from "@/lib/services/discovery";
+import { dismissRecommendation, removePushDevice, saveCareerPassport, saveRecommendationToTracker, subscribePush } from "@/lib/services/discovery";
 import { deleteUser } from "@/lib/services/account";
 import { listJobs } from "@/lib/services/jobs";
 import { saveProfile } from "@/lib/services/profile";
@@ -164,6 +164,36 @@ describe("Job Radar services", () => {
       release?.();
       if (oldSources === undefined) delete process.env.JOB_SOURCE_BOARDS;
       else process.env.JOB_SOURCE_BOARDS = oldSources;
+    }
+  });
+
+  it("never alerts again about a dismissed match, even when the employer edits the posting", async () => {
+    const user = await makeUser({ email: "dismissed@example.com", emailVerifiedAt: new Date() });
+    await saveProfile(user.id, { name: "Asha", headline: "Frontend developer", email: user.email, phone: "", location: "Kathmandu", links: [], summary: "Frontend developer", experience: [{ id: "e", title: "Frontend developer", company: "Brightdesk", location: "Kathmandu", start: "2024", end: "Present", bullets: ["Built accessible React and TypeScript interfaces for customer support teams."] }], education: [], skills: ["React", "TypeScript"], projects: [], certifications: [], languages: ["English"] });
+    await saveCareerPassport(user.id, { targetRoles: ["Frontend developer"], excludedRoles: [], locations: ["Remote"], workCountries: ["Nepal"], remoteModes: ["remote"], needsSponsorship: false, graduationDate: null, minimumSalary: null, employmentTypes: ["Full-time"], excludedCompanies: [], discoveryEnabled: true, emailFrequency: "immediate", pushFrequency: "off", alertStates: ["ready", "stretch", "verify"], quietStart: "00:00", quietEnd: "00:00", timezone: "UTC" });
+    const content = (extra: string) => `&lt;h2&gt;Requirements&lt;/h2&gt;&lt;ul&gt;&lt;li&gt;React and TypeScript experience building customer-facing products&lt;/li&gt;&lt;li&gt;Strong written communication with product teams${extra}&lt;/li&gt;&lt;/ul&gt;`;
+    let feed = { jobs: [{ id: 92, title: "Frontend Developer", updated_at: "2026-11-01T00:00:00Z", absolute_url: "https://jobs.example/92", location: { name: "Remote" }, content: content("") }] };
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(feed), { status: 200, headers: { "content-type": "application/json" } })));
+    const oldSources = process.env.JOB_SOURCE_BOARDS;
+    const oldKey = process.env.OPENROUTER_API_KEY;
+    process.env.JOB_SOURCE_BOARDS = "greenhouse:acme=Acme";
+    process.env.OPENROUTER_API_KEY = "";
+    try {
+      await runJobDiscovery();
+      const c = await collections();
+      expect(await c.notificationDeliveries.countDocuments({ userId: user.id })).toBe(1);
+      const recommendation = await c.jobRecommendations.findOne({ userId: user.id });
+      await dismissRecommendation(user.id, recommendation!._id, "not interested");
+      feed = { jobs: [{ ...feed.jobs[0], updated_at: "2026-11-02T00:00:00Z", content: content(" and design systems") }] };
+      await c.jobSources.updateMany({}, { $set: { nextAttemptAt: null } });
+      expect(await runJobDiscovery()).toMatchObject({ changed: 1 });
+      expect(await c.notificationDeliveries.countDocuments({ userId: user.id })).toBe(1);
+      expect(await c.jobRecommendations.findOne({ userId: user.id })).toMatchObject({ status: "dismissed" });
+    } finally {
+      if (oldSources === undefined) delete process.env.JOB_SOURCE_BOARDS;
+      else process.env.JOB_SOURCE_BOARDS = oldSources;
+      if (oldKey === undefined) delete process.env.OPENROUTER_API_KEY;
+      else process.env.OPENROUTER_API_KEY = oldKey;
     }
   });
 
