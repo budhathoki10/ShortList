@@ -79,11 +79,24 @@ export default async function RadarPage() {
   const blockedRows = groups.find((group) => group.state === "blocked")?.rows ?? [];
   const dismissedRows = rows.filter((row) => row.recommendation.status === "dismissed");
   const discoveryDelayed = sourceStatus.configured > 0 && sourceStatus.failing === sourceStatus.configured;
+  const agentRunning = passport?.discoveryEnabled === true && !discoveryDelayed;
+  const agentStatus = discoveryDelayed ? "Agent delayed" : agentRunning ? "Agent running" : "Agent paused";
 
   return (
     <div className="space-y-10">
       <RadarPoller />
-      <PageHeader title="Job Radar" description={`New roles that fit your CV and preferences. ${discoveryDelayed ? "Source checks are delayed." : passport?.discoveryEnabled ? "The agent is running." : "The agent is paused."}`} />
+      <PageHeader
+        title="Job Radar"
+        description={
+          <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span>New roles that fit your CV and preferences.</span>
+            <span role="status" data-testid="radar-agent-status" className={`inline-flex items-center gap-1.5 font-medium ${agentRunning ? "text-success" : "text-danger"}`}>
+              <span aria-hidden="true" className={`size-2 shrink-0 rounded-full ${agentRunning ? "bg-success" : "bg-danger"}`} />
+              {agentStatus}
+            </span>
+          </span>
+        }
+      />
 
       <div className={`rounded-md border px-4 py-3 text-sm ${sourceStatus.failing ? "border-warning/30 bg-warning-soft" : "border-border bg-surface"}`}>
         {sourceStatus.configured === 0 ? <p className="text-muted">No employer feeds are configured yet. Add the launch allowlist before enabling the scheduled worker.</p> : <p><span className="font-medium">{sourceStatus.healthy} of {sourceStatus.configured} employer feeds healthy.</span>{discoveryDelayed ? <span className="text-muted"> Search is delayed while the feeds wait for their next retry.</span> : sourceStatus.lastSuccessAt ? <span className="text-muted"> Last successful check {formatDay(sourceStatus.lastSuccessAt)}.</span> : <span className="text-muted"> Waiting for the first successful check.</span>}</p>}

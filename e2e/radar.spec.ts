@@ -7,6 +7,9 @@ test("a discovered job appears with evidence and enters the application workflow
   await setUpJobSeeker(page, email);
   await page.goto("/app/radar");
   await expect(page.getByRole("heading", { name: "Job Radar" })).toBeVisible();
+  const agentStatus = page.getByTestId("radar-agent-status");
+  await expect(agentStatus).toHaveText("Agent running");
+  await expect(agentStatus.locator("span")).toHaveClass(/bg-success/);
 
   // Saving the CV already filled the passport, so the settings start closed. Nothing about work permission is guessed,
   // and the removed settings are gone.
@@ -16,6 +19,12 @@ test("a discovered job appears with evidence and enters the application workflow
   await expect(page.getByLabel("Target locations")).not.toHaveValue("");
   await expect(page.getByLabel("Countries where you can work")).toHaveValue("");
   for (const removed of ["Minimum annual salary", "Expected graduation month", "Companies to exclude", "Email alerts", "Push alerts", "I need employer sponsorship now or in the future"]) await expect(page.getByLabel(removed)).toHaveCount(0);
+
+  await page.getByLabel("Keep the discovery agent running").uncheck();
+  await page.getByRole("button", { name: "Save Career Passport" }).click();
+  await expect(agentStatus).toHaveText("Agent paused");
+  await expect(agentStatus.locator("span")).toHaveClass(/bg-danger/);
+  await page.getByLabel("Keep the discovery agent running").check();
 
   await page.getByLabel("Target roles").fill("Customer Success Lead");
   await page.getByLabel("Target locations").fill("Remote, Asia");
