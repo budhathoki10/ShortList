@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { cvFontVariables } from "@/components/cv/cv-fonts";
 import { ToastProvider } from "@/components/toast";
-import { DEFAULT_DESCRIPTION, publicRobots } from "@/lib/seo";
+import { DEFAULT_DESCRIPTION, HOME_TITLE, publicRobots } from "@/lib/seo";
 import { SITE } from "@/lib/site";
 import "./globals.css";
 
@@ -17,9 +17,22 @@ const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"]
 export const metadata: Metadata = {
   metadataBase: new URL(SITE.url),
   applicationName: SITE.name,
-  title: { default: "Shortlist Job Radar — Find jobs that fit your CV", template: "%s · Shortlist Job Radar" },
+  title: { default: HOME_TITLE, template: "%s · Shortlist Job Radar" },
   description: DEFAULT_DESCRIPTION,
   manifest: "/manifest.webmanifest",
+  icons: {
+    icon: [
+      // Google shows a favicon only when its size is a multiple of 48px, so 48 and 96 are listed for its crawler.
+      { url: "/icons/icon-48.png", sizes: "48x48", type: "image/png" },
+      { url: "/icons/icon-96.png", sizes: "96x96", type: "image/png" },
+      { url: "/icons/icon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/shortlist-icon.svg", type: "image/svg+xml" },
+    ],
+    apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+  },
+  appleWebApp: { capable: true, title: "Job Radar", statusBarStyle: "default" },
+  formatDetection: { telephone: false },
   category: "career",
   robots: publicRobots,
   openGraph: {
@@ -27,12 +40,12 @@ export const metadata: Metadata = {
     locale: "en_US",
     siteName: SITE.name,
     url: "/",
-    title: "Shortlist Job Radar — Find jobs that fit your CV",
+    title: HOME_TITLE,
     description: DEFAULT_DESCRIPTION,
   },
   twitter: {
     card: "summary_large_image",
-    title: "Shortlist Job Radar — Find jobs that fit your CV",
+    title: HOME_TITLE,
     description: DEFAULT_DESCRIPTION,
   },
   verification: {

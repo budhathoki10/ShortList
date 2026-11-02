@@ -12,11 +12,12 @@ import { SiteFooter, SiteHeader } from "@/components/site-chrome";
 import { ButtonLink } from "@/components/ui";
 import { priceLabels } from "@/lib/billing/config";
 import { PLAN_FEATURES } from "@/lib/plans";
-import { publicMetadata } from "@/lib/seo";
+import { GUIDES } from "@/lib/guides";
+import { HOME_DESCRIPTION, HOME_TITLE, ORGANIZATION_ID, WEBSITE_ID, faqNode, organizationNode, publicMetadata } from "@/lib/seo";
 import { SITE } from "@/lib/site";
 
-const description = "Find jobs that match your CV, tailor each CV and cover letter without inventing experience, track applications and prepare for interviews.";
-export const metadata: Metadata = publicMetadata({ title: "Shortlist Job Radar — Find jobs that fit your CV", description, path: "/" });
+const description = HOME_DESCRIPTION;
+export const metadata: Metadata = publicMetadata({ title: HOME_TITLE, description, path: "/", absoluteTitle: true });
 
 const STEPS = [
   ["Add your CV once", "Upload a PDF or Word file, or paste it. Check what we read. From then on, it’s the only source of facts about you."],
@@ -85,7 +86,8 @@ export default async function Home({ searchParams }: PageProps<"/">) {
         data={{
           "@context": "https://schema.org",
           "@graph": [
-            { "@type": "WebSite", "@id": `${SITE.url}/#website`, name: SITE.name, url: SITE.url, description },
+            organizationNode(),
+            { "@type": "WebSite", "@id": WEBSITE_ID, name: SITE.name, alternateName: ["Shortlist", "Job Radar"], url: `${SITE.url}/`, description, inLanguage: "en", publisher: { "@id": ORGANIZATION_ID } },
             {
               "@type": "WebApplication",
               "@id": `${SITE.url}/#app`,
@@ -98,10 +100,7 @@ export default async function Home({ searchParams }: PageProps<"/">) {
               featureList: ["CV-based job discovery", "Truthful CV tailoring", "Cover letter drafting", "Application tracking", "Interview preparation"],
               offers: { "@type": "Offer", price: "0", priceCurrency: "USD", description: "Free for the first job; no card required" },
             },
-            {
-              "@type": "FAQPage",
-              mainEntity: FAQ.map(({ q, a }) => ({ "@type": "Question", name: q, acceptedAnswer: { "@type": "Answer", text: a } })),
-            },
+            faqNode(FAQ),
           ],
         }}
       />
@@ -251,6 +250,24 @@ export default async function Home({ searchParams }: PageProps<"/">) {
               </ButtonLink>
               <p className="text-sm text-muted">Monthly or yearly. Cancel any time and keep what you&apos;ve paid for until it runs out.</p>
             </Reveal>
+          </div>
+        </section>
+
+        <section className="border-t border-border">
+          <div className="mx-auto max-w-5xl px-4 py-16 sm:px-6 sm:py-24">
+            <Reveal>
+              <h2 className={h2}>Job search guides</h2>
+              <p className="mt-3 max-w-2xl text-muted">Plain-English answers to the questions job seekers ask most.</p>
+            </Reveal>
+            <ul className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {GUIDES.map((g) => (
+                <li key={g.slug}>
+                  <Link href={`/guides/${g.slug}`} className="flex min-h-14 h-full items-center rounded-xl border border-border bg-surface px-4 py-3 font-medium transition-colors duration-150 hover:bg-surface-hover hover:text-accent">
+                    {g.h1}
+                  </Link>
+                </li>
+              ))}
+            </ul>
           </div>
         </section>
 

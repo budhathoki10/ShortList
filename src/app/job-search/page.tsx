@@ -3,13 +3,14 @@ import Link from "next/link";
 import { JsonLd } from "@/components/json-ld";
 import { SiteFooter, SiteHeader } from "@/components/site-chrome";
 import { ButtonLink, Eyebrow } from "@/components/ui";
-import { publicMetadata } from "@/lib/seo";
+import { ORGANIZATION_ID, WEBSITE_ID, breadcrumbNode, faqNode, publicMetadata } from "@/lib/seo";
 import { SITE } from "@/lib/site";
 
-const description = "Use Shortlist Job Radar as a personalised job finder for local, remote, graduate and entry-level jobs matched against your CV, location and eligibility preferences.";
+const description = "Find jobs that match your CV. Shortlist Job Radar checks local, remote, graduate and entry-level vacancies against your skills, location and work eligibility.";
+const title = "Find Jobs That Match Your CV";
 
 export const metadata: Metadata = publicMetadata({
-  title: "Job search matched to your CV and preferences",
+  title,
   description,
   path: "/job-search",
 });
@@ -30,6 +31,10 @@ const questions = [
   {
     q: "Does it find jobs with visa sponsorship?",
     a: "You can state that you need sponsorship. If a vacancy explicitly says sponsorship is unavailable, Shortlist Job Radar blocks that match. If the post is unclear, it asks you to verify instead of guessing that sponsorship exists.",
+  },
+  {
+    q: "How do I find jobs that match my CV?",
+    a: "Upload or paste your CV, then confirm the roles, locations and work eligibility you want. Shortlist Job Radar compares those details with public vacancies and shows which CV evidence supports each match, so you can focus on roles where you already fit.",
   },
   {
     q: "Is Shortlist Job Radar a public job board?",
@@ -55,9 +60,9 @@ export default function JobSearchPage() {
         data={{
           "@context": "https://schema.org",
           "@graph": [
-            { "@type": "WebPage", "@id": `${SITE.url}/job-search#page`, url: `${SITE.url}/job-search`, name: "Job search matched to your CV and preferences", description, isPartOf: { "@id": `${SITE.url}/#website` } },
-            { "@type": "BreadcrumbList", itemListElement: [{ "@type": "ListItem", position: 1, name: SITE.name, item: SITE.url }, { "@type": "ListItem", position: 2, name: "Job search", item: `${SITE.url}/job-search` }] },
-            { "@type": "FAQPage", mainEntity: questions.map(({ q, a }) => ({ "@type": "Question", name: q, acceptedAnswer: { "@type": "Answer", text: a } })) },
+            { "@type": "WebPage", "@id": `${SITE.url}/job-search#page`, url: `${SITE.url}/job-search`, name: title, description, isPartOf: { "@id": WEBSITE_ID }, publisher: { "@id": ORGANIZATION_ID }, dateModified: "2026-11-02" },
+            breadcrumbNode([["Job search", "/job-search"]]),
+            faqNode(questions),
           ],
         }}
       />
@@ -66,7 +71,7 @@ export default function JobSearchPage() {
         <section className="border-b border-border bg-tint">
           <div className="mx-auto max-w-5xl px-4 py-16 sm:px-6 sm:py-24">
             <Eyebrow>CV-based job finder</Eyebrow>
-            <h1 className="t-display mt-3 max-w-4xl text-balance">Find jobs that fit your CV, location and eligibility.</h1>
+            <h1 className="t-display mt-3 max-w-4xl text-balance">Find jobs that match your CV, location and eligibility.</h1>
             <p className="mt-5 max-w-3xl text-lg leading-8 text-muted">
               Search for local jobs, remote jobs, graduate roles, entry-level jobs and internships without opening the same job boards every day. Shortlist Job Radar monitors approved public sources for your preferences and shows why each match may—or may not—fit.
             </p>
@@ -131,7 +136,7 @@ export default function JobSearchPage() {
             <div className="min-w-0 flex-1"><h2 className="text-2xl font-semibold">Start with the jobs you actually want.</h2><p className="mt-2 opacity-90">Add your CV, confirm your preferences and review every recommendation yourself.</p></div>
             <ButtonLink href="/signup" size="lg" className="bg-on-accent! text-accent! hover:opacity-90">Start free</ButtonLink>
           </div>
-          <p className="mt-8 text-sm text-muted">Already comparing application materials? Browse the <Link href="/templates" className="font-medium text-accent underline underline-offset-4">free ATS-labelled CV templates</Link> or read <Link href="/privacy" className="font-medium text-accent underline underline-offset-4">how job-search preferences are handled</Link>.</p>
+          <p className="mt-8 text-sm text-muted">Already comparing application materials? Read the <Link href="/guides/find-jobs-that-match-your-cv" className="font-medium text-accent underline underline-offset-4">guide to finding jobs that match your CV</Link>, browse the <Link href="/templates" className="font-medium text-accent underline underline-offset-4">free ATS-labelled CV templates</Link> or read <Link href="/privacy" className="font-medium text-accent underline underline-offset-4">how job-search preferences are handled</Link>.</p>
         </section>
       </main>
       <SiteFooter />
