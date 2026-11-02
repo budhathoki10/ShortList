@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { logout } from "@/app/actions/auth";
 import { icons, type IconName } from "./icons";
+import { OPEN_LOGOUT_CONFIRM } from "./logout-confirm";
 
 export const NAV: { href: string; label: string; icon: IconName }[] = [
   { href: "/app", label: "Today", icon: "today" },
@@ -116,14 +116,19 @@ export function AppNav({
           </span>
           <span className={`min-w-0 flex-1 truncate pr-2 text-xs ${label}`}>{email}</span>
         </div>
-        <form action={logout}>
-          <button type="submit" className={`${base} ${idle}`}>
-            <span className={cell}>
-              <icons.logout width={20} height={20} />
-            </span>
-            <span className={`whitespace-nowrap ${label}`}>Log out</span>
-          </button>
-        </form>
+        <button
+          type="button"
+          onClick={() => {
+            window.dispatchEvent(new Event(OPEN_LOGOUT_CONFIRM));
+            onNavigate?.();
+          }}
+          className={`${base} ${idle}`}
+        >
+          <span className={cell}>
+            <icons.logout width={20} height={20} />
+          </span>
+          <span className={`whitespace-nowrap ${label}`}>Log out</span>
+        </button>
       </div>
     </div>
   );

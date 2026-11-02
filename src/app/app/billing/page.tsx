@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CancelPendingCheckout, CancelSubscription, CheckAgain, SubscribePlans, type PlanChoice } from "@/components/subscribe-plans";
+import { CancelPendingCheckout, CheckAgain, SubscribePlans, type PlanChoice } from "@/components/subscribe-plans";
 import { Badge, Notice, PageHeader } from "@/components/ui";
 import { UsageMeter } from "@/components/usage-meter";
 import type { Subscription, SubscriptionStatus } from "@/db/types";
@@ -151,7 +151,6 @@ export default async function BillingPage({ searchParams }: PageProps<"/app/bill
   if (current?.status === "past_due") summary.push(["Paid features until", date(current.until) ?? "To be confirmed"]);
   if (current?.status === "cancelled") summary.push(["Access until", date(current.row.paidThrough) ?? "To be confirmed"]);
   if (current?.status === "expired") summary.push(["Ended on", date(current.row.paidThrough) ?? "To be confirmed"]);
-  const canCancel = !!current && !!current.row.freemiusSubscriptionId && ["active", "past_due"].includes(current.status) && !current.row.cancelRequestedAt;
 
   return (
     <div className="max-w-3xl space-y-12">
@@ -211,12 +210,6 @@ export default async function BillingPage({ searchParams }: PageProps<"/app/bill
           </div>
         )}
 
-        {current && canCancel && (
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-5 py-3">
-            <p className="text-[13px] text-muted">Cancel any time and keep paid features until {date(current.row.paidThrough) ?? "the end of the period you’ve paid for"}.</p>
-            <CancelSubscription subscriptionId={current.row.id} paidThrough={date(current.row.paidThrough)} />
-          </div>
-        )}
       </section>
 
       {/* What has been used. */}

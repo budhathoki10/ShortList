@@ -2,9 +2,9 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useId, useMemo, useRef, useState, useTransition } from "react";
-import { logout } from "@/app/actions/auth";
 import { NAV, OPEN_PALETTE } from "./app-nav";
 import { icons } from "./icons";
+import { OPEN_LOGOUT_CONFIRM } from "./logout-confirm";
 
 export type PaletteJob = { id: string; title: string; company: string; status: string };
 
@@ -99,7 +99,7 @@ export function KeyboardLayer({ jobs }: { jobs: PaletteJob[] }) {
       { id: "nav:billing", group: "Go to", label: "Plan and billing", keywords: "billing plan pay upgrade subscription cancel invoice", run: () => go("/app/billing") },
       { id: "act:add", group: "Actions", label: "Add a job", keywords: "new create paste link", run: addJob },
       { id: "act:export", group: "Actions", label: "Download my data", keywords: "export json", run: () => downloadFile("/app/settings/export") },
-      { id: "act:logout", group: "Actions", label: "Log out", run: () => startTransition(() => void logout()) },
+      { id: "act:logout", group: "Actions", label: "Log out", run: () => window.dispatchEvent(new Event(OPEN_LOGOUT_CONFIRM)) },
       ...jobItems,
     ];
   }, [jobs, go, addJob]);
