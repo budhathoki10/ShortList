@@ -4,6 +4,11 @@ import { addFixtureJob, continueWithGoogle, googleIdentity, logIn, setUpJobSeeke
 
 const stamp = Date.now();
 
+async function logOut(page: import("@playwright/test").Page) {
+  await page.getByRole("button", { name: "Log out", exact: true }).click();
+  await page.getByRole("dialog", { name: "Log out?" }).getByRole("button", { name: "Log out now" }).click();
+}
+
 test.describe.configure({ mode: "serial" });
 
 test("signed-out visitors are sent to log in for every app page", async ({ page }) => {
@@ -51,7 +56,13 @@ test("signing in with Google makes a verified account that logs back in, and dat
   expect(JSON.stringify(data)).not.toMatch(/googleId|passwordHash/);
   expect(exported.headers()["content-disposition"]).toContain("shortlist-data.json");
 
-  await page.getByRole("button", { name: "Log out" }).click();
+  const dialog = page.getByRole("dialog", { name: "Log out?" });
+  await page.getByRole("button", { name: "Log out", exact: true }).click();
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByText("You’ll need to sign in with Google to return to your job hunt.")).toBeVisible();
+  await dialog.getByRole("button", { name: "Cancel" }).click();
+  await expect(dialog).toBeHidden();
+  await logOut(page);
   await expect(page).toHaveURL(/\/$/);
   await page.goto("/app");
   await expect(page).toHaveURL(/\/login/);
@@ -104,7 +115,7 @@ test("Google sign-in refuses what it should and says why", async ({ page, reques
   // The email already belongs to a different Google identity.
   const owner = `owned-${stamp}@example.com`;
   await signUp(page, owner);
-  await page.getByRole("button", { name: "Log out" }).click();
+  await logOut(page);
   await googleIdentity({ email: owner, sub: "someone-else" });
   await page.goto("/login");
   await continueWithGoogle(page);

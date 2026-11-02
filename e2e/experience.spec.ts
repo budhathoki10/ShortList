@@ -11,6 +11,11 @@ async function signedIn(page: import("@playwright/test").Page) {
   await expect(page).toHaveURL(/\/app$/);
 }
 
+async function logOut(page: import("@playwright/test").Page) {
+  await page.getByRole("button", { name: "Log out", exact: true }).click();
+  await page.getByRole("dialog", { name: "Log out?" }).getByRole("button", { name: "Log out now" }).click();
+}
+
 test.describe.configure({ mode: "serial" });
 
 test("every page ships security headers and a script policy the browser honours", async ({ page }) => {
@@ -56,13 +61,13 @@ test("the Google sign-in start sets only a short-lived, HttpOnly cookie and a lo
 test("login refuses to redirect off the site", async ({ page }) => {
   await setUpJobSeeker(page, email);
   jobUrl = await addFixtureJob(page, FIXTURE_BASE);
-  await page.getByRole("button", { name: "Log out" }).click();
+  await logOut(page);
   for (const next of ["//evil.example", "/\\evil.example", "https://evil.example"]) {
     await googleIdentity({ email });
     await page.goto(`/login?next=${encodeURIComponent(next)}`);
     await continueWithGoogle(page);
     await expect(page).toHaveURL(/localhost:\d+\/app$/);
-    await page.getByRole("button", { name: "Log out" }).click();
+    await logOut(page);
   }
   await googleIdentity({ email });
   await page.goto(`/login?next=${encodeURIComponent("/app/jobs")}`);

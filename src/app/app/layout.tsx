@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { AppNav } from "@/components/app-nav";
 import { KeyboardLayer } from "@/components/command-palette";
+import { LogoutConfirm } from "@/components/logout-confirm";
 import { MobileNav } from "@/components/mobile-nav";
 import { after } from "next/server";
 import { requireUser } from "@/lib/auth/session";
@@ -29,6 +30,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </main>
       </div>
       <KeyboardLayer jobs={jobs.slice(0, 200).map((j) => ({ id: j.id, title: j.post.title, company: j.post.company, status: j.status }))} />
+      <LogoutConfirm />
     </div>
   );
 }
