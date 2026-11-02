@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useId, useState, useTransition } from "react";
 import { toggleAllChanges, toggleChange } from "@/app/actions/tailor";
 import { wordDiff } from "@/lib/diff";
 import type { Change, Profile } from "@/lib/model/types";
@@ -50,6 +50,10 @@ function Diff({ before, after, blocked }: { before: string; after: string; block
 function ChangeCard({ c, profile, onToggle }: { c: Change; profile: Profile; onToggle: (accept: boolean) => void }) {
   const blocked = c.flags.length > 0;
   const exp = "experienceId" in c ? profile.experience.find((e) => e.id === c.experienceId) : undefined;
+  const detailsId = useId();
+  const textChange = c.kind === "summary" || c.kind === "headline" || c.kind === "bullet" || c.kind === "project-bullet";
+  const collapsible = textChange && Math.max(c.before.length, c.after.length) > 280;
+  const [expanded, setExpanded] = useState(false);
   return (
     <li className={`rounded-md border p-4 transition-colors duration-150 ${blocked ? "border-danger/30 bg-danger-soft" : c.accepted ? "border-strong-border bg-surface" : "border-border bg-background"}`}>
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -59,7 +63,7 @@ function ChangeCard({ c, profile, onToggle }: { c: Change; profile: Profile; onT
         {blocked ? <Badge tone="bad">Blocked</Badge> : c.accepted ? <Badge tone="good">Using</Badge> : <Badge>Not using</Badge>}
       </div>
       <p className="mt-1 text-[13px] text-muted">{c.reason}</p>
-      <div className="mt-3">
+      <div id={detailsId} className={`relative mt-3 ${collapsible && !expanded ? "max-h-36 overflow-hidden" : ""}`}>
         {(c.kind === "summary" || c.kind === "headline" || c.kind === "bullet" || c.kind === "project-bullet") && <Diff before={c.before} after={c.after} blocked={blocked} />}
         {c.kind === "section-order" && <p className="text-sm capitalize">{c.order.join(" → ")}</p>}
         {c.kind === "projects-order" && <ol className="list-decimal space-y-1 pl-5 text-sm">{c.order.map((id) => <li key={id}>{profile.projects.find((p) => p.id === id)?.name}</li>)}</ol>}
@@ -91,7 +95,13 @@ function ChangeCard({ c, profile, onToggle }: { c: Change; profile: Profile; onT
             {c.order.length > 12 ? "…" : ""}
           </p>
         )}
+        {collapsible && !expanded && <span aria-hidden="true" className={`pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t to-transparent ${blocked ? "from-danger-soft" : c.accepted ? "from-surface" : "from-background"}`} />}
       </div>
+      {collapsible && (
+        <button type="button" aria-expanded={expanded} aria-controls={detailsId} onClick={() => setExpanded((open) => !open)} className="mt-2 inline-flex min-h-8 items-center rounded px-2 text-[13px] font-medium text-accent hover:bg-accent-soft max-sm:min-h-11">
+          {expanded ? "Show less" : "See more"}
+        </button>
+      )}
       {blocked ? (
         <p className="mt-3 text-[13px] text-danger">
           This adds something that isn’t in your CV: <strong>{c.flags.join(", ")}</strong>. If it’s true,{" "}

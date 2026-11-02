@@ -31,6 +31,15 @@ test("a job seeker goes from CV to application to follow-up, without anything in
   await page.getByRole("button", { name: "Save profile" }).click();
   await expect(page.getByText("Profile saved.")).toBeVisible();
 
+  // Keep one source field deliberately long so the suggestions UI exercises its compact/expanded treatment.
+  await withDb(async (db) => {
+    const user = await db.collection("users").findOne({ email });
+    await db.collection("profiles").updateOne(
+      { _id: user!._id },
+      { $set: { "data.summary": Array(8).fill("Customer support specialist with four years of experience in onboarding, retention and Zendesk support.").join(" ") } },
+    );
+  });
+
   // 2. A job by link: the page's structured data is read.
   const jobUrl = await addFixtureJob(page, FIXTURE_BASE);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Customer Success Lead");
@@ -54,6 +63,18 @@ test("a job seeker goes from CV to application to follow-up, without anything in
   await expect(preview.getByRole("region", { name: "Experience", exact: true }).getByRole("listitem").first()).toContainText("Zendesk");
   await expect(preview).toContainText("Zendesk, Customer Success, Onboarding");
   await expect(preview).not.toContainText("HubSpot");
+
+  // Long suggested rewrites stay compact until the person asks to read the whole diff.
+  await page.setViewportSize({ width: 390, height: 844 });
+  const seeMore = page.getByRole("button", { name: "See more" }).first();
+  await expect(seeMore).toBeVisible();
+  await expect(seeMore).toHaveAttribute("aria-expanded", "false");
+  const details = page.locator(`[id="${await seeMore.getAttribute("aria-controls")}"]`);
+  expect((await details.boundingBox())!.height).toBeLessThanOrEqual(145);
+  await seeMore.click();
+  await expect(page.getByRole("button", { name: "Show less" }).first()).toHaveAttribute("aria-expanded", "true");
+  expect((await details.boundingBox())!.height).toBeGreaterThan(145);
+  await page.setViewportSize({ width: 1280, height: 720 });
 
   // Rejecting a change takes it out of the preview.
   const skills = page.getByRole("listitem").filter({ hasText: "Leads with the skills in the job post" });
