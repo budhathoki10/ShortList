@@ -48,8 +48,7 @@ test("a job seeker goes from CV to application to follow-up, without anything in
   await page.getByRole("link", { name: "Tailor my CV" }).click();
   await page.getByRole("button", { name: "Suggest changes" }).click();
   await expect(page.getByRole("heading", { name: "Suggested changes" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Original PDF", exact: true })).toHaveAttribute("aria-pressed", "true");
-  await page.getByRole("button", { name: "Tailored version", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Tailored version", exact: true })).toHaveAttribute("aria-pressed", "true");
   const preview = page.getByLabel("CV preview");
   await expect(preview.getByRole("region", { name: "Experience", exact: true }).getByRole("listitem").first()).toContainText("Zendesk");
   await expect(preview).toContainText("Zendesk, Customer Success, Onboarding");

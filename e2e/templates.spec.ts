@@ -59,8 +59,8 @@ test("a job's CV follows the default, and a different look can be chosen for jus
   await page.goto(`/app/jobs/${jobId}/cv`);
   await page.getByRole("button", { name: "Suggest changes" }).click();
   await expect(page.getByRole("heading", { name: "Suggested changes" })).toBeVisible();
-  // An uploaded PDF opens on the original; the template look belongs to the tailored version.
-  await page.getByRole("button", { name: "Tailored version", exact: true }).click();
+  // The tailored version opens by default, so its template look is immediately available.
+  await expect(page.getByRole("button", { name: "Tailored version", exact: true })).toHaveAttribute("aria-pressed", "true");
 
   const cv = page.getByLabel("CV preview");
   await expect(page.getByText("Look:").locator("xpath=..")).toContainText("Charter");

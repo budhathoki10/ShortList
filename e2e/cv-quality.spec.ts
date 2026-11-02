@@ -108,7 +108,9 @@ test("the supplied original CV survives upload, editing and PDF download", async
   expect((await redesigned.body()).equals(readFileSync(file!))).toBe(false);
   await page.goto(`${jobUrl}/cv`);
   await page.getByRole("button", { name: "Suggest changes", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Original PDF", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("button", { name: "Tailored version", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("link", { name: "Download PDF", exact: true })).toHaveAttribute("href", /layout=redesigned/);
+  await page.getByRole("button", { name: "Original PDF", exact: true }).click();
   await expect(page.getByText("Your uploaded PDF, unchanged")).toBeVisible();
   await expect(page.getByRole("link", { name: "Download PDF", exact: true })).toHaveAttribute("href", /layout=original/);
   const originalPreview = page.getByRole("img", { name: "Original PDF page 1 of 3", exact: true });

@@ -139,7 +139,7 @@ export function CvWorkbench({
   const [changes, setChanges] = useState(initial);
   const [content, setContent] = useState<CvContent>("full");
   const hasOriginalPdf = original?.type === "application/pdf";
-  const [layout, setLayout] = useState<"original" | "redesigned">(hasOriginalPdf ? "original" : "redesigned");
+  const [layout, setLayout] = useState<"original" | "redesigned">("redesigned");
   // When the server sends a different set (a fresh round of suggestions), start from it.
   // Adjusting state while rendering, keyed on what the server last sent.
   const signature = initial.map((c) => `${c.id}:${c.accepted}`).join();
