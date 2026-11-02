@@ -24,6 +24,9 @@ export async function SiteHeader() {
           <Link href="/templates" className={`${navLink} hidden sm:inline-flex`}>
             Templates
           </Link>
+          <Link href="/guides" className={`${navLink} hidden sm:inline-flex`}>
+            Guides
+          </Link>
           <Link href="/#pricing" className={`${navLink} hidden sm:inline-flex`}>
             Pricing
           </Link>
@@ -58,6 +61,9 @@ export function SiteFooter() {
           </Link>
           <Link href="/templates" className="py-1 hover:text-foreground max-sm:py-3">
             Templates
+          </Link>
+          <Link href="/guides" className="py-1 hover:text-foreground max-sm:py-3">
+            Guides
           </Link>
           <Link href="/terms" className="py-1 hover:text-foreground max-sm:py-3">
             Terms

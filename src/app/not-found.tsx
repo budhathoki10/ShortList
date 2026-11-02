@@ -1,5 +1,8 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { ButtonLink, Logo } from "@/components/ui";
+
+export const metadata: Metadata = { title: "Page not found", robots: { index: false, follow: true } };
 
 export default function NotFound() {
   return (
@@ -18,6 +21,12 @@ export default function NotFound() {
           Home page
         </ButtonLink>
       </div>
+      <p className="mt-8 text-sm text-muted">
+        Looking for something specific? Try{" "}
+        <Link href="/job-search" className="text-accent underline underline-offset-4">finding jobs that match your CV</Link>, the{" "}
+        <Link href="/guides" className="text-accent underline underline-offset-4">job search guides</Link> or the{" "}
+        <Link href="/templates" className="text-accent underline underline-offset-4">free CV templates</Link>.
+      </p>
     </main>
   );
 }
