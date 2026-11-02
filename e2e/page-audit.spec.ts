@@ -3,8 +3,8 @@ import { expect, test, type Page } from "@playwright/test";
 import { FIXTURE_BASE } from "../playwright.config";
 import { addFixtureJob, setUpJobSeeker, withDb } from "./helpers";
 
-/** Phone, small phone and tablet, plus desktop. Every page must fit each one without scrolling sideways. */
-const WIDTHS = [1440, 768, 390, 320];
+/** Requested phones, tablet, compact desktop and desktop, plus a 320px stress check. */
+const WIDTHS = [1440, 1024, 768, 430, 390, 375, 320];
 
 /** No sideways scroll, and on phones no form control under 16px (iOS zooms the page into those). */
 async function checkFits(page: Page, path: string, width: number) {
@@ -20,7 +20,7 @@ async function checkFits(page: Page, path: string, width: number) {
 }
 
 test("all main pages work on desktop, tablet and phone, without the global verification banner", async ({ page, browser }) => {
-  test.setTimeout(420_000);
+  test.setTimeout(600_000);
   mkdirSync("tmp/cv-audit/pages", { recursive: true });
   await setUpJobSeeker(page, `pages-${Date.now()}@example.com`);
   const jobUrl = await addFixtureJob(page, FIXTURE_BASE);
@@ -33,15 +33,19 @@ test("all main pages work on desktop, tablet and phone, without the global verif
   await page.goto(`${jobUrl}/interview`);
   await page.getByRole("button", { name: "Get my questions" }).click();
   await expect(page.getByRole("region", { name: "Current interview question" })).toBeVisible();
+  await page.goto(`${jobUrl}/interview?mode=mock`);
+  await page.getByRole("button", { name: "Start mock interview", exact: true }).click();
+  await expect(page).toHaveURL(/\/interview\/mock\//);
+  const mockUrl = page.url();
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
-  const paths = ["/app", "/app/radar", "/app/jobs", "/app/jobs?view=board", "/app/profile", "/app/progress", "/app/strategy", "/app/settings", "/app/billing", "/app/studio", "/app/studio/templates", "/app/studio/edit/sl-001", jobUrl, `${jobUrl}/cv`, `${jobUrl}/cover-letter`, `${jobUrl}/interview`, `${jobUrl}/plan`, jobUrl.replace("/jobs/", "/print/cv/") + "?layout=redesigned"];
+  const paths = ["/app", "/app/radar", "/app/jobs", "/app/jobs?view=board", "/app/profile", "/app/progress", "/app/strategy", "/app/settings", "/app/billing", "/app/studio", "/app/studio/templates", "/app/studio/edit/sl-001", jobUrl, `${jobUrl}/cv`, `${jobUrl}/cover-letter`, `${jobUrl}/interview`, mockUrl, `${jobUrl}/plan`, "/app/print/profile", jobUrl.replace("/jobs/", "/print/cv/") + "?layout=redesigned", jobUrl.replace("/jobs/", "/print/letter/")];
   for (const width of WIDTHS) {
     await page.setViewportSize({ width, height: 900 });
     for (let i = 0; i < paths.length; i++) {
       const response = await page.goto(paths[i]);
       expect(response?.status(), paths[i]).toBe(200);
-      await page.getByRole("heading", { level: 1 }).first().waitFor();
+      await page.locator("main").waitFor();
       await expect(page.getByText("Confirm your email address. We sent a link")).toHaveCount(0);
       await checkFits(page, paths[i], width);
       if (width === 1440 || width === 390) await page.screenshot({ path: `tmp/cv-audit/pages/app-${i}-${width}.png`, fullPage: true });
@@ -52,7 +56,7 @@ test("all main pages work on desktop, tablet and phone, without the global verif
   const guest = await browser.newPage();
   for (const width of WIDTHS) {
     await guest.setViewportSize({ width, height: 900 });
-    for (const path of ["/", "/login", "/signup", "/templates", "/terms", "/privacy", "/refund", "/not-a-real-page"]) {
+    for (const path of ["/", "/job-search", "/login", "/signup", "/templates", "/terms", "/privacy", "/refund", "/not-a-real-page"]) {
       const response = await guest.goto(path);
       expect(response?.status()).toBe(path === "/not-a-real-page" ? 404 : 200);
       await guest.getByRole("heading", { level: 1 }).first().waitFor();

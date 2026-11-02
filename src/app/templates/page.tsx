@@ -15,11 +15,11 @@ export default function PublicTemplates() {
     <>
       <JsonLd data={{ "@context": "https://schema.org", "@type": "CollectionPage", "@id": `${SITE.url}/templates#page`, url: `${SITE.url}/templates`, name: "100 free CV and resume templates", description, isPartOf: { "@id": `${SITE.url}/#website` }, mainEntity: { "@type": "ItemList", name: "Shortlist Job Radar CV templates", numberOfItems: 100 } }} />
       <SiteHeader />
-      <main className="mx-auto w-full max-w-6xl flex-1 px-5 py-12">
-        <header className="mb-10 max-w-2xl">
+      <main id="main" className="mx-auto w-full max-w-6xl flex-1 px-4 py-10 sm:px-6 sm:py-12">
+        <header className="mb-8 max-w-2xl sm:mb-10">
           <Eyebrow>CV templates</Eyebrow>
-          <h1 className="mt-2 font-serif text-5xl leading-tight tracking-tight">100 free CV and resume templates, honestly labelled.</h1>
-          <p className="mt-4 text-lg text-muted">
+          <h1 className="mt-2 font-serif text-4xl leading-tight tracking-tight sm:text-5xl">100 free CV and resume templates, honestly labelled.</h1>
+          <p className="mt-4 text-base leading-7 text-muted sm:text-lg">
             Each template says whether applicant tracking systems can read it. All are free. Sign up to see them with your own CV, change fonts and colours, or
             make your own.
           </p>

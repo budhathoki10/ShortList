@@ -6,7 +6,7 @@ import { Button } from "./ui";
 /** Opens the browser's print dialog, where "Save as PDF" is the destination. */
 export function PrintButton({ auto = false }: { auto?: boolean }) {
   useEffect(() => {
-    if (auto) {
+    if (auto && window.matchMedia("(min-width: 640px) and (pointer: fine)").matches) {
       const t = setTimeout(() => window.print(), 400);
       return () => clearTimeout(t);
     }

@@ -93,6 +93,11 @@ test("a discovered job appears with evidence and enters the application workflow
   await page.getByRole("link", { name: "Review evidence" }).click();
   await expect(page.getByRole("heading", { name: "Requirement evidence" })).toBeVisible();
   await expect(page.getByText("Resolved customer tickets using Zendesk")).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect
+    .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth))
+    .toBe(true);
+  await page.screenshot({ path: "test-results/radar-detail-mobile.png", fullPage: true });
 
   await page.getByRole("button", { name: "Save and prepare" }).click();
   await expect(page).toHaveURL(/\/app\/jobs\/[0-9a-f-]{36}$/);

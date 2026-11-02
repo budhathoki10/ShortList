@@ -133,10 +133,16 @@ test("the sidebar is an icon rail that opens over the page, without moving it", 
 
 test("the palette opens from navigation without exposing global shortcuts", async ({ page }) => {
   await signedIn(page);
+  await page.setViewportSize({ width: 390, height: 844 });
   const palette = page.getByRole("dialog", { name: "Command palette" });
-  await page.getByRole("button", { name: "Search or jump to…" }).click();
+  await page.getByRole("button", { name: /^Search or jump to/ }).click();
   await expect(palette).toBeVisible();
   await expect(palette.getByRole("combobox")).toBeFocused();
+  const sheet = await palette.boundingBox();
+  expect(sheet).not.toBeNull();
+  expect(Math.abs(sheet!.x)).toBeLessThanOrEqual(1);
+  expect(Math.abs(sheet!.width - 390)).toBeLessThanOrEqual(1);
+  expect(Math.abs(sheet!.y + sheet!.height - 844)).toBeLessThanOrEqual(2);
   await palette.getByRole("combobox").fill("customer");
   await expect(palette.getByRole("option")).toHaveCount(1);
   await page.keyboard.press("Enter");

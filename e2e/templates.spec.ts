@@ -34,6 +34,17 @@ test("anyone can browse and search the 100 templates without an account", async 
   await expect(preview.getByRole("link", { name: "Use this template, free" })).toHaveAttribute("href", "/signup");
   await page.keyboard.press("Escape");
   await expect(preview).toBeHidden();
+
+  // Phones start with a useful, finite gallery instead of a 100-card wall.
+  await page.getByLabel("Search templates").fill("");
+  await page.setViewportSize({ width: 390, height: 844 });
+  const mobileCards = page.locator("section[aria-labelledby='all'] li:visible");
+  await expect(mobileCards).toHaveCount(12);
+  await expect(page.getByRole("button", { name: "Show 88 more templates" })).toBeVisible();
+  await page.locator("summary").filter({ hasText: "More filters" }).click();
+  await expect(page.getByRole("button", { name: "With photo" })).toBeVisible();
+  await page.getByRole("button", { name: "Show 88 more templates" }).click();
+  await expect(mobileCards).toHaveCount(100);
 });
 
 test("the studio starts on Classic, and a template can be made the default", async ({ page }) => {

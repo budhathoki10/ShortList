@@ -23,7 +23,7 @@ export function MobileNav({ followUps, email, paid }: { followUps: number; email
   }, [open]);
 
   return (
-    <div className="sticky top-0 z-30 flex h-14 items-center gap-1 border-b border-border bg-surface px-2 pt-[env(safe-area-inset-top)] lg:hidden print:hidden">
+    <div className="sticky top-0 z-30 flex h-[calc(3.5rem+env(safe-area-inset-top))] items-center gap-1 border-b border-border bg-surface px-2 pt-[env(safe-area-inset-top)] lg:hidden print:hidden">
       <button
         type="button"
         aria-label="Open menu"
@@ -47,7 +47,7 @@ export function MobileNav({ followUps, email, paid }: { followUps: number; email
       <dialog ref={ref} aria-label="Menu" className="drawer" onClose={() => setOpen(false)} onClick={(e) => e.target === ref.current && ref.current?.close()}>
         {open && (
           <>
-            <div className="absolute right-2 top-2">
+            <div className="absolute right-2 top-[calc(.5rem+env(safe-area-inset-top))]">
               <button
                 type="button"
                 aria-label="Close menu"

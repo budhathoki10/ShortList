@@ -162,7 +162,7 @@ export function KeyboardLayer({ jobs }: { jobs: PaletteJob[] }) {
       <dialog
         ref={paletteRef}
         aria-label="Command palette"
-        className="mx-auto mt-[12vh] w-[min(36rem,calc(100vw-2rem))] rounded-xl shadow-2xl shadow-black/15"
+        className="mx-auto mt-[12vh] w-[min(36rem,calc(100vw-2rem))] rounded-xl shadow-2xl shadow-black/15 max-sm:inset-x-0 max-sm:bottom-0 max-sm:top-auto max-sm:m-0 max-sm:w-screen max-sm:max-w-none max-sm:rounded-b-none max-sm:rounded-t-xl max-sm:border-x-0 max-sm:border-b-0"
         onClick={(e) => e.target === paletteRef.current && closePalette()}
         onToggle={(e) => (e.currentTarget as HTMLDialogElement).open && inputRef.current?.focus()}
       >
@@ -188,7 +188,7 @@ export function KeyboardLayer({ jobs }: { jobs: PaletteJob[] }) {
             className="h-12 w-full bg-transparent text-sm outline-none placeholder:text-faint max-sm:text-base"
           />
         </div>
-        <div id={listId} role="listbox" aria-label="Results" className="max-h-[min(24rem,60dvh)] overflow-y-auto p-1.5">
+        <div id={listId} role="listbox" aria-label="Results" className="max-h-[min(24rem,60dvh)] overflow-y-auto p-1.5 max-sm:max-h-[calc(76dvh-env(safe-area-inset-bottom)-3rem)] max-sm:pb-[calc(.375rem+env(safe-area-inset-bottom))]">
           {flat.length === 0 && (
             <p className="px-3 py-8 text-center text-sm text-muted">
               Nothing matches “{query}”. Try a job title, or a page like “progress”.
@@ -208,7 +208,7 @@ export function KeyboardLayer({ jobs }: { jobs: PaletteJob[] }) {
                     aria-selected={i === active}
                     onMouseMove={() => setActive(i)}
                     onClick={() => choose(item)}
-                    className={`flex h-10 cursor-pointer items-center gap-3 rounded px-2.5 text-sm ${i === active ? "bg-surface-hover" : ""}`}
+                    className={`flex min-h-11 cursor-pointer items-center gap-3 rounded px-2.5 text-sm ${i === active ? "bg-surface-hover" : ""}`}
                   >
                     <span className="min-w-0 flex-1 truncate">
                       {item.label}

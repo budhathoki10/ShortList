@@ -45,7 +45,7 @@ export function AppNav({
   const cell = "grid h-11 w-12 shrink-0 place-items-center max-lg:h-12";
 
   const body = (
-    <div className="flex h-full flex-col gap-1 px-3 py-4">
+    <div className={`flex h-full flex-col gap-1 px-3 ${rail ? "py-4" : "pb-[calc(1rem+env(safe-area-inset-bottom))] pt-[calc(1rem+env(safe-area-inset-top))]"}`}>
       <div className="mb-3 flex h-11 items-center">
         <Link href="/app" aria-label="Shortlist Job Radar, your job hunt" onClick={onNavigate} className={`${base} gap-0 text-sidebar-fg`}>
           <span className={cell}>

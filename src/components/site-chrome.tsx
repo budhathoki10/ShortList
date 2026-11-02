@@ -10,7 +10,7 @@ export async function SiteHeader() {
   const user = await getCurrentUser();
   return (
     <HeaderShell>
-      <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-3 px-4 sm:px-6">
+      <div className="mx-auto flex h-[calc(3.5rem+env(safe-area-inset-top))] max-w-5xl items-center justify-between gap-3 px-4 pt-[env(safe-area-inset-top)] sm:px-6">
         <Link href="/" aria-label="Shortlist Job Radar home" className="inline-flex min-h-11 items-center rounded">
           <Logo />
         </Link>
@@ -50,7 +50,7 @@ export async function SiteHeader() {
 export function SiteFooter() {
   return (
     <footer className="mt-auto border-t border-border">
-      <div className="mx-auto flex max-w-5xl flex-col gap-3 px-4 py-8 text-[13px] text-muted sm:flex-row sm:items-center sm:justify-between sm:px-6">
+      <div className="mx-auto flex max-w-5xl flex-col gap-3 px-4 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-8 text-[13px] text-muted sm:flex-row sm:items-center sm:justify-between sm:px-6">
         <span>© {new Date().getFullYear()} Shortlist Job Radar</span>
         <nav aria-label="Footer" className="flex flex-wrap gap-x-5 gap-y-1">
           <Link href="/job-search" className="py-1 hover:text-foreground max-sm:py-3">

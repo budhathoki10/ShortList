@@ -460,4 +460,13 @@
   .cv-sheet { font-size: 10pt; line-height: 1.4; }
   .cv-sheet h2 { break-after: avoid; }
   .cv-sheet li { break-inside: avoid; }
+  .print-preview {
+    height: auto !important;
+    overflow: visible !important;
+  }
+  .print-preview-inner {
+    position: static !important;
+    visibility: visible !important;
+    transform: none !important;
+  }
 }

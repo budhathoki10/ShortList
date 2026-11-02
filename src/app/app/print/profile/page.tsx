@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { CvDocument, printPageCss } from "@/components/cv/cv-document";
 import { PrintButton } from "@/components/print-button";
+import { ResponsivePrintPreview } from "@/components/responsive-print-preview";
 import { requireUser } from "@/lib/auth/session";
 import { presentCv } from "@/lib/cv/presentation";
 import { cvFileName } from "@/lib/export/docx";
@@ -43,15 +44,17 @@ export default async function PrintProfile({ searchParams }: PageProps<"/app/pri
   return (
     <div className="mx-auto max-w-[60rem] space-y-4 print:max-w-none">
       <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
-        <p className="text-sm text-muted">In the print window, choose &ldquo;Save as PDF&rdquo;.</p>
+        <p className="text-sm text-muted"><span className="sm:hidden">Preview your CV, then save it as a PDF if your browser supports printing.</span><span className="max-sm:hidden">In the print window, choose &ldquo;Save as PDF&rdquo;.</span></p>
         <PrintButton auto />
       </div>
       {/* Built only from validated numbers and enums (see printPageCss). */}
       <style nonce={nonce}>{printPageCss(spec)}</style>
-      <div className="overflow-x-auto print:overflow-visible">
-        <div className="mx-auto w-fit rounded-md border border-strong-border print:w-auto print:rounded-none print:border-0">
-          <CvDocument spec={spec} cv={presentCv(profile, "full")} photoUrl={photo} titleLevel={1} />
-        </div>
+      <div className="rounded-md bg-sunken p-3 sm:p-5 print:bg-transparent print:p-0">
+        <ResponsivePrintPreview>
+          <div className="rounded-md border border-strong-border print:rounded-none print:border-0">
+            <CvDocument spec={spec} cv={presentCv(profile, "full")} photoUrl={photo} titleLevel={1} />
+          </div>
+        </ResponsivePrintPreview>
       </div>
     </div>
   );

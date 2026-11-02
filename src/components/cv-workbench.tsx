@@ -233,7 +233,7 @@ export function CvWorkbench({
             <a href={`/app/download/cv/${jobId}?format=pdf&layout=${layout}&content=${content}`} className={buttonClass("primary", "sm")}>
               Download PDF
             </a>
-            <Link href={`/app/print/cv/${jobId}?layout=${layout}&content=${content}`} target="_blank" className={buttonClass("ghost", "sm")}>Print preview</Link>
+            <Link href={`/app/print/cv/${jobId}?layout=${layout}&content=${content}`} target="_blank" className={buttonClass("ghost", "sm", "max-sm:hidden")}>Print preview</Link>
             {layout === "redesigned" && docx && (
               <a href={`/app/download/cv/${jobId}?layout=redesigned&content=${content}`} className={buttonClass("secondary", "sm")}>
                 Download Word

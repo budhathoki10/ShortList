@@ -34,10 +34,10 @@ function Chip({ on, onClick, children }: { on: boolean; onClick: () => void; chi
   );
 }
 
-function Card({ t, onOpen, isDefault }: { t: BuiltinTemplate; onOpen: () => void; isDefault?: boolean }) {
+function Card({ t, onOpen, isDefault, className = "" }: { t: BuiltinTemplate; onOpen: () => void; isDefault?: boolean; className?: string }) {
   const ats = atsReport(t.spec).level;
   return (
-    <li>
+    <li className={className}>
       <button
         type="button"
         onClick={onOpen}
@@ -74,15 +74,15 @@ function AppActions({ t, mode }: { t: BuiltinTemplate; mode: Extract<Mode, { kin
           <button
             type="submit"
             disabled={defPending || mode.defaultId === t.id}
-            className="inline-flex h-10 items-center gap-1.5 rounded-lg bg-accent px-4 text-sm font-medium text-on-accent hover:bg-accent-hover disabled:opacity-60"
+            className="inline-flex h-10 items-center gap-1.5 rounded-lg bg-accent px-4 text-sm font-medium text-on-accent hover:bg-accent-hover disabled:opacity-60 max-sm:h-11"
           >
             <Icon name="check" size={16} /> {mode.defaultId === t.id ? "Your default" : "Use as my default"}
           </button>
         </form>
-        <Link href={`/app/studio/edit/${t.id}`} className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-strong-border bg-surface px-4 text-sm font-medium hover:border-strong-border">
+        <Link href={`/app/studio/edit/${t.id}`} className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-strong-border bg-surface px-4 text-sm font-medium hover:border-strong-border max-sm:h-11">
           <Icon name="sparkle" size={16} /> Customise
         </Link>
-        <a href={`/app/print/profile?template=${t.id}`} target="_blank" rel="noopener" className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-strong-border bg-surface px-4 text-sm font-medium hover:bg-surface-hover">
+        <a href={`/app/print/profile?template=${t.id}`} target="_blank" rel="noopener" className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-strong-border bg-surface px-4 text-sm font-medium hover:bg-surface-hover max-sm:h-11">
           <Icon name="download" size={16} /> Download PDF
         </a>
       </div>
@@ -93,7 +93,7 @@ function AppActions({ t, mode }: { t: BuiltinTemplate; mode: Extract<Mode, { kin
           <label className="sr-only" htmlFor={`job-${t.id}`}>
             Use for a job
           </label>
-          <select id={`job-${t.id}`} name="jobId" className="h-10 min-w-0 flex-1 rounded-lg border border-strong-border bg-surface px-3 text-sm">
+          <select id={`job-${t.id}`} name="jobId" className="h-10 min-w-0 flex-1 rounded-lg border border-strong-border bg-surface px-3 text-sm max-sm:h-11 max-sm:text-base">
             {mode.jobs.map((j) => (
               <option key={j.id} value={j.id}>
                 {j.title}
@@ -101,7 +101,7 @@ function AppActions({ t, mode }: { t: BuiltinTemplate; mode: Extract<Mode, { kin
               </option>
             ))}
           </select>
-          <button type="submit" disabled={jobPending} className="h-10 rounded-lg border border-strong-border px-3 text-sm font-medium hover:border-strong-border disabled:opacity-60">
+          <button type="submit" disabled={jobPending} className="h-10 rounded-lg border border-strong-border px-3 text-sm font-medium hover:border-strong-border disabled:opacity-60 max-sm:h-11">
             Use for this job
           </button>
           <div className="w-full">
@@ -123,17 +123,17 @@ function Preview({ t, cv, photoUrl, mode, onClose }: { t: BuiltinTemplate; cv: P
   return (
     <div className="fixed inset-0 z-50 flex justify-end" role="dialog" aria-modal="true" aria-label={`${t.name} preview`}>
       <button type="button" aria-label="Close preview" className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative flex h-full w-full max-w-[1000px] flex-col bg-background shadow-3 md:flex-row">
+      <div className="relative flex h-dvh w-full max-w-[1000px] flex-col bg-background shadow-3 md:flex-row">
         <div className="order-2 min-h-0 flex-1 overflow-y-auto p-4 md:order-1 md:p-8">
           <CvSheet spec={t.spec} cv={cv} photoUrl={photoUrl} />
         </div>
-        <aside className="order-1 w-full shrink-0 space-y-5 border-b border-border bg-surface p-5 md:order-2 md:w-80 md:border-b-0 md:border-l md:overflow-y-auto">
+        <aside className="order-1 max-h-[48dvh] w-full shrink-0 space-y-5 overflow-y-auto border-b border-border bg-surface p-5 pt-[calc(1.25rem+env(safe-area-inset-top))] md:order-2 md:max-h-none md:w-80 md:border-b-0 md:border-l md:pt-5">
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-[13px] text-muted">{t.id.replace("sl-", "No. ")}</p>
               <h2 className="text-xl font-semibold tracking-tight">{t.name}</h2>
             </div>
-            <button type="button" onClick={onClose} className="rounded-lg p-2 text-muted hover:bg-sunken hover:text-foreground" aria-label="Close preview" autoFocus>
+            <button type="button" onClick={onClose} className="grid size-11 shrink-0 place-items-center rounded-lg text-muted hover:bg-sunken hover:text-foreground" aria-label="Close preview" autoFocus>
               <Icon name="close" />
             </button>
           </div>
@@ -171,12 +171,37 @@ function Preview({ t, cv, photoUrl, mode, onClose }: { t: BuiltinTemplate; cv: P
 export function TemplateGallery({ cv, photoUrl, mode, initialCategory }: { cv: Profile; photoUrl: string | null; mode: Mode; initialCategory?: Category }) {
   const [f, setF] = useState<TemplateFilters>({ ...EMPTY, category: initialCategory ?? "" });
   const [open, setOpen] = useState<BuiltinTemplate | null>(null);
+  const [showAllMobile, setShowAllMobile] = useState(false);
   const all = useMemo(() => visibleBuiltins(), []);
   const list = useMemo(() => filterTemplates(all, f), [all, f]);
   const recommended = useMemo(() => (mode.kind === "app" ? recommendTemplates(cv, null, 4) : []), [cv, mode.kind]);
   const filtering = Object.values(f).some(Boolean);
   const set = <K extends keyof TemplateFilters>(k: K, v: TemplateFilters[K]) => setF((cur) => ({ ...cur, [k]: cur[k] === v ? "" : v }));
   const defaultId = mode.kind === "app" ? mode.defaultId : null;
+  const advancedCount = [f.ats, f.photo, f.colour].filter(Boolean).length;
+  const advancedFilters = <>
+    {(["safe", "mostly", "caution"] as AtsLevel[]).map((l) => (
+      <Chip key={l} on={f.ats === l} onClick={() => set("ats", l)}>
+        {l === "safe" ? "ATS-safe" : l === "mostly" ? "Mostly safe" : "Two columns"}
+      </Chip>
+    ))}
+    <Chip on={f.photo === "yes"} onClick={() => set("photo", "yes")}>With photo</Chip>
+    <Chip on={f.photo === "no"} onClick={() => set("photo", "no")}>No photo</Chip>
+    <span className="mx-1 h-5 w-px bg-border" aria-hidden />
+    {COLOUR_IDS.map((c) => (
+      <button
+        key={c}
+        type="button"
+        aria-pressed={f.colour === c}
+        aria-label={COLOURS[c].label}
+        title={COLOURS[c].label}
+        onClick={() => set("colour", c as ColourFamily)}
+        className={`relative size-7 rounded-full border-2 transition after:absolute after:-inset-2 after:content-[''] motion-reduce:transition-none ${f.colour === c ? "scale-110 border-foreground" : "border-surface ring-1 ring-border"}`}
+        style={{ background: COLOURS[c].accent }}
+      />
+    ))}
+    {filtering && <button type="button" onClick={() => setF(EMPTY)} className="ml-1 min-h-11 text-[13px] text-muted underline underline-offset-4 hover:text-foreground">Clear</button>}
+  </>;
 
   return (
     <div className="grid gap-8 lg:grid-cols-[200px_1fr]">
@@ -228,37 +253,14 @@ export function TemplateGallery({ cv, photoUrl, mode, initialCategory }: { cv: P
               </Chip>
             ))}
           </div>
-          <div className="-mx-4 flex flex-wrap items-center gap-2 px-4">
-            {(["safe", "mostly", "caution"] as AtsLevel[]).map((l) => (
-              <Chip key={l} on={f.ats === l} onClick={() => set("ats", l)}>
-                {l === "safe" ? "ATS-safe" : l === "mostly" ? "Mostly safe" : "Two columns"}
-              </Chip>
-            ))}
-            <Chip on={f.photo === "yes"} onClick={() => set("photo", "yes")}>
-              With photo
-            </Chip>
-            <Chip on={f.photo === "no"} onClick={() => set("photo", "no")}>
-              No photo
-            </Chip>
-            <span className="mx-1 h-5 w-px bg-border" aria-hidden />
-            {COLOUR_IDS.map((c) => (
-              <button
-                key={c}
-                type="button"
-                aria-pressed={f.colour === c}
-                aria-label={COLOURS[c].label}
-                title={COLOURS[c].label}
-                onClick={() => set("colour", c as ColourFamily)}
-                className={`relative size-7 rounded-full border-2 transition after:absolute after:-inset-2 after:content-[''] motion-reduce:transition-none ${f.colour === c ? "border-foreground scale-110" : "border-surface ring-1 ring-border"}`}
-                style={{ background: COLOURS[c].accent }}
-              />
-            ))}
-            {filtering && (
-              <button type="button" onClick={() => setF(EMPTY)} className="ml-1 text-[13px] text-muted underline underline-offset-4 hover:text-foreground max-sm:min-h-11">
-                Clear
-              </button>
-            )}
-          </div>
+          <details className="rounded-lg border border-border bg-surface sm:hidden">
+            <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-3 text-sm font-medium marker:hidden">
+              More filters{advancedCount > 0 && <span className="rounded-full bg-accent-soft px-2 py-0.5 text-xs text-accent">{advancedCount} active</span>}
+              <span aria-hidden="true" className="ml-auto text-muted">+</span>
+            </summary>
+            <div className="flex flex-wrap items-center gap-3 border-t border-border px-3 py-4">{advancedFilters}</div>
+          </details>
+          <div className="hidden flex-wrap items-center gap-2 sm:flex">{advancedFilters}</div>
         </div>
 
         {!filtering && recommended.length > 0 && (
@@ -285,10 +287,15 @@ export function TemplateGallery({ cv, photoUrl, mode, initialCategory }: { cv: P
             </p>
           ) : (
             <ul className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 xl:grid-cols-4">
-              {list.map((t) => (
-                <Card key={t.id} t={t} onOpen={() => setOpen(t)} isDefault={t.id === defaultId} />
+              {list.map((t, index) => (
+                <Card key={t.id} t={t} onOpen={() => setOpen(t)} isDefault={t.id === defaultId} className={!showAllMobile && index >= 12 ? "max-sm:hidden" : ""} />
               ))}
             </ul>
+          )}
+          {list.length > 12 && !showAllMobile && (
+            <button type="button" onClick={() => setShowAllMobile(true)} className="mt-6 hidden min-h-11 w-full items-center justify-center rounded-lg border border-strong-border bg-surface px-4 text-sm font-medium max-sm:flex">
+              Show {list.length - 12} more templates
+            </button>
           )}
         </section>
       </div>

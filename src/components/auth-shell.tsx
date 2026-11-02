@@ -17,7 +17,7 @@ const POINTS = [
 export function AuthShell({ title, subtitle, children }: { title: string; subtitle?: string; children: ReactNode }) {
   return (
     <div className="grid flex-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
-      <div className="relative isolate flex min-h-dvh flex-col overflow-hidden px-5 py-6 sm:px-10 lg:min-h-0">
+      <div className="relative isolate flex min-h-dvh flex-col overflow-hidden px-5 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-[calc(1.5rem+env(safe-area-inset-top))] sm:px-10 lg:min-h-0 lg:py-6">
         <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 lg:hidden">
           <div className="dots absolute inset-0 opacity-50" />
         </div>

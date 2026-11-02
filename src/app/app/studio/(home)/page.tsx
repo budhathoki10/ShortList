@@ -58,7 +58,7 @@ export default async function Studio({ searchParams }: PageProps<"/app/studio">)
 
       <div className="grid gap-10 border-y border-border py-8 ">
         <div className="grid gap-6 sm:grid-cols-[200px_1fr]">
-          <div className="relative w-full max-w-[200px] self-start overflow-hidden rounded-md sm:max-w-none">
+          <div className="relative mx-auto w-full max-w-[240px] self-start overflow-hidden rounded-md sm:mx-0 sm:max-w-none">
             <CvMini spec={style.spec} cv={cv} photoUrl={shownPhoto} />
             <Link href={`/app/studio/edit/${style.template.id}`} aria-label={`Edit ${style.template.name}`} className="absolute inset-0 rounded-md ring-1 ring-inset ring-border transition hover:ring-strong-border" />
           </div>
@@ -123,13 +123,13 @@ export default async function Studio({ searchParams }: PageProps<"/app/studio">)
                     <div className="flex shrink-0">
                       <form action={duplicateTemplateAction}>
                         <input type="hidden" name="id" value={t.id} />
-                        <button type="submit" className="rounded p-1.5 text-muted hover:bg-surface hover:text-foreground" aria-label={`Duplicate ${t.name}`} title="Duplicate">
+                        <button type="submit" className="grid size-10 place-items-center rounded text-muted hover:bg-surface hover:text-foreground max-sm:size-11" aria-label={`Duplicate ${t.name}`} title="Duplicate">
                           <Icon name="copy" size={15} />
                         </button>
                       </form>
                       <form action={deleteTemplateAction}>
                         <input type="hidden" name="id" value={t.id} />
-                        <button type="submit" className="rounded p-1.5 text-muted hover:bg-danger-soft hover:text-danger" aria-label={`Delete ${t.name}`} title="Delete">
+                        <button type="submit" className="grid size-10 place-items-center rounded text-muted hover:bg-danger-soft hover:text-danger max-sm:size-11" aria-label={`Delete ${t.name}`} title="Delete">
                           <Icon name="trash" size={15} />
                         </button>
                       </form>
