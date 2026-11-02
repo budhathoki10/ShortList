@@ -29,9 +29,6 @@ export function eligibilityFindings(text: string, profile: Profile, passport: Ca
     if (!findings.some((item) => item.code === finding.code && item.evidence === finding.evidence)) findings.push(finding);
   };
 
-  const noSponsorship = excerpt(lines, /\b(no|not|without)\s+(?:current or future\s+)?(?:visa\s+)?sponsorship\b|\b(?:cannot|unable to|won't|will not)\s+sponsor\b/i);
-  if (passport.needsSponsorship && noSponsorship) add({ code: "sponsorship", severity: "blocker", message: "The employer says sponsorship is unavailable.", evidence: noSponsorship });
-
   const citizenship = excerpt(lines, /\b(?:must be|only)\s+(?:a\s+)?(?:u\.?s\.?|uk|canadian|australian)?\s*citizen\b|\bcitizenship (?:is )?required\b/i);
   if (citizenship) add({ code: "citizenship", severity: "verify", message: "This role states a citizenship requirement that Shortlist Job Radar cannot confirm from your CV.", evidence: citizenship });
 
@@ -46,15 +43,6 @@ export function eligibilityFindings(text: string, profile: Profile, passport: Ca
 
   const degree = excerpt(lines, /\b(?:bachelor'?s?|master'?s?|ph\.?d\.?|university)\s+(?:degree\s+)?(?:is\s+)?required\b|\brequires?\s+(?:a\s+)?(?:bachelor'?s?|master'?s?|ph\.?d\.?)\b/i);
   if (degree && profile.education.length === 0) add({ code: "degree", severity: "verify", message: "The posting requires a degree, but the CV has no education entry to verify it.", evidence: degree });
-
-  const graduation = excerpt(lines, /\bgraduat(?:e|es|ed|ing|ion)\b[^.;]{0,120}\b(?:19|20)\d{2}\b|\b(?:19|20)\d{2}\b[^.;]{0,120}\bgraduat(?:e|es|ed|ing|ion)\b/i);
-  if (graduation && passport.graduationDate) {
-    const expectedYear = Number(passport.graduationDate.slice(0, 4));
-    const years = [...graduation.matchAll(/\b(?:19|20)\d{2}\b/g)].map((match) => Number(match[0]));
-    if (years.length && (expectedYear < Math.min(...years) || expectedYear > Math.max(...years))) {
-      add({ code: "graduation", severity: "blocker", message: "Your expected graduation date is outside the posting's stated graduation window.", evidence: graduation });
-    }
-  }
 
   const countryRestriction = excerpt(lines, /\bmust (?:be|reside|live|work) (?:in|within|from)\s+[^.;]{2,80}|\bremote (?:within|in|from)\s+[^.;]{2,80}/i);
   if (countryRestriction && passport.locations.length + passport.workCountries.length > 0) {

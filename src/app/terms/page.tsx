@@ -30,7 +30,7 @@ export default function TermsPage() {
         </li>
         <li>Only upload CVs and job posts you&apos;re entitled to use. Don&apos;t upload other people&apos;s personal data beyond what a CV normally contains.</li>
         <li>Don&apos;t try to break, overload or scrape the service, or use it to write anything misleading or unlawful.</li>
-        <li>Keep your password safe. You&apos;re responsible for activity on your account.</li>
+        <li>Keep your Google account secure. You&apos;re responsible for activity on your account.</li>
       </ul>
 
       <h2>AI-written text</h2>

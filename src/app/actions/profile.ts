@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth/session";
-import { overLimit } from "@/lib/services/rate-limit";
+import { aiThrottle, overLimit } from "@/lib/services/rate-limit";
 import { MAX_CV_BYTES, readCvFile, UnreadableFileError } from "@/lib/cv/extract-text";
 import { parseCv } from "@/lib/cv/parse";
 import { ProfileSchema, profileError } from "@/lib/cv/profile-schema";
@@ -41,6 +41,8 @@ export async function importCv(_: ProfileState, formData: FormData): Promise<Pro
     }
   }
   if (text.length < 80) return { error: "Upload your CV, or paste at least a few lines of it." };
+  const slow = await aiThrottle(user.id);
+  if (slow) return { error: slow };
   if (!(await spendAllowance(user, "import")).ok) return { error: "You’ve reached this month’s CV import limit. You can still edit your saved profile below." };
 
   const { profile: read, method } = await parseCv(text).catch(async (err) => {

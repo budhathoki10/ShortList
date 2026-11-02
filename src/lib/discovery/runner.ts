@@ -12,6 +12,7 @@ const MAX_EXTRACTIONS_PER_RUN = 40;
 const PARTIAL_FEED_STALE_DAYS = 21;
 import { extractJob } from "@/lib/jobs/extract";
 import { profileReady } from "@/lib/services/profile";
+import { backfillPassports } from "@/lib/services/discovery";
 import { enqueueRecommendationNotifications, sendImmediateDiscoveryNotifications } from "./notifications";
 
 /** Store one posting. Null when it's new or changed but this run's extraction budget is spent: the next run takes it. */
@@ -150,6 +151,8 @@ export async function runJobDiscovery() {
     closedSourceIds.add(id);
     await closeMissing({ type: job.sourceType, key: job.sourceKey, company: job.company }, []);
   }
+  // People who saved a CV before passports filled themselves still get searched for.
+  await backfillPassports();
   let found = 0;
   let changed = 0;
   let recommendations = 0;

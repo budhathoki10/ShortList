@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { escapeHtml, resetPasswordMessage, verifyEmailMessage } from "@/lib/email";
+import { escapeHtml, noticeMessage } from "@/lib/email";
 import { quoted } from "@/lib/ai";
 import { secretMatches } from "@/lib/cron";
 import { FetchBlockedError, isPrivateAddress, normalizeUrl } from "@/lib/safe-fetch";
@@ -81,7 +81,7 @@ describe("redirects after login", () => {
 
 describe("email content", () => {
   it("escapes a name that is really markup", () => {
-    const mail = verifyEmailMessage("victim@example.com", `<a href="https://evil.example">Click</a>&"'`, "https://shortlist.test/verify-email/abc");
+    const mail = noticeMessage("victim@example.com", "Hello", "Hello", [`<a href="https://evil.example">Click</a>&"'`]);
     expect(mail.html).not.toContain("<a href=\"https://evil.example\"");
     expect(mail.html).toContain("&#60;a href=&#34;https://evil.example&#34;&#62;Click&#60;/a&#62;");
     // The plain-text part is text, so it keeps the name as typed.
@@ -89,7 +89,7 @@ describe("email content", () => {
   });
 
   it("escapes links and leaves the real one clickable", () => {
-    const mail = resetPasswordMessage("a@example.com", 'https://shortlist.test/reset?x="><script>');
+    const mail = noticeMessage("a@example.com", "Hello", "Hello", ["Open it"], { label: "Open", url: 'https://shortlist.test/open?x="><script>' });
     expect(mail.html).not.toContain("<script>");
     expect(escapeHtml("<&>\"'")).toBe("&#60;&#38;&#62;&#34;&#39;");
   });

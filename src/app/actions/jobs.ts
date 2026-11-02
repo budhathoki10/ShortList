@@ -10,7 +10,7 @@ import { scoreMatch } from "@/lib/match/score";
 import { today } from "@/lib/plans";
 import { createJob, deleteJob, isStatus, ownedJob, setFollowUp, setNotes, setStatus } from "@/lib/services/jobs";
 import { getProfile, profileReady } from "@/lib/services/profile";
-import { overLimit } from "@/lib/services/rate-limit";
+import { aiThrottle, overLimit } from "@/lib/services/rate-limit";
 import { htmlToText, looksLikeHtml } from "@/lib/jobs/html";
 import { cleanText } from "@/lib/text";
 import { isJobSearchPage, jobHasCriteria } from "@/lib/jobs/quality";
@@ -45,6 +45,8 @@ export async function addJob(_: JobState, formData: FormData): Promise<JobState>
   if (text.length < 120) return { error: "Paste the full job description, including the title, responsibilities and requirements.", needText: true, url };
   if (isJobSearchPage(text)) return { error: "This is a job search results page. Open one vacancy and paste its full description, including responsibilities and requirements.", needText: true, url };
 
+  const slow = await aiThrottle(user.id);
+  if (slow) return { error: slow, needText: true, url };
   const { post } = await extractJob(text.slice(0, 40_000));
   if (!jobHasCriteria(post)) return { error: "We found a title, but not enough job requirements to assess a match. Paste the full description below.", needText: true, url };
   const profile = await getProfile(user.id);
@@ -63,6 +65,8 @@ export async function updateJobDescription(_: JobState, formData: FormData): Pro
   const text = cleanText(pastedText(formData)).slice(0, 40_000);
   if (text.length < 120 || isJobSearchPage(text)) return { error: "Paste the description for this specific vacancy, including its responsibilities and requirements." };
   if (await overLimit(`add-job:${user.id}`, 40, 60 * 60_000)) return { error: "You’ve reached the hourly limit for reading job descriptions. Please try again in an hour." };
+  const slow = await aiThrottle(user.id);
+  if (slow) return { error: slow };
   const { post } = await extractJob(text);
   if (!jobHasCriteria(post)) return { error: "The description still has no clear requirements. Include the skills and experience the employer asks for." };
   const profile = await getProfile(user.id);

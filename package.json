@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "db:setup": "tsx --env-file-if-exists=.env scripts/setup-db.mts",
+    "db:migrate-google": "tsx --env-file-if-exists=.env scripts/migrate-google-auth.mts",
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",

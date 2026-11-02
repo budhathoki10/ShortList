@@ -21,7 +21,7 @@ import type { CareerContext } from "@/lib/career/types";
 import { saveCareerPlan } from "@/lib/services/career";
 import { INTERVIEW_QUESTION_VERSION } from "@/lib/career/questions";
 import { aiEnabled } from "@/lib/ai";
-import { overLimit } from "@/lib/services/rate-limit";
+import { aiThrottle, overLimit } from "@/lib/services/rate-limit";
 
 /** `upgrade` marks a refusal the paid plan would lift, so the message can link to the plans. */
 export type TailorState = { error?: string; success?: string; upgrade?: true; verify?: true } | undefined;
@@ -56,6 +56,8 @@ const FALLBACK_NOTE = " AI was unavailable, so this is a simpler draft and it di
 /** Run AI work for a job against the user's allowance, giving the use back if the work throws. */
 async function metered<T>(user: User, kind: UsageKind, jobId: string, work: () => Promise<T>): Promise<{ value: T } | { denied: NonNullable<TailorState> }> {
   if (await overLimit(`ai-${kind}:${user.id}`, HOURLY[kind] ?? 20, 60 * 60_000)) return { denied: { error: SLOW_DOWN } };
+  const slow = await aiThrottle(user.id);
+  if (slow) return { denied: { error: slow } };
   const spend = await spendAllowance(user, kind, { jobId });
   if (!spend.ok) return { denied: denialMessage(user, kind, spend.reason) };
   try {

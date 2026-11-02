@@ -78,10 +78,10 @@ export function SubscribePlans({ plans, disabledReason }: { plans: PlanChoice[];
     <div className="space-y-3">
       <div className="grid gap-3 sm:grid-cols-2">
         {plans.map((p) => (
-          <div key={p.interval} className={`flex flex-col justify-between gap-5 rounded-md border p-5 ${p.recommended ? "border-accent/45 bg-tint" : "border-border bg-surface"}`}>
+          <div key={p.interval} className={`flex flex-col justify-between gap-5 rounded-md border bg-surface p-5 ${p.recommended ? "border-strong-border" : "border-border"}`}>
             <div>
               <div className="flex min-h-5 items-center justify-between gap-2">
-                <p className={`text-sm font-medium ${p.recommended ? "text-accent-strong" : ""}`}>{p.title}</p>
+                <p className="text-sm font-medium">{p.title}</p>
                 {p.badge && <Badge tone="accent">{p.badge}</Badge>}
               </div>
               <p className="mt-2 text-2xl font-semibold tracking-[-0.02em] tabular-nums">{p.price ?? "Price shown at checkout"}</p>

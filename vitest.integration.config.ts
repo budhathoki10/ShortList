@@ -24,6 +24,9 @@ export default defineConfig({
       FETCH_ALLOW_PRIVATE_HOSTS: "1",
       ANTHROPIC_API_KEY: "fake-anthropic-key",
       ANTHROPIC_BASE_URL: `http://127.0.0.1:${FIXTURE_PORT}/anthropic`,
+      // Tests call the AI features back to back; the limit's own behaviour is covered in its own test.
+      AI_CALLS_PER_MINUTE: "1000",
+      AI_GLOBAL_PER_HOUR: "100000",
       ...FREEMIUS_TEST_ENV,
       APP_URL: "http://localhost:3000",
     },

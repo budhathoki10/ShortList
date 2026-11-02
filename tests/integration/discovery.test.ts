@@ -11,7 +11,7 @@ import { createJob, setStatus } from "@/lib/services/jobs";
 import { addDays } from "@/lib/dates";
 import { today } from "@/lib/plans";
 import { runJobDiscovery } from "@/lib/discovery/runner";
-import { dismissRecommendation, removePushDevice, saveCareerPassport, saveRecommendationToTracker, subscribePush } from "@/lib/services/discovery";
+import { dismissRecommendation, getCareerPassport, removePushDevice, saveCareerPassport, saveRecommendationToTracker, subscribePush } from "@/lib/services/discovery";
 import { deleteUser } from "@/lib/services/account";
 import { listJobs } from "@/lib/services/jobs";
 import { saveProfile } from "@/lib/services/profile";
@@ -35,7 +35,7 @@ afterEach(() => vi.unstubAllGlobals());
 
 async function fixture() {
   const user = await makeUser({ email: "radar@example.com", emailVerifiedAt: new Date() });
-  const passport = await saveCareerPassport(user.id, { targetRoles: ["Frontend developer"], excludedRoles: [], locations: ["Remote"], workCountries: ["Nepal"], remoteModes: ["remote"], needsSponsorship: false, graduationDate: null, minimumSalary: null, employmentTypes: ["Full-time"], excludedCompanies: [], discoveryEnabled: true, emailFrequency: "immediate", pushFrequency: "off", alertStates: ["ready"], quietStart: "00:00", quietEnd: "00:00", timezone: "UTC" });
+  const passport = await saveCareerPassport(user.id, { targetRoles: ["Frontend developer"], excludedRoles: [], locations: ["Remote"], workCountries: ["Nepal"], remoteModes: ["remote"], employmentTypes: ["Full-time"], discoveryEnabled: true, alertStates: ["ready"], quietStart: "00:00", quietEnd: "00:00", timezone: "UTC" });
   const job: DiscoveredJobDoc = { _id: crypto.randomUUID(), sourceType: "greenhouse", sourceKey: "acme", externalId: "42", canonicalUrl: "https://example.com/jobs/42", company: "Acme", title: "Frontend Developer", location: "Remote", text: "Build React products.", post: { title: "Frontend Developer", company: "Acme", location: "Remote", salary: "", summary: "Build products", requirements: [{ text: "React", kind: "must", keywords: ["React"] }], keywords: ["React"] }, contentHash: "content", sourceUpdatedAt: now, firstSeenAt: now, lastSeenAt: now, closedAt: null, createdAt: now, updatedAt: now };
   const recommendation: JobRecommendationDoc = { _id: crypto.randomUUID(), userId: user.id, discoveredJobId: job._id, state: "ready", status: "active", evidenceScore: 90, preferenceScore: 95, match: { score: 90, keywords: [{ keyword: "React", where: "shown", evidence: "Built React products" }], requirements: [{ text: "React", kind: "must", status: "shown", evidence: "Built React products" }] }, eligibility: [], reasons: ["Strong role-title fit", "90% of weighted CV evidence is present", "No must-have evidence gaps found"], ruleVersion: 1, profileUpdatedAt: now, passportVersion: passport.version, jobContentHash: job.contentHash, notificationVersion: 1, trackerJobId: null, dismissalReason: null, createdAt: now, updatedAt: now };
   const c = await collections();
@@ -48,7 +48,7 @@ describe("Job Radar services", () => {
   it("discovers a source job, matches it once, stores it, and sends the immediate email", async () => {
     const user = await makeUser({ email: "agent@example.com", emailVerifiedAt: new Date() });
     await saveProfile(user.id, { name: "Asha", headline: "Frontend developer", email: user.email, phone: "", location: "Kathmandu", links: [], summary: "Frontend developer", experience: [{ id: "e", title: "Frontend developer", company: "Brightdesk", location: "Kathmandu", start: "2024", end: "Present", bullets: ["Built accessible React and TypeScript interfaces for customer support teams."] }], education: [], skills: ["React", "TypeScript"], projects: [], certifications: [], languages: ["English"] });
-    await saveCareerPassport(user.id, { targetRoles: ["Frontend developer"], excludedRoles: [], locations: ["Remote"], workCountries: ["Nepal"], remoteModes: ["remote"], needsSponsorship: false, graduationDate: null, minimumSalary: null, employmentTypes: ["Full-time"], excludedCompanies: [], discoveryEnabled: true, emailFrequency: "immediate", pushFrequency: "off", alertStates: ["ready", "stretch", "verify"], quietStart: "00:00", quietEnd: "00:00", timezone: "UTC" });
+    await saveCareerPassport(user.id, { targetRoles: ["Frontend developer"], excludedRoles: [], locations: ["Remote"], workCountries: ["Nepal"], remoteModes: ["remote"], employmentTypes: ["Full-time"], discoveryEnabled: true, alertStates: ["ready", "stretch", "verify"], quietStart: "00:00", quietEnd: "00:00", timezone: "UTC" });
     let feed = { jobs: [{ id: 91, title: "Frontend Developer", updated_at: "2026-11-01T00:00:00Z", absolute_url: "https://jobs.example/91", location: { name: "Remote" }, content: "&lt;h2&gt;Requirements&lt;/h2&gt;&lt;ul&gt;&lt;li&gt;React and TypeScript experience building customer-facing products&lt;/li&gt;&lt;li&gt;Strong written communication with product teams&lt;/li&gt;&lt;/ul&gt;" }] };
     vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(feed), { status: 200, headers: { "content-type": "application/json" } })));
     const oldSources = process.env.JOB_SOURCE_BOARDS;
@@ -80,7 +80,7 @@ describe("Job Radar services", () => {
   it("reads a remote feed for wanted roles only, and keeps a partial feed's older jobs open until they go stale", async () => {
     const user = await makeUser({ email: "feeds@example.com", emailVerifiedAt: new Date() });
     await saveProfile(user.id, { name: "Asha", headline: "Frontend developer", email: user.email, phone: "", location: "Kathmandu", links: [], summary: "Frontend developer", experience: [{ id: "e", title: "Frontend developer", company: "Brightdesk", location: "Kathmandu", start: "2024", end: "Present", bullets: ["Built accessible React and TypeScript interfaces for customer support teams."] }], education: [], skills: ["React", "TypeScript"], projects: [], certifications: [], languages: ["English"] });
-    await saveCareerPassport(user.id, { targetRoles: ["Frontend developer"], excludedRoles: [], locations: ["Remote"], workCountries: ["Nepal"], remoteModes: ["remote"], needsSponsorship: false, graduationDate: null, minimumSalary: null, employmentTypes: ["Full-time"], excludedCompanies: [], discoveryEnabled: true, emailFrequency: "off", pushFrequency: "off", alertStates: ["ready"], quietStart: "00:00", quietEnd: "00:00", timezone: "UTC" });
+    await saveCareerPassport(user.id, { targetRoles: ["Frontend developer"], excludedRoles: [], locations: ["Remote"], workCountries: ["Nepal"], remoteModes: ["remote"], employmentTypes: ["Full-time"], discoveryEnabled: true, alertStates: ["ready"], quietStart: "00:00", quietEnd: "00:00", timezone: "UTC" });
     const body = "<p>Requirements</p><ul><li>React and TypeScript</li><li>Accessible interfaces for customers</li><li>Clear written English for a remote team</li></ul>";
     let feed: unknown = { jobs: [
       { id: 501, url: "https://jobicy.com/jobs/501", jobTitle: "Frontend Developer", companyName: "Acme", jobGeo: "Anywhere", jobType: ["Full-Time"], jobDescription: body, pubDate: "2026-10-31T10:00:00+00:00" },
@@ -170,7 +170,7 @@ describe("Job Radar services", () => {
   it("never alerts again about a dismissed match, even when the employer edits the posting", async () => {
     const user = await makeUser({ email: "dismissed@example.com", emailVerifiedAt: new Date() });
     await saveProfile(user.id, { name: "Asha", headline: "Frontend developer", email: user.email, phone: "", location: "Kathmandu", links: [], summary: "Frontend developer", experience: [{ id: "e", title: "Frontend developer", company: "Brightdesk", location: "Kathmandu", start: "2024", end: "Present", bullets: ["Built accessible React and TypeScript interfaces for customer support teams."] }], education: [], skills: ["React", "TypeScript"], projects: [], certifications: [], languages: ["English"] });
-    await saveCareerPassport(user.id, { targetRoles: ["Frontend developer"], excludedRoles: [], locations: ["Remote"], workCountries: ["Nepal"], remoteModes: ["remote"], needsSponsorship: false, graduationDate: null, minimumSalary: null, employmentTypes: ["Full-time"], excludedCompanies: [], discoveryEnabled: true, emailFrequency: "immediate", pushFrequency: "off", alertStates: ["ready", "stretch", "verify"], quietStart: "00:00", quietEnd: "00:00", timezone: "UTC" });
+    await saveCareerPassport(user.id, { targetRoles: ["Frontend developer"], excludedRoles: [], locations: ["Remote"], workCountries: ["Nepal"], remoteModes: ["remote"], employmentTypes: ["Full-time"], discoveryEnabled: true, alertStates: ["ready", "stretch", "verify"], quietStart: "00:00", quietEnd: "00:00", timezone: "UTC" });
     const content = (extra: string) => `&lt;h2&gt;Requirements&lt;/h2&gt;&lt;ul&gt;&lt;li&gt;React and TypeScript experience building customer-facing products&lt;/li&gt;&lt;li&gt;Strong written communication with product teams${extra}&lt;/li&gt;&lt;/ul&gt;`;
     let feed = { jobs: [{ id: 92, title: "Frontend Developer", updated_at: "2026-11-01T00:00:00Z", absolute_url: "https://jobs.example/92", location: { name: "Remote" }, content: content("") }] };
     vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(feed), { status: 200, headers: { "content-type": "application/json" } })));
@@ -238,8 +238,7 @@ describe("Job Radar services", () => {
 
   it("sends one push across devices, removes a permanently invalid endpoint, and never duplicates the delivery", async () => {
     const { user, passport, recommendation } = await fixture();
-    const pushPassport = { ...passport, emailFrequency: "off" as const, pushFrequency: "immediate" as const };
-    await (await collections()).careerPassports.replaceOne({ _id: user.id }, pushPassport);
+    const pushPassport = passport;
     await subscribePush(user.id, { endpoint: "https://fcm.googleapis.com/fcm/send/good", p256dh: "a".repeat(50), auth: "b".repeat(20), deviceLabel: "Good" });
     await subscribePush(user.id, { endpoint: "https://fcm.googleapis.com/fcm/send/bad", p256dh: "c".repeat(50), auth: "d".repeat(20), deviceLabel: "Expired" });
     const stored = await (await collections()).pushSubscriptions.findOne({ userId: user.id, deviceLabel: "Good" });
@@ -251,7 +250,7 @@ describe("Job Radar services", () => {
     });
     await enqueueRecommendationNotifications(pushPassport, recommendation._id, 1);
     await enqueueRecommendationNotifications(pushPassport, recommendation._id, 1);
-    expect(await sendImmediateDiscoveryNotifications()).toBe(1);
+    expect(await sendImmediateDiscoveryNotifications()).toBe(2); // the email and one push
     expect(pushSend).toHaveBeenCalledTimes(2);
     const payload = JSON.parse(String(pushSend.mock.calls[0][1])) as Record<string, unknown>;
     expect(payload).toMatchObject({ title: "Ready to apply: Frontend Developer", body: "Acme · Remote", url: `/app/radar/${recommendation._id}`, version: 1 });
@@ -274,9 +273,8 @@ describe("Job Radar services", () => {
   });
 
   it("combines daily recommendations into one digest", async () => {
-    const { user, passport, job, recommendation } = await fixture();
-    const dailyPassport = { ...passport, emailFrequency: "daily" as const };
-    await (await collections()).careerPassports.replaceOne({ _id: user.id }, dailyPassport);
+    const { passport, job, recommendation } = await fixture();
+    const dailyPassport = passport;
     const secondJob = { ...job, _id: crypto.randomUUID(), externalId: "43", title: "UI Engineer" };
     const secondRecommendation = { ...recommendation, _id: crypto.randomUUID(), discoveredJobId: secondJob._id, createdAt: new Date(now.valueOf() + 1_000) };
     const c = await collections();
@@ -284,6 +282,7 @@ describe("Job Radar services", () => {
     await c.jobRecommendations.insertOne(secondRecommendation);
     await enqueueRecommendationNotifications(dailyPassport, recommendation._id, 1);
     await enqueueRecommendationNotifications(dailyPassport, secondRecommendation._id, 1);
+    await c.notificationDeliveries.updateMany({ channel: "email" }, { $set: { frequency: "daily" } });
     expect(await sendDiscoveryDigests()).toEqual({ groups: 1, sent: 1 });
     expect(readFileSync(OUTBOX, "utf8").trim().split("\n")).toHaveLength(1);
     expect(await c.notificationDeliveries.countDocuments({ state: "sent" })).toBe(2);
@@ -329,12 +328,46 @@ describe("the account-wide notifications switch", () => {
     expect(await getNotificationsOn(user.id)).toBe(true);
   });
 
-  it("queues nothing new while off, even when the Career Passport asks for email and push", async () => {
+  it("queues nothing while off, even with a confirmed email and a saved device", async () => {
     const { user, passport, recommendation } = await fixture();
     await subscribePush(user.id, { endpoint: "https://fcm.googleapis.com/fcm/send/off", p256dh: "a".repeat(50), auth: "b".repeat(20), deviceLabel: "Browser" });
     await setNotificationsOn(user.id, false);
-    await enqueueRecommendationNotifications({ ...passport, pushFrequency: "immediate" }, recommendation._id, 1);
+    await enqueueRecommendationNotifications(passport, recommendation._id, 1);
     expect(await (await collections()).notificationDeliveries.countDocuments({ userId: user.id })).toBe(0);
+  });
+
+  it("keeps working on a stored passport that still has the removed fields", async () => {
+    const { user, passport, recommendation } = await fixture();
+    const old = { ...passport, needsSponsorship: true, graduationDate: "2027-05", minimumSalary: 90_000, excludedCompanies: ["Acme"], emailFrequency: "off", pushFrequency: "off" };
+    await (await collections()).careerPassports.replaceOne({ _id: user.id }, old as never);
+    expect(await getCareerPassport(user.id)).toMatchObject({ targetRoles: ["Frontend developer"] });
+    await enqueueRecommendationNotifications(old as never, recommendation._id, 1);
+    expect(await (await collections()).notificationDeliveries.countDocuments({ userId: user.id })).toBe(1);
+    await saveCareerPassport(user.id, { ...passport, targetRoles: ["Full-stack developer"] });
+    expect(await (await collections()).careerPassports.findOne({ _id: user.id })).not.toHaveProperty("needsSponsorship");
+  });
+
+  it("fills the Career Passport from a saved CV, and discovery then recommends a job without anyone opening the portal", async () => {
+    const user = await makeUser({ email: "auto@example.com", emailVerifiedAt: new Date() });
+    await saveProfile(user.id, { name: "Asha", headline: "Frontend developer", email: user.email, phone: "", location: "Kathmandu, Nepal", links: [], summary: "Frontend developer", experience: [{ id: "e", title: "Frontend developer", company: "Brightdesk", location: "Kathmandu", start: "2024", end: "Present", bullets: ["Built accessible React and TypeScript interfaces for customer support teams."] }], education: [], skills: ["React", "TypeScript"], projects: [], certifications: [], languages: ["English"] });
+    const filled = await getCareerPassport(user.id);
+    expect(filled).toMatchObject({ targetRoles: ["Frontend developer"], locations: ["Kathmandu, Nepal"], employmentTypes: ["Full-time"], discoveryEnabled: true, userSet: false });
+    expect(filled?.workCountries).toEqual([]);
+    const feed = { jobs: [{ id: 95, title: "Frontend Developer", updated_at: "2026-11-01T00:00:00Z", absolute_url: "https://jobs.example/95", location: { name: "Kathmandu, Nepal" }, content: "&lt;h2&gt;Requirements&lt;/h2&gt;&lt;ul&gt;&lt;li&gt;React and TypeScript experience building customer-facing products&lt;/li&gt;&lt;li&gt;Strong written communication with product teams&lt;/li&gt;&lt;/ul&gt;" }] };
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(feed), { status: 200, headers: { "content-type": "application/json" } })));
+    const oldSources = process.env.JOB_SOURCE_BOARDS;
+    const oldKey = process.env.ANTHROPIC_API_KEY;
+    process.env.JOB_SOURCE_BOARDS = "greenhouse:acme=Acme";
+    process.env.ANTHROPIC_API_KEY = "";
+    try {
+      expect(await runJobDiscovery()).toMatchObject({ recommendations: 1, failures: [] });
+      expect(await (await collections()).jobRecommendations.findOne({ userId: user.id })).toMatchObject({ status: "active" });
+    } finally {
+      if (oldSources === undefined) delete process.env.JOB_SOURCE_BOARDS;
+      else process.env.JOB_SOURCE_BOARDS = oldSources;
+      if (oldKey === undefined) delete process.env.ANTHROPIC_API_KEY;
+      else process.env.ANTHROPIC_API_KEY = oldKey;
+    }
   });
 
   it("closes alerts already waiting when turned off, so turning back on releases no backlog", async () => {
@@ -350,7 +383,8 @@ describe("the account-wide notifications switch", () => {
   it("skips a delivery claimed after the switch went off, for immediate alerts and digests", async () => {
     const { user, passport, recommendation } = await fixture();
     await enqueueRecommendationNotifications(passport, recommendation._id, 1);
-    await enqueueRecommendationNotifications({ ...passport, emailFrequency: "daily" }, recommendation._id, 2);
+    await enqueueRecommendationNotifications(passport, recommendation._id, 2);
+    await (await collections()).notificationDeliveries.updateOne({ _id: `${recommendation._id}:email:2` }, { $set: { frequency: "daily" } });
     // Turned off directly, as a second server would see it mid-run, without closing the queue.
     await (await collections()).users.updateOne({ _id: user.id }, { $set: { notificationsOff: true } });
     expect(await sendImmediateDiscoveryNotifications()).toBe(0);

@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
 import { EMAIL_OUTBOX, FIXTURE_BASE } from "../playwright.config";
-import { addFixtureJob, confirmEmail, signUp, withDb } from "./helpers";
+import { addFixtureJob, signUp, withDb } from "./helpers";
 
 const CRON = { Authorization: "Bearer e2e-cron-job-secret" };
 
@@ -18,7 +18,6 @@ function remindersTo(address: string) {
 test("the notifications switch in Settings persists across a reload and stops follow-up reminders", async ({ page, request }) => {
   const address = `quiet-${Date.now()}@example.com`;
   await signUp(page, address);
-  await confirmEmail(page, address);
 
   // An application that is due a follow-up, so the daily job would email about it.
   const jobUrl = await addFixtureJob(page, FIXTURE_BASE);

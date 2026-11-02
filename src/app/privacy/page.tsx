@@ -17,7 +17,7 @@ export default function PrivacyPage() {
       <h2>What we collect</h2>
       <ul>
         <li>
-          <strong>Account:</strong> your name, email and a securely hashed password (we never see or store the password itself).
+          <strong>Account:</strong> your name and email address, and Google&apos;s identifier for your account, from Google when you sign in. We never see or store a password, and we don&apos;t receive your Google password or any other Google data.
         </li>
         <li>
           <strong>Your CV:</strong> the file or text you upload and the profile made from it: contact details, work history, education, skills and
@@ -29,10 +29,10 @@ export default function PrivacyPage() {
           This includes application plans, learning progress and work sample links, mock interview conversations, and coaching reports.
         </li>
         <li>
-          <strong>Your Career Passport:</strong> the search preferences you enter for Job Radar: target and excluded roles, places and employment types,
-          expected graduation month, minimum salary, companies to skip, and your alert settings. It can also hold details you choose to give, such as the
-          countries you can work in and whether you need visa sponsorship. Every field is optional. We use these only to decide which jobs to show you. We
-          never infer them from your CV.
+          <strong>Your Career Passport:</strong> the search preferences for Job Radar: target and excluded roles, places, employment types, work
+          arrangement and quiet hours. We fill roles, places and employment types from your CV when you import it or save your profile, and you can change
+          them at any time. Details only you can know, such as the countries you can work in, are never taken from your CV. We use these only to decide which
+          jobs to show you.
         </li>
         <li>
           <strong>Job Radar matches:</strong> the jobs we found for you, how well they fit your CV and Career Passport, the CV evidence behind each match,
@@ -79,7 +79,10 @@ export default function PrivacyPage() {
           matching against your CV happens on our servers.
         </li>
         <li>
-          Resend, to send account emails, follow-up reminders and the job alert emails you turn on.
+          Google, to sign you in. Google tells us your name, email address and account identifier when you choose &ldquo;Continue with Google&rdquo;; we ask for nothing else.
+        </li>
+        <li>
+          Resend, to send follow-up reminders and the job alert emails you turn on.
         </li>
         <li>
           Your browser&apos;s push service (Google for Chrome and Android, Mozilla for Firefox, Apple for Safari, Microsoft for Edge), if you turn on push
@@ -92,7 +95,7 @@ export default function PrivacyPage() {
       <h2>Alerts and email</h2>
       <ul>
         <li>
-          Job alert emails and push alerts are <strong>off until you turn them on</strong>, and only go to an email address you have confirmed. They show the
+          Job alert emails and push alerts are <strong>off until you turn them on</strong>, and only go to your Google-confirmed email address. They show the
           company, role, place and match level. They don&apos;t quote your CV or list your Career Passport entries.
         </li>
         <li>
@@ -102,7 +105,7 @@ export default function PrivacyPage() {
           One switch in <Link href="/app/settings#notifications">Settings</Link> turns off all job alerts, push messages and follow-up reminders. You can
           also remove any saved device there.
         </li>
-        <li>Account emails (confirming your address, resetting your password) are always sent, because you can&apos;t use the account without them.</li>
+        <li>Emails about the account itself are always sent, because you can&apos;t use the account without them.</li>
       </ul>
 
       <h2>How long we keep it</h2>

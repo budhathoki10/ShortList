@@ -70,6 +70,16 @@ const PHOTO_EXPECTED =
   /\b(uae|dubai|abu dhabi|sharjah|qatar|doha|saudi|riyadh|jeddah|kuwait|bahrain|oman|muscat|nepal|kathmandu|india|pakistan|bangladesh|sri lanka|malaysia|indonesia|philippines|china|japan|korea|thailand|vietnam|germany|austria|switzerland|france|italy|spain|portugal|poland|czech|turkey)\b/i;
 const PHOTO_DISCOURAGED = /\b(usa|united states|us|canada|uk|united kingdom|england|scotland|wales|ireland|australia|new zealand|new york|london|toronto|sydney|california|texas)\b/i;
 
+/**
+ * What a CV does with the person's photo: "shown", "off" (they turned it off), "no-slot" (this template has no place
+ * for one) or "none" (nothing uploaded). Every screen and download explains the photo from this one answer.
+ */
+export function photoSlot(spec: TemplateSpec, photo: { onCv: boolean } | null): "shown" | "off" | "no-slot" | "none" {
+  if (!photo) return "none";
+  if (spec.photo === "off") return "no-slot";
+  return photo.onCv ? "shown" : "off";
+}
+
 export type PhotoAdvice = { tone: "info" | "warning"; text: string } | null;
 
 export function photoAdvice(spec: TemplateSpec, ...locations: (string | null | undefined)[]): PhotoAdvice {

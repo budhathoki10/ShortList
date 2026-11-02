@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { DeleteAccountForm, VerifyEmailBanner } from "@/components/auth-forms";
+import { DeleteAccountForm } from "@/components/auth-forms";
 import { removeSavedPushDevice } from "@/app/actions/discovery";
 import { PushManager } from "@/components/discovery/push-manager";
 import { SubmitButton } from "@/components/submit-button";
@@ -21,9 +21,10 @@ export default async function SettingsPage() {
   return (
     <div className="max-w-3xl space-y-10">
       <PageHeader title="Settings" description={`${user.name} · ${user.email}`} />
-      <section aria-label="Email verification" className="rounded-xl border border-border bg-surface p-5 sm:p-6">
-        <h2 className="text-base font-semibold">Email address</h2>
-        {user.emailVerifiedAt ? <p className="mt-2 text-sm text-success">Verified · {user.email}</p> : <VerifyEmailBanner email={user.email} />}
+      <section aria-label="Sign-in" className="rounded-xl border border-border bg-surface p-5 sm:p-6">
+        <h2 className="text-base font-semibold">Sign-in</h2>
+        <p className="mt-2 break-all text-sm text-muted">You sign in with Google as {user.email}.</p>
+        {user.emailVerifiedAt && <p className="mt-1 text-sm text-success">Email verified by Google</p>}
       </section>
 
       <section id="notifications" aria-labelledby="notifications-label" className="scroll-mt-20 rounded-xl border border-border bg-surface p-5 sm:p-6">
@@ -71,7 +72,7 @@ export default async function SettingsPage() {
         <h2 id="danger" className="text-base font-semibold text-danger">
           Delete account
         </h2>
-        <DeleteAccountForm />
+        <DeleteAccountForm email={user.email} />
       </section>
     </div>
   );

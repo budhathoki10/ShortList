@@ -2,7 +2,7 @@ import "server-only";
 import { MongoClient, type Db } from "mongodb";
 import { ensureIndexes } from "./indexes";
 import type { CareerPlanDoc, MockSessionDoc } from "@/lib/career/types";
-import type { AuthTokenDoc, CareerPassportDoc, CvImportDoc, CvTemplateDoc, DiscoveredJobDoc, DiscoveryRunDoc, DocumentDoc, InterviewDoc, JobDoc, JobRecommendationDoc, JobSourceDoc, NotificationDeliveryDoc, PaymentDoc, PhotoDoc, ProfileDoc, PushSubscriptionDoc, RateLimitDoc, SessionDoc, Stored, SubscriptionDoc, UsageDoc, UserDoc, WebhookEventRecord } from "./types";
+import type { CareerPassportDoc, CvImportDoc, CvTemplateDoc, DiscoveredJobDoc, DiscoveryRunDoc, DocumentDoc, InterviewDoc, JobDoc, JobRecommendationDoc, JobSourceDoc, NotificationDeliveryDoc, PaymentDoc, PhotoDoc, ProfileDoc, PushSubscriptionDoc, RateLimitDoc, SessionDoc, Stored, SubscriptionDoc, UsageDoc, UserDoc, WebhookEventRecord } from "./types";
 
 type Cache = { client?: MongoClient; ready?: Promise<Db> };
 // One connection pool per server process, reused across hot reloads in development.
@@ -32,7 +32,6 @@ export async function collections() {
   return {
     users: db.collection<UserDoc>("users"),
     sessions: db.collection<SessionDoc>("sessions"),
-    authTokens: db.collection<AuthTokenDoc>("auth_tokens"),
     payments: db.collection<PaymentDoc>("payments"),
     profiles: db.collection<ProfileDoc>("profiles"),
     cvImports: db.collection<CvImportDoc>("cv_imports"),

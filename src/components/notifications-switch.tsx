@@ -39,7 +39,7 @@ export function NotificationsSwitch({ initialOn }: { initialOn: boolean }) {
             Notifications
           </h2>
           <p id="notifications-hint" className="mt-1 text-sm text-muted">
-            Job-match emails, push alerts and follow-up reminders. Emails about your account’s security, such as password resets, always arrive.
+            Job-match emails, push alerts and follow-up reminders. Emails about your account itself always arrive.
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-3 pt-0.5">

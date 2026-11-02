@@ -52,7 +52,7 @@ test("all main pages work on desktop, tablet and phone, without the global verif
   const guest = await browser.newPage();
   for (const width of WIDTHS) {
     await guest.setViewportSize({ width, height: 900 });
-    for (const path of ["/", "/login", "/signup", "/forgot-password", "/templates", "/terms", "/privacy", "/refund", "/reset-password/expired", "/verify-email/expired", "/not-a-real-page"]) {
+    for (const path of ["/", "/login", "/signup", "/templates", "/terms", "/privacy", "/refund", "/not-a-real-page"]) {
       const response = await guest.goto(path);
       expect(response?.status()).toBe(path === "/not-a-real-page" ? 404 : 200);
       await guest.getByRole("heading", { level: 1 }).first().waitFor();

@@ -19,16 +19,15 @@ function configureWebPush() {
 
 export async function enqueueRecommendationNotifications(passport: CareerPassportDoc, recommendationId: string, notificationVersion: number) {
   const c = await collections();
-  // The account-wide switch in Settings beats the per-channel choices in the Career Passport.
-  const owner = await c.users.findOne({ _id: passport._id }, { projection: { notificationsOff: 1 } });
+  // The account-wide switch in Settings is the only control: off sends nothing, on sends the email (to a confirmed
+  // address) and the push alert (to saved devices).
+  const owner = await c.users.findOne({ _id: passport._id }, { projection: { notificationsOff: 1, emailVerifiedAt: 1 } });
   if (!owner || !notificationsOn(owner)) return;
   const now = new Date();
-  const channels = [
-    { channel: "email" as const, frequency: passport.emailFrequency },
-    { channel: "push" as const, frequency: passport.pushFrequency },
-  ].filter((item): item is { channel: "email" | "push"; frequency: "immediate" | "daily" } => item.frequency !== "off");
+  const channels = (["email", "push"] as const).map((channel) => ({ channel, frequency: "immediate" as const }));
 
   for (const item of channels) {
+    if (item.channel === "email" && !owner.emailVerifiedAt) continue;
     if (item.channel === "push" && (await c.pushSubscriptions.countDocuments({ userId: passport._id }, { limit: 1 })) === 0) continue;
     const delivery: NotificationDeliveryDoc = {
       _id: `${recommendationId}:${item.channel}:${notificationVersion}`,
