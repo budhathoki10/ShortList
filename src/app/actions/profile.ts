@@ -57,7 +57,7 @@ export async function importCv(_: ProfileState, formData: FormData): Promise<Pro
   const profile = parsed.data;
   if (profileNeedsRepair(profile)) return { error: "Some project descriptions were read as titles. Upload the original CV file so we can recover its sections and links." };
   if (!profile.experience.length && !profile.projects.length && !profile.education.length) {
-    return { error: "No experience, projects or education were recognised. Try pasting the CV text, or fill in your profile below." };
+    return { error: "No experience, projects or education were recognised. Try pasting the CV text, or upload a different CV." };
   }
   const original = bytes && file instanceof File ? originalCvFile(file.name, file.type, bytes, profile) : null;
   await saveProfile(user.id, profile, text, original);

@@ -31,6 +31,9 @@ test("people can never open each other's jobs or downloads", async ({ page, brow
 test("signing in with Google makes a verified account that logs back in, and data export works", async ({ page }) => {
   const address = `google-${stamp}@example.com`;
   await signUp(page, address, "Gita Rai");
+  await expect(page.getByRole("button", { name: "Read my CV" })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "CV sections" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Save profile" })).toHaveCount(0);
   const id = await userIdFor(address);
   // Google confirmed the address, there is no password anywhere, and the account is tied to Google's id.
   const stored = await withDb((db) => db.collection("users").findOne({ email: address }));
