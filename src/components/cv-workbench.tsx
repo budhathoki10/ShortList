@@ -233,11 +233,11 @@ export function CvWorkbench({
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <div role="group" aria-label="CV format" className="flex gap-0.5 rounded-lg border border-border bg-surface p-0.5">
-            <button type="button" disabled={!hasOriginalPdf} aria-pressed={layout === "original"} onClick={() => setLayout("original")} title={hasOriginalPdf ? "Your uploaded PDF, exactly as it is" : "Upload your original PDF on Your CV to use it here"} className={`rounded-md px-3 py-1.5 text-[13px] font-medium transition-colors duration-150 disabled:opacity-50 max-sm:min-h-11 ${layout === "original" ? "bg-accent-soft text-accent" : "text-muted hover:bg-surface-hover hover:text-foreground"}`}>
-              Original PDF
-            </button>
             <button type="button" aria-pressed={layout === "redesigned"} onClick={() => setLayout("redesigned")} title="Your CV with the changes you accepted, in the look below" className={`rounded-md px-3 py-1.5 text-[13px] font-medium transition-colors duration-150 disabled:opacity-50 max-sm:min-h-11 ${layout === "redesigned" ? "bg-accent-soft text-accent" : "text-muted hover:bg-surface-hover hover:text-foreground"}`}>
               Tailored version
+            </button>
+            <button type="button" disabled={!hasOriginalPdf} aria-pressed={layout === "original"} onClick={() => setLayout("original")} title={hasOriginalPdf ? "Your uploaded PDF, exactly as it is" : "Upload your original PDF on Your CV to use it here"} className={`rounded-md px-3 py-1.5 text-[13px] font-medium transition-colors duration-150 disabled:opacity-50 max-sm:min-h-11 ${layout === "original" ? "bg-accent-soft text-accent" : "text-muted hover:bg-surface-hover hover:text-foreground"}`}>
+              Original PDF
             </button>
           </div>
           {layout === "redesigned" && (
