@@ -1,0 +1,6 @@
+# Netlify's secrets scan fails the build when an env var's value appears in the repo or build output.
+# These are plain settings (model names, country, mode flags), not credentials, and their short
+# values ("live", "none", a country code) show up in source and compiled output by design.
+# Real secrets (API keys, MONGODB_URI, CRON_JOB_SECRET, ...) are deliberately not listed, so they stay scanned.
+[build.environment]
+  SECRETS_SCAN_OMIT_KEYS = "AI_READ_MODEL,AI_WRITE_MODEL,LEGAL_OPERATOR_NAME,LEGAL_COUNTRY,SUPPORT_EMAIL,EMAIL_FROM,EMAIL_DEV_OUTBOX,MONGODB_DB,APP_URL,SEO_INDEXING_ENABLED,TRUSTED_PROXY_HOPS,VAPID_SUBJECT,NEXT_PUBLIC_VAPID_PUBLIC_KEY,JOB_SOURCE_BOARDS,JOB_SOURCE_FEEDS,FREEMIUS_MODE,BILLING_SUSPENDED_ACCESS"
