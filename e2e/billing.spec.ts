@@ -51,12 +51,16 @@ test("the billing page offers monthly and yearly, and prepares checkout on the s
   expect((await download(page)).status()).toBe(303); // still free: opening checkout unlocked nothing
 });
 
-test("a second checkout can't be opened while one is in progress", async ({ page }) => {
+test("a pending checkout can be cancelled before opening another", async ({ page }) => {
   await signedIn(page);
   await page.goto("/app/billing");
   await expect(page.getByText("A checkout is already open for your account.").first()).toBeVisible();
   await expect(page.getByRole("button", { name: "Subscribe monthly" })).toBeDisabled();
   await expect(page.getByRole("button", { name: "Subscribe yearly" })).toBeDisabled();
+  await page.getByRole("button", { name: "Cancel pending checkout" }).click();
+  await expect(page.getByRole("button", { name: "Subscribe monthly" })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "Subscribe yearly" })).toBeEnabled();
+  await expect.poll(async () => (await subs()).length).toBe(0);
 });
 
 test("a signed purchase from Freemius activates paid access; the browser alone never can", async ({ page, request }) => {

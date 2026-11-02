@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CancelSubscription, CheckAgain, SubscribePlans, type PlanChoice } from "@/components/subscribe-plans";
+import { CancelPendingCheckout, CancelSubscription, CheckAgain, SubscribePlans, type PlanChoice } from "@/components/subscribe-plans";
 import { Badge, Notice, PageHeader } from "@/components/ui";
 import { UsageMeter } from "@/components/usage-meter";
 import type { Subscription, SubscriptionStatus } from "@/db/types";
@@ -200,8 +200,9 @@ export default async function BillingPage({ searchParams }: PageProps<"/app/bill
             {current?.status === "expired" && <p>Your last subscription has ended. You can subscribe again below.</p>}
             {waiting && (
               <div className="flex flex-wrap items-center gap-3">
-                <p>Waiting for your payment to be confirmed. If you’ve paid, this updates within a minute or two.</p>
+                <p>Waiting for your payment to be confirmed. If the checkout did not open or you closed it, cancel the pending checkout to choose a plan again.</p>
                 <CheckAgain />
+                <CancelPendingCheckout />
               </div>
             )}
             {current?.row.cancelRequestedAt && !current.row.cancelledAt && current.status !== "expired" && (

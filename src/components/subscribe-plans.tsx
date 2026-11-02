@@ -128,6 +128,35 @@ export function CheckAgain() {
   );
 }
 
+/** Release an unfinished checkout lock so a failed or blocked provider overlay can be retried. */
+export function CancelPendingCheckout() {
+  const router = useRouter();
+  const toast = useToast();
+  const [busy, setBusy] = useState(false);
+  return (
+    <Button
+      type="button"
+      variant="secondary"
+      size="sm"
+      loading={busy}
+      onClick={async () => {
+        setBusy(true);
+        try {
+          await abandonCheckoutAction();
+          toast.show({ tone: "success", message: "Pending checkout cancelled. You can choose a plan again." });
+          router.refresh();
+        } catch {
+          toast.show({ tone: "error", message: "We couldn't cancel that checkout. Try again in a moment." });
+        } finally {
+          setBusy(false);
+        }
+      }}
+    >
+      {busy ? "Cancelling checkout…" : "Cancel pending checkout"}
+    </Button>
+  );
+}
+
 /** Asking to cancel: named, confirmed, and honest that what's paid for stays usable. */
 export function CancelSubscription({ subscriptionId, paidThrough }: { subscriptionId: string; paidThrough: string | null }) {
   const router = useRouter();
