@@ -48,9 +48,7 @@ export default async function ProfilePage({ searchParams }: PageProps<"/app/prof
       ) : (
         <div className="rounded-md border border-border bg-surface p-5 sm:p-6">
           <ProfileImport replacing={false} />
-          <p className="mt-6 border-t border-border pt-4 text-sm text-muted">
-            After your CV is imported, you can review and edit its personal details, experience, education, skills and projects below.
-          </p>
+
         </div>
       )}
 
