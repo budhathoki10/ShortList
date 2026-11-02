@@ -37,7 +37,7 @@ const appEnv = {
   ...FREEMIUS_TEST_ENV,
   // No access to Freemius from here: every API lookup finds nothing, and webhooks carry all the data.
   FREEMIUS_SKIP_API_SYNC: "1",
-  BILLING_PRICE_LABEL_MONTHLY: "USD 9 / month",
+  BILLING_PRICE_LABEL_MONTHLY: "USD 19 / month",
   BILLING_PRICE_LABEL_YEARLY: "USD 90 / year",
   RESEND_API_KEY: "",
   EMAIL_DEV_OUTBOX: EMAIL_OUTBOX,

@@ -31,7 +31,7 @@ test("the billing page offers monthly and yearly, and prepares checkout on the s
 
   await page.goto("/app/billing");
   await expect(page.getByTestId("current-plan")).toHaveText("Free");
-  await expect(page.getByText("USD 9 / month")).toBeVisible();
+  await expect(page.getByText("USD 19 / month")).toBeVisible();
   await expect(page.getByText("USD 90 / year")).toBeVisible();
   await expect(page.getByRole("button", { name: "Subscribe monthly" })).toBeEnabled();
   await expect(page.getByRole("button", { name: "Subscribe yearly" })).toBeEnabled();
