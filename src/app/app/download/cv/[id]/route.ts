@@ -7,7 +7,7 @@ import { profileNeedsRepair } from "@/lib/cv/quality";
 import { limitsFor } from "@/lib/plans";
 import { getTailoredCv } from "@/lib/services/documents";
 import { ownedJob } from "@/lib/services/jobs";
-import { getPhoto } from "@/lib/services/photos";
+import { getCvPhoto } from "@/lib/services/photos";
 import { getOriginalCv, getProfile, profileReady } from "@/lib/services/profile";
 import { originalFileResponse } from "@/lib/cv/original";
 import { resolveCvStyle } from "@/lib/services/templates";
@@ -30,14 +30,10 @@ export async function GET(request: Request, ctx: RouteContext<"/app/download/cv/
   }
   if (profileNeedsRepair(profile)) return Response.redirect(appUrl("/app/profile?repair=1"), 303);
   const cv = presentCv(applyChanges(profile, doc?.sourceNeedsReview ? [] : doc?.cv?.changes ?? []), query.get("content") === "focused" ? "focused" : "full");
-  let body: Buffer;
-  if (pdf) {
-    body = await cvPdfBuffer(cv);
-  } else {
-    const [{ spec }, photo] = await Promise.all([resolveCvStyle(user.id, job), getPhoto(user.id)]);
-    const png = photo && spec.photo !== "off" ? await sharp(photo.image).png().toBuffer() : null;
-    body = await cvDocxBuffer(cv, spec, png);
-  }
+  // The photo goes in only when the job's template has a slot for it and the person has not turned it off.
+  const [{ spec }, photo] = await Promise.all([resolveCvStyle(user.id, job), getCvPhoto(user.id)]);
+  const png = photo && spec.photo !== "off" ? await sharp(photo.image).png().toBuffer() : null;
+  const body = pdf ? await cvPdfBuffer(cv, png && spec.photo !== "off" ? { png, shape: spec.photo } : null) : await cvDocxBuffer(cv, spec, png);
   return new Response(new Uint8Array(body), {
     headers: {
       "content-type": pdf ? "application/pdf" : "application/vnd.openxmlformats-officedocument.wordprocessingml.document",

@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth/session";
 import { overLimit } from "@/lib/services/rate-limit";
 import { ownedJob } from "@/lib/services/jobs";
-import { deletePhoto, PhotoError, savePhoto } from "@/lib/services/photos";
+import { deletePhoto, PhotoError, savePhoto, setPhotoOnCv } from "@/lib/services/photos";
 import {
   deleteTemplate,
   getTemplate,
@@ -115,6 +115,12 @@ export async function uploadPhotoAction(_: TemplateState, formData: FormData): P
   }
   revalidatePath("/app", "layout");
   return { success: "Photo saved. It shows on templates with a photo slot." };
+}
+
+export async function setPhotoOnCvAction(onCv: boolean) {
+  const user = await requireUser();
+  await setPhotoOnCv(user.id, onCv === true);
+  revalidatePath("/app", "layout");
 }
 
 export async function removePhotoAction(_: TemplateState): Promise<TemplateState> {

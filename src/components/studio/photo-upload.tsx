@@ -1,12 +1,14 @@
 "use client";
 
 import { ActionToast } from "@/components/toast";
-import { useActionState, useEffect, useRef, useState } from "react";
-import { removePhotoAction, uploadPhotoAction } from "@/app/actions/templates";
+import { useActionState, useEffect, useRef, useState, useTransition } from "react";
+import { removePhotoAction, setPhotoOnCvAction, uploadPhotoAction } from "@/app/actions/templates";
+import { Switch } from "@/components/ui";
 import { StudioIcon as Icon } from "@/components/icons";
 
 /** Upload, replace or remove the profile photo. It's re-encoded on the server and stays private. */
-export function PhotoUpload({ photoUrl }: { photoUrl: string | null }) {
+export function PhotoUpload({ photoUrl, onCv }: { photoUrl: string | null; onCv: boolean }) {
+  const [switching, startSwitch] = useTransition();
   const [state, upload, uploading] = useActionState(uploadPhotoAction, undefined);
   const [removed, remove, removing] = useActionState(removePhotoAction, undefined);
   const form = useRef<HTMLFormElement>(null);
@@ -61,6 +63,12 @@ export function PhotoUpload({ photoUrl }: { photoUrl: string | null }) {
               Remove photo
             </button>
           </form>
+        )}
+        {photoUrl && (
+          <div className="flex items-center gap-2 text-[13px]">
+            <Switch checked={onCv} busy={switching} aria-labelledby="photo-on-cv" onClick={() => startSwitch(() => setPhotoOnCvAction(!onCv))} />
+            <span id="photo-on-cv">Show on my CVs</span>
+          </div>
         )}
         <p className="text-[12px] text-muted">JPEG, PNG or WebP, up to 3 MB. We crop it square and remove location data.</p>
       </div>

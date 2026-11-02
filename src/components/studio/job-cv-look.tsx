@@ -2,13 +2,14 @@
 
 import { ActionToast, useToast } from "@/components/toast";
 import Link from "next/link";
-import { useActionState, useRef, useState } from "react";
-import { setJobTemplateAction } from "@/app/actions/templates";
+import { useActionState, useRef, useState, useTransition } from "react";
+import { setJobTemplateAction, setPhotoOnCvAction } from "@/app/actions/templates";
 import { CvMini } from "@/components/cv/cv-mini";
 import { CvSheet, measureFit } from "@/components/cv/cv-sheet";
 import { StudioIcon as Icon } from "@/components/icons";
 import type { Profile } from "@/lib/model/types";
-import { atsReport } from "@/lib/templates/checks";
+import { Switch } from "@/components/ui";
+import { atsReport, photoSlot } from "@/lib/templates/checks";
 import type { TemplateSpec } from "@/lib/templates/spec";
 import { AtsBadge } from "./template-bits";
 
@@ -22,6 +23,7 @@ export function JobCvLook({
   jobId,
   cv,
   photoUrl,
+  photoOn,
   current,
   spec,
   fitted,
@@ -30,12 +32,16 @@ export function JobCvLook({
   jobId: string;
   cv: Profile;
   photoUrl: string | null;
+  /** Whether the person's photo is switched on for CVs; null when they have not uploaded one. */
+  photoOn: boolean | null;
   current: { id: string; name: string };
   spec: TemplateSpec;
   fitted: boolean;
   options: LookOption[];
 }) {
   const [state, action, pending] = useActionState(setJobTemplateAction, undefined);
+  const [photoPending, startPhoto] = useTransition();
+  const slot = photoSlot(spec, photoOn === null ? null : { onCv: photoOn });
   const [pages, setPages] = useState(1);
   const toast = useToast();
   const [showAll, setShowAll] = useState(false);
@@ -95,6 +101,28 @@ export function JobCvLook({
         </div>
       </div>
       <ActionToast state={state} only="error" />
+
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-border bg-surface px-3 py-2 text-[13px]">
+        <span className="text-muted">Photo:</span>
+        {slot === "none" && (
+          <>
+            <span>None added.</span>
+            <Link href="/app/studio#photo" className="underline underline-offset-4">Add a photo</Link>
+          </>
+        )}
+        {slot === "no-slot" && (
+          <>
+            <span>{current.name} has no place for a photo.</span>
+            <Link href="/app/studio/templates" className="underline underline-offset-4">Choose a look with a photo</Link>
+          </>
+        )}
+        {(slot === "shown" || slot === "off") && (
+          <>
+            <span id={`photo-${jobId}`}>Show my photo on my CVs</span>
+            <Switch checked={slot === "shown"} busy={photoPending} aria-labelledby={`photo-${jobId}`} onClick={() => startPhoto(() => setPhotoOnCvAction(slot !== "shown"))} />
+          </>
+        )}
+      </div>
 
       <div className="rounded-xl bg-sunken p-3 sm:p-5">
         <CvSheet spec={spec} cv={cv} photoUrl={photoUrl} onPages={setPages} articleRef={article} />

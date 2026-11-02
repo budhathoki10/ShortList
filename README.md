@@ -9,9 +9,9 @@ A job-hunt helper for anyone applying for jobs. You add your CV once, then each 
 
 Around them: a **tracker** (Saved, Applied, Interviewing, Offer, Closed, with follow-up reminders on Today and by email), **progress** stats, and **100 CV templates** you can customise and download as a PDF.
 
-Every non-essential message (job-alert email, push alerts and follow-up reminders) can be switched off in one place: **Settings → Notifications**. Emails about the account itself always go out.
+Every non-essential message (job-alert email, push alerts and follow-up reminders) can be switched off in one place: **Settings → Notifications**. Emails about the account itself always go out. With the switch on (the default), every Job Radar match is sent by email (to a confirmed address) and by push (to saved devices); with it off, neither is sent.
 
-The **Job Radar** adds discovery before preparation. A scheduled agent reads allowlisted employer boards on Greenhouse, Lever, Ashby, Workable, SmartRecruiters and Recruitee, and public remote-job feeds (Remotive, Jobicy, Himalayas, Remote OK, Arbeitnow), rejects or flags explicit eligibility conflicts, ranks the remaining roles against the person's Career Passport and CV evidence, and stores every recommendation before sending email or VAPID Web Push alerts. Candidates still review and submit every application themselves.
+The **Job Radar** adds discovery before preparation. A scheduled agent reads allowlisted employer boards on Greenhouse, Lever, Ashby, Workable, SmartRecruiters and Recruitee, and public remote-job feeds (Remotive, Jobicy, Himalayas, Remote OK, Arbeitnow), rejects or flags explicit eligibility conflicts, ranks the remaining roles against the person's Career Passport and CV evidence (the passport fills itself from the CV whenever it is imported or the profile is saved, and the person can change it any time), and stores every recommendation before sending email or VAPID Web Push alerts. Candidates still review and submit every application themselves.
 
 The rule everything follows: **Shortlist Job Radar only uses what's in your profile.** The AI can reword and reorder. It can't add an employer, title, degree, number or skill you don't have. A plain-code check (`src/lib/tailor/fact-check.ts`) catches anything that slips through, so it doesn't rely on the model behaving.
 

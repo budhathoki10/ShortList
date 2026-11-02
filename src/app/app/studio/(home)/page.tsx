@@ -8,7 +8,7 @@ import { AtsBadge, TemplateThumb } from "@/components/studio/template-bits";
 import { FlashToast } from "@/components/toast";
 import { PageHeader } from "@/components/ui";
 import { requireUser } from "@/lib/auth/session";
-import { photoUrl } from "@/lib/services/photos";
+import { photoStatus } from "@/lib/services/photos";
 import { getProfile, profileReady } from "@/lib/services/profile";
 import { listMyTemplates, MAX_TEMPLATES, resolveCvStyle } from "@/lib/services/templates";
 import { atsReport } from "@/lib/templates/checks";
@@ -23,13 +23,13 @@ export default async function Studio({ searchParams }: PageProps<"/app/studio">)
   const [{ deleted, full, ready: built }, profile, photo, mine, style] = await Promise.all([
     searchParams,
     getProfile(user.id),
-    photoUrl(user.id),
+    photoStatus(user.id),
     listMyTemplates(user.id),
     resolveCvStyle(user.id),
   ]);
   const ready = profileReady(profile);
   const cv = ready ? profile : SAMPLE_PROFILE;
-  const shownPhoto = ready ? photo : "/sample-photo.svg";
+  const shownPhoto = ready ? (photo?.onCv ? photo.url : null) : "/sample-photo.svg";
   const recommended = recommendTemplates(cv, null, 4);
 
   return (
@@ -81,7 +81,7 @@ export default async function Studio({ searchParams }: PageProps<"/app/studio">)
             </div>
             <div id="photo" className="scroll-mt-20 border-t border-border pt-4">
               <p className="mb-3 text-[13px] font-medium">Photo</p>
-              <PhotoUpload photoUrl={photo} />
+              <PhotoUpload photoUrl={photo?.url ?? null} onCv={photo?.onCv ?? true} />
             </div>
           </div>
         </div>

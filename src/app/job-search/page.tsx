@@ -104,8 +104,7 @@ export default function JobSearchPage() {
                 <li>Target and excluded job titles</li>
                 <li>Cities, regions, countries and remote work preferences</li>
                 <li>Full-time, part-time, internship or other employment types</li>
-                <li>Work countries, graduation date and sponsorship need</li>
-                <li>Minimum salary and companies you want to skip</li>
+                <li>The countries where you can work</li>
               </ul>
             </div>
             <div>

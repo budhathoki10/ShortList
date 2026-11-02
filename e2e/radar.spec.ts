@@ -7,14 +7,15 @@ test("a discovered job appears with evidence and enters the application workflow
   await setUpJobSeeker(page, email);
   await page.goto("/app/radar");
   await expect(page.getByRole("heading", { name: "Job Radar" })).toBeVisible();
-  await expect(page.getByText("Tell the agent what is realistic for you")).toBeVisible();
 
-  // The passport fills itself from the CV: no button to press, and nothing about work permission or salary is guessed.
+  // Saving the CV already filled the passport, so the settings start closed. Nothing about work permission is guessed,
+  // and the removed settings are gone.
+  await page.getByText("Career Passport and alert settings").click();
   await expect(page.getByRole("button", { name: "Fill from my CV" })).toHaveCount(0);
   await expect(page.getByLabel("Target roles")).not.toHaveValue("");
   await expect(page.getByLabel("Target locations")).not.toHaveValue("");
-  await expect(page.getByLabel("Minimum annual salary")).toHaveValue("");
-  await expect(page.getByLabel("I need employer sponsorship now or in the future")).not.toBeChecked();
+  await expect(page.getByLabel("Countries where you can work")).toHaveValue("");
+  for (const removed of ["Minimum annual salary", "Expected graduation month", "Companies to exclude", "Email alerts", "Push alerts", "I need employer sponsorship now or in the future"]) await expect(page.getByLabel(removed)).toHaveCount(0);
 
   await page.getByLabel("Target roles").fill("Customer Success Lead");
   await page.getByLabel("Target locations").fill("Remote, Asia");
@@ -75,7 +76,7 @@ test("a discovered job appears with evidence and enters the application workflow
   await page.goto("/app/radar");
   await expect(page.getByRole("heading", { name: "Ready to apply" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Customer Success Lead" })).toBeVisible();
-  await expect(page.getByText("84%", { exact: true })).toBeVisible();
+  await expect(page.getByText("CV evidence 84% · preferences 96%")).toBeVisible();
   await page.screenshot({ path: "test-results/radar-desktop.png", fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({ path: "test-results/radar-mobile.png", fullPage: true });

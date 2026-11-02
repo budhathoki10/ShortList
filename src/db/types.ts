@@ -178,7 +178,7 @@ export type RateLimitDoc = { _id: string; count: number; expiresAt: Date };
 export type CvTemplateDoc = { _id: string; userId: string; name: string; basedOn: string | null; spec: TemplateSpec; createdAt: Date; updatedAt: Date };
 
 /** A profile photo, re-encoded to WebP without metadata. `_id` is the user's id, so there is at most one. Served only to its owner. */
-export type PhotoDoc = { _id: string; image: Uint8Array; updatedAt: Date };
+export type PhotoDoc = { _id: string; image: Uint8Array; updatedAt: Date; /** False once the person turned the photo off for their CVs. Missing means on. */ onCv?: boolean };
 
 export type AlertFrequency = "immediate" | "daily" | "off";
 export type RecommendationState = "ready" | "stretch" | "verify" | "blocked";
@@ -192,25 +192,21 @@ export type CareerPassportDoc = {
   locations: string[];
   workCountries: string[];
   remoteModes: Array<"remote" | "hybrid" | "onsite">;
-  needsSponsorship: boolean;
-  graduationDate: string | null;
-  minimumSalary: number | null;
   employmentTypes: string[];
-  excludedCompanies: string[];
   discoveryEnabled: boolean;
-  emailFrequency: AlertFrequency;
-  pushFrequency: AlertFrequency;
   alertStates: RecommendationState[];
   quietStart: string;
   quietEnd: string;
   timezone: string;
+  /** False while every field still comes from the CV; true once the person has saved the form themselves (or on old documents). */
+  userSet?: boolean;
   version: number;
   createdAt: Date;
   updatedAt: Date;
 };
 
 export type EligibilityFinding = {
-  code: "sponsorship" | "citizenship" | "location" | "experience" | "degree" | "clearance" | "graduation";
+  code: "citizenship" | "location" | "experience" | "degree" | "clearance";
   severity: "blocker" | "verify";
   message: string;
   evidence: string;

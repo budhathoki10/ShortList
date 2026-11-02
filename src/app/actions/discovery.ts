@@ -37,11 +37,6 @@ export async function updateCareerPassport(_: DiscoveryState, formData: FormData
   const user = await requireUser();
   const targetRoles = list(formData, "targetRoles", 12);
   if (!targetRoles.length) return { error: "Add at least one target role, such as Frontend developer." };
-  // Job-alert emails are opt-in (PRD 18): anything unexpected means off.
-  const emailFrequency = oneOf(formData.get("emailFrequency"), ["immediate", "daily", "off"] as const, "off");
-  const pushFrequency = oneOf(formData.get("pushFrequency"), ["immediate", "daily", "off"] as const, "off");
-  const minimumSalaryRaw = Number(formData.get("minimumSalary"));
-  const graduationDate = String(formData.get("graduationDate") ?? "").trim();
   const remoteModes = (["remote", "hybrid", "onsite"] as const).filter((mode) => formData.getAll("remoteModes").includes(mode));
   const alertStates = (["ready", "stretch", "verify"] as const).filter((state) => formData.getAll("alertStates").includes(state));
   await saveCareerPassport(user.id, {
@@ -50,21 +45,16 @@ export async function updateCareerPassport(_: DiscoveryState, formData: FormData
     locations: list(formData, "locations"),
     workCountries: list(formData, "workCountries"),
     remoteModes: remoteModes.length ? remoteModes : ["remote", "hybrid", "onsite"],
-    needsSponsorship: formData.get("needsSponsorship") === "on",
-    graduationDate: /^\d{4}-\d{2}$/.test(graduationDate) ? graduationDate : null,
-    minimumSalary: Number.isFinite(minimumSalaryRaw) && minimumSalaryRaw > 0 ? Math.round(minimumSalaryRaw) : null,
     employmentTypes: list(formData, "employmentTypes", 8),
-    excludedCompanies: list(formData, "excludedCompanies"),
     discoveryEnabled: formData.get("discoveryEnabled") === "on",
-    emailFrequency,
-    pushFrequency,
     alertStates: alertStates.length ? [...alertStates] : ["ready"],
     quietStart: /^([01]\d|2[0-3]):[0-5]\d$/.test(String(formData.get("quietStart"))) ? String(formData.get("quietStart")) : "22:00",
     quietEnd: /^([01]\d|2[0-3]):[0-5]\d$/.test(String(formData.get("quietEnd"))) ? String(formData.get("quietEnd")) : "08:00",
     timezone: validTimezone(String(formData.get("timezone") ?? "UTC")),
+    userSet: true,
   });
   revalidatePath("/app/radar");
-  if (emailFrequency !== "off" && !user.emailVerifiedAt) return { success: "Career Passport saved. Log out and sign in again with Google to confirm your email address; until then job-alert emails are held back." };
+  if (!user.emailVerifiedAt) return { success: "Career Passport saved. Log out and sign in again with Google to confirm your email address; until then job-alert emails are held back." };
   return { success: "Career Passport saved. New source runs will use these choices." };
 }
 

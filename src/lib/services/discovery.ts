@@ -1,7 +1,9 @@
 import "server-only";
 import { createHash, randomUUID } from "node:crypto";
 import { collections } from "@/db/mongo";
-import type { AlertFrequency, CareerPassportDoc, RecommendationState } from "@/db/types";
+import type { CareerPassportDoc, RecommendationState } from "@/db/types";
+import type { Profile } from "@/lib/model/types";
+import { mergePassport, passportFromCv } from "@/lib/discovery/passport-from-cv";
 import { createJob } from "@/lib/services/jobs";
 import { encryptPushSecret } from "@/lib/discovery/push-crypto";
 import { isPushServiceEndpoint } from "@/lib/discovery/push-endpoints";
@@ -12,22 +14,39 @@ export type PassportInput = {
   locations: string[];
   workCountries: string[];
   remoteModes: CareerPassportDoc["remoteModes"];
-  needsSponsorship: boolean;
-  graduationDate: string | null;
-  minimumSalary: number | null;
   employmentTypes: string[];
-  excludedCompanies: string[];
   discoveryEnabled: boolean;
-  emailFrequency: AlertFrequency;
-  pushFrequency: AlertFrequency;
   alertStates: RecommendationState[];
   quietStart: string;
   quietEnd: string;
   timezone: string;
+  userSet?: boolean;
 };
 
 export async function getCareerPassport(userId: string) {
   return (await collections()).careerPassports.findOne({ _id: String(userId) });
+}
+
+/** Keep the Career Passport in step with the CV, so discovery searches for the person without them opening the portal. */
+export async function syncPassportFromProfile(userId: string, profile: Profile | null) {
+  const next = mergePassport(await getCareerPassport(userId), passportFromCv(profile));
+  if (next) await saveCareerPassport(userId, next);
+}
+
+/** Passports for people who saved a CV before they were filled automatically. A bounded batch per discovery run. */
+export async function backfillPassports(limit = 200) {
+  const c = await collections();
+  const missing = await c.profiles
+    .aggregate<{ _id: string; data: Profile }>([
+      { $lookup: { from: c.careerPassports.collectionName, localField: "_id", foreignField: "_id", as: "passport" } },
+      // The first job title is what a CV with no recognisable role falls back on, so these always yield a passport.
+      { $match: { passport: { $size: 0 }, "data.experience.0.title": { $type: "string", $ne: "" } } },
+      { $limit: limit },
+      { $project: { data: 1 } },
+    ])
+    .toArray();
+  for (const row of missing) await syncPassportFromProfile(row._id, row.data);
+  return missing.length;
 }
 
 export async function saveCareerPassport(userId: string, input: PassportInput) {

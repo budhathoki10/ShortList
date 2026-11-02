@@ -37,23 +37,19 @@ function RecommendationCard({ recommendation, job }: { recommendation: JobRecomm
   const state = STATE[recommendation.state];
   const arrangement = workArrangement(job);
   return (
-    <article className="rounded-md border border-border bg-surface p-4 sm:p-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="mb-2 flex flex-wrap items-center gap-2"><Badge tone={state.tone}>{state.label}</Badge><span className="text-xs text-muted">{SOURCES[job.sourceType]?.label ?? job.sourceType} · checked {formatDay(job.lastSeenAt)}</span></div>
-          <h3 className="text-base font-semibold leading-snug"><Link href={`/app/radar/${recommendation._id}`} className="hover:text-accent hover:underline">{job.title}</Link></h3>
-          <p className="mt-1 text-sm text-muted">{job.company}{job.location ? ` · ${job.location}` : " · Location not stated"}{arrangement && !job.location.toLowerCase().includes(arrangement.toLowerCase()) ? ` · ${arrangement}` : ""}</p>
-        </div>
-        <div className="flex shrink-0 gap-5 text-right">
-          <div><p className="font-mono text-xl font-medium tabular-nums">{recommendation.evidenceScore}%</p><p className="text-xs text-muted">CV evidence</p></div>
-          <div><p className="font-mono text-xl font-medium tabular-nums">{recommendation.preferenceScore}%</p><p className="text-xs text-muted">preferences</p></div>
-        </div>
+    <article className="rounded-md border border-border bg-surface p-4">
+      <h3 className="text-sm font-semibold leading-relaxed"><Link href={`/app/radar/${recommendation._id}`} className="hover:underline">{job.title}</Link></h3>
+      <p className="text-[13px] text-muted">{job.company}{job.location ? ` · ${job.location}` : " · Location not stated"}{arrangement && !job.location.toLowerCase().includes(arrangement.toLowerCase()) ? ` · ${arrangement}` : ""}</p>
+      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
+        <Badge tone={state.tone}>{state.label}</Badge>
+        <span className="tabular-nums">CV evidence {recommendation.evidenceScore}% · preferences {recommendation.preferenceScore}%</span>
+        <span>{SOURCES[job.sourceType]?.label ?? job.sourceType} · checked {formatDay(job.lastSeenAt)}</span>
       </div>
-      <p className="mt-4 text-sm text-foreground">{recommendation.reasons[0]}</p>
+      <p className="mt-3 text-sm">{recommendation.reasons[0]}</p>
       {recommendation.eligibility[0] && <p className={`mt-2 text-[13px] ${recommendation.eligibility[0].severity === "blocker" ? "text-danger" : "text-warning"}`}>{recommendation.eligibility[0].message}</p>}
       {job.post.salary && <p className="mt-2 text-[13px] text-muted">Salary: {job.post.salary}</p>}
-      {recommendation.match.keywords.some((keyword) => keyword.where === "shown") && <div className="mt-3"><p className="text-xs font-medium uppercase tracking-wide text-muted">Strongest CV evidence</p><ul className="mt-1 space-y-1 text-[13px] text-muted">{recommendation.match.keywords.filter((keyword) => keyword.where === "shown" && keyword.evidence).slice(0, 3).map((keyword) => <li key={keyword.keyword}><span className="font-medium text-foreground">{keyword.keyword}:</span> {keyword.evidence}</li>)}</ul></div>}
-      <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-border pt-4">
+      {recommendation.match.keywords.some((keyword) => keyword.where === "shown") && <div className="mt-3"><ul className="space-y-1 text-[13px] text-muted">{recommendation.match.keywords.filter((keyword) => keyword.where === "shown" && keyword.evidence).slice(0, 3).map((keyword) => <li key={keyword.keyword}><span className="font-medium text-foreground">{keyword.keyword}:</span> {keyword.evidence}</li>)}</ul></div>}
+      <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border pt-3">
         {recommendation.trackerJobId ? <ButtonLink href={`/app/jobs/${recommendation.trackerJobId}`} size="sm">Open application</ButtonLink> : recommendation.state !== "blocked" ? <form action={prepareRadarMatch}><input type="hidden" name="recommendationId" value={recommendation._id} /><SubmitButton size="sm" pendingLabel="Saving…">Save and prepare</SubmitButton></form> : null}
         <ButtonLink href={`/app/radar/${recommendation._id}`} variant="secondary" size="sm">Review evidence</ButtonLink>
         <a href={job.canonicalUrl} target="_blank" rel="noopener" className="inline-flex h-8 items-center rounded px-3 text-sm font-medium text-muted hover:bg-surface-hover hover:text-foreground">View source</a>
@@ -73,18 +69,10 @@ function RecommendationCard({ recommendation, job }: { recommendation: JobRecomm
 export default async function RadarPage() {
   const user = await requireUser();
   const [passport, rows, profile, sourceStatus] = await Promise.all([getCareerPassport(user.id), listRecommendations(user.id, true), getProfile(user.id), getDiscoverySourceStatus()]);
-  // The passport fills itself from the CV: a first one starts from it, and a saved one keeps the person's own choices
-  // with any field still empty taken from the CV. Work permission, salary and sponsorship are never filled in.
+  // Saving a profile fills the passport from the CV (syncPassportFromProfile); this is only the fallback for a CV with no role in it.
   const fromCv = passportFromCv(profile);
-  const orCv = <T,>(saved: T[], cv: T[]) => (saved.length ? saved : cv);
-  const defaultValue: PassportFormValue = passport ? {
-    ...passport,
-    targetRoles: orCv(passport.targetRoles, fromCv.targetRoles),
-    locations: orCv(passport.locations, fromCv.locations),
-    employmentTypes: orCv(passport.employmentTypes, fromCv.employmentTypes),
-    graduationDate: passport.graduationDate ?? fromCv.graduationDate,
-  } : {
-    targetRoles: fromCv.targetRoles, excludedRoles: [], locations: fromCv.locations, workCountries: [], remoteModes: ["remote", "hybrid", "onsite"], needsSponsorship: false, graduationDate: fromCv.graduationDate, minimumSalary: null, employmentTypes: fromCv.employmentTypes, excludedCompanies: [], discoveryEnabled: true, emailFrequency: "off", pushFrequency: "off", alertStates: ["ready"], quietStart: "22:00", quietEnd: "08:00", timezone: "",
+  const defaultValue: PassportFormValue = passport ?? {
+    targetRoles: fromCv.targetRoles, excludedRoles: [], locations: fromCv.locations, workCountries: [], remoteModes: fromCv.remoteModes, employmentTypes: fromCv.employmentTypes, discoveryEnabled: true, alertStates: ["ready"], quietStart: "22:00", quietEnd: "08:00", timezone: "",
   };
   const groups = (["ready", "stretch", "verify", "blocked"] as const).map((state) => ({ state, rows: rows.filter((row) => row.recommendation.state === state && ["active", "saved"].includes(row.recommendation.status)) }));
   const visibleCount = rows.filter((row) => ["active", "saved"].includes(row.recommendation.status) && row.recommendation.state !== "blocked").length;
@@ -95,17 +83,15 @@ export default async function RadarPage() {
   return (
     <div className="space-y-10">
       <RadarPoller />
-      <PageHeader eyebrow="Discovery agent" title="Job Radar" description="Fresh employer-posted roles, screened against your eligibility, preferences and CV evidence before they reach you." actions={<span className={`inline-flex items-center gap-2 text-sm ${discoveryDelayed ? "text-warning" : passport?.discoveryEnabled ? "text-success" : "text-muted"}`}><span className={`size-2 rounded-full ${discoveryDelayed ? "bg-warning" : passport?.discoveryEnabled ? "bg-success" : "bg-faint"}`} />{discoveryDelayed ? "Source checks delayed" : passport?.discoveryEnabled ? "Agent running" : "Agent paused"}</span>} />
+      <PageHeader title="Job Radar" description={`New roles that fit your CV and preferences. ${discoveryDelayed ? "Source checks are delayed." : passport?.discoveryEnabled ? "The agent is running." : "The agent is paused."}`} />
 
       <div className={`rounded-md border px-4 py-3 text-sm ${sourceStatus.failing ? "border-warning/30 bg-warning-soft" : "border-border bg-surface"}`}>
         {sourceStatus.configured === 0 ? <p className="text-muted">No employer feeds are configured yet. Add the launch allowlist before enabling the scheduled worker.</p> : <p><span className="font-medium">{sourceStatus.healthy} of {sourceStatus.configured} employer feeds healthy.</span>{discoveryDelayed ? <span className="text-muted"> Search is delayed while the feeds wait for their next retry.</span> : sourceStatus.lastSuccessAt ? <span className="text-muted"> Last successful check {formatDay(sourceStatus.lastSuccessAt)}.</span> : <span className="text-muted"> Waiting for the first successful check.</span>}</p>}
       </div>
 
-      {!notificationsOn(user) && <Notice tone="warning" title="Notifications are off for your account" action={{ href: "/app/settings#notifications", label: "Turn them on in Settings" }}>The agent keeps finding matches and lists them here, but no email or push alert is sent. Your alert choices in the Career Passport take effect once notifications are back on.</Notice>}
+      {!notificationsOn(user) && <Notice tone="warning" title="Notifications are off for your account" action={{ href: "/app/settings#notifications", label: "Turn them on in Settings" }}>The agent keeps finding matches and lists them here, but no email or push alert is sent until you turn notifications back on.</Notice>}
 
-      {!passport && <div className="rounded-md border border-accent/30 bg-tint p-5"><h2 className="font-semibold">Tell the agent what is realistic for you</h2><p className="mt-1 max-w-2xl text-sm text-muted">Your CV shows your experience. The Career Passport records the roles, locations and work constraints the agent must respect. Save it before the next discovery run.</p><div className="mt-4 grid gap-2 sm:grid-cols-3">{(["ready", "verify", "blocked"] as const).map((state) => <div key={state} className="rounded border border-border bg-surface/70 p-3"><Badge tone={STATE[state].tone}>{STATE[state].label}</Badge><p className="mt-2 text-xs text-muted">{STATE[state].description}</p></div>)}</div></div>}
-
-      {visibleCount === 0 ? <EmptyState title={passport ? "No qualified matches yet" : "Set up your Career Passport first"}>{passport ? "The agent will add source-backed roles here after the next configured discovery run. It will not fill the page with loose keyword matches." : "Once saved, the agent can compare new postings with facts that are not safe to infer from your CV."}</EmptyState> : (
+      {visibleCount === 0 ? <EmptyState title={passport ? "No qualified matches yet" : "Add your CV first"}>{passport ? "The agent will add roles here after its next run. It will not fill the page with loose keyword matches." : "Job Radar reads your roles and location from your CV. Import it, or set your Career Passport below."}</EmptyState> : (
         <div className="space-y-10">
           {groups.filter((group) => group.state !== "blocked" && group.rows.length).map((group) => <section key={group.state} aria-labelledby={`group-${group.state}`}><div className="mb-3 flex items-end justify-between gap-3"><div><h2 id={`group-${group.state}`} className="text-base font-semibold">{STATE[group.state].label}</h2><p className="mt-0.5 text-[13px] text-muted">{STATE[group.state].description}</p></div><span className="font-mono text-xs text-muted tabular-nums">{group.rows.length}</span></div><div className="space-y-3">{group.rows.map((row) => <RecommendationCard key={row.recommendation._id} {...row} />)}</div></section>)}
         </div>
