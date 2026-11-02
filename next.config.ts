@@ -10,9 +10,14 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // Local payment testing runs through this HTTPS tunnel instead of localhost.
+  allowedDevOrigins: ["sasquatch-rickety-imaging.ngrok-free.dev"],
   distDir: process.env.SHORTLIST_BUILD_DIR || ".next",
   serverExternalPackages: ["pdfkit"],
-  experimental: { serverActions: { bodySizeLimit: "6mb" }, turbopackFileSystemCacheForBuild: process.env.SHORTLIST_BUILD_CACHE !== "0" },
+  experimental: {
+    serverActions: { bodySizeLimit: "6mb", allowedOrigins: ["sasquatch-rickety-imaging.ngrok-free.dev"] },
+    turbopackFileSystemCacheForBuild: process.env.SHORTLIST_BUILD_CACHE !== "0",
+  },
   // Shortlist is almost entirely per-user, request-time UI, so it uses the
   // classic dynamic rendering model instead of Cache Components.
   turbopack: {
