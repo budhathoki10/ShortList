@@ -58,32 +58,35 @@ export function basicLetter(profile: Profile, post: JobPost, match: Match): stri
  * A cover letter plus any facts in it the profile and job post don't support, for the user to check. `aiFailed` is true
  * when the AI was configured but no model answered, so the plain-code letter stands in for one the user didn't get.
  */
-export async function writeCoverLetter(profile: Profile, post: JobPost, match: Match, companyContext = ""): Promise<{ text: string; flags: string[]; method: "ai" | "basic"; aiFailed: boolean }> {
+export async function writeCoverLetter(profile: Profile, post: JobPost, match: Match, companyContext = ""): Promise<{ text: string; flags: string[]; method: "ai" | "basic"; aiFailed: boolean; fallbackReason: "unavailable" | "safety" | null }> {
   const allowed = JSON.stringify(post);
   if (aiEnabled()) {
     try {
-      const { text } = await structured({
-        task: "write",
+      const draft = (correction = "") => structured({
+        task: "write" as const,
         system: SYSTEM,
-        prompt: [
-          "Write the cover letter.",
-          quoted("profile", JSON.stringify(profile)),
-          quoted("job_post", allowed),
-          quoted("match", JSON.stringify(match.keywords)),
-          quoted("verified_company_excerpts", companyContext),
-        ].join("\n\n"),
+        prompt: ["Write the cover letter.", correction, quoted("profile", JSON.stringify(profile)), quoted("job_post", allowed), quoted("match", JSON.stringify(match.keywords)), quoted("verified_company_excerpts", companyContext)].filter(Boolean).join("\n\n"),
         schema: Letter,
       });
+      let { text } = await draft();
       const claimFlags = unsupportedExperienceClaims(text, profile);
       if (claimFlags.length) {
-        const safe = basicLetter(profile, post, match);
-        return { text: safe, flags: unsupportedExperienceClaims(safe, profile), method: "basic", aiFailed: false };
+        try {
+          ({ text } = await draft(`The previous draft was rejected because it presented these unsupported details as the candidate's experience: ${JSON.stringify(claimFlags)}. Rewrite it without those claims. Employer requirements may be described as requirements, never as experience the candidate has.`));
+        } catch {
+          // The first answer was unsafe. A failed correction still uses the safe local draft below.
+        }
+        if (unsupportedExperienceClaims(text, profile).length) {
+          const safe = basicLetter(profile, post, match);
+          return { text: safe, flags: unsupportedExperienceClaims(safe, profile), method: "basic", aiFailed: false, fallbackReason: "safety" };
+        }
       }
-      return { text: text.trim(), flags: unsupportedFacts(text, profile, `${allowed}\n${companyContext}`), method: "ai", aiFailed: false };
+      return { text: text.trim(), flags: unsupportedFacts(text, profile, `${allowed}\n${companyContext}`), method: "ai", aiFailed: false, fallbackReason: null };
     } catch (err) {
       if (!(err instanceof AiUnavailableError)) console.error("AI cover letter failed", err);
     }
   }
   const text = basicLetter(profile, post, match);
-  return { text, flags: unsupportedFacts(text, profile, allowed), method: "basic", aiFailed: aiEnabled() };
+  const aiFailed = aiEnabled();
+  return { text, flags: unsupportedFacts(text, profile, allowed), method: "basic", aiFailed, fallbackReason: aiFailed ? "unavailable" : null };
 }

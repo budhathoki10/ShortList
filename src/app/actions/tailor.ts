@@ -113,7 +113,7 @@ export async function writeCover(_: TailorState, formData: FormData): Promise<Ta
   if ("denied" in run) return run.denied;
   const result = run.value;
   if (result.aiFailed) await refundAllowance(user, "cover");
-  await saveCoverLetter(user.id, job.id, result.text, { replace: true, method: result.method });
+  await saveCoverLetter(user.id, job.id, result.text, { replace: true, method: result.method, reason: result.fallbackReason });
   revalidatePath(`/app/jobs/${job.id}/cover-letter`);
   return { success: `Cover letter draft ready. Review the details and personalise the wording before sending.${result.aiFailed ? FALLBACK_NOTE : ""}` };
 }

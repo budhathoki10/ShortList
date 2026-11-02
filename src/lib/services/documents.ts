@@ -13,7 +13,7 @@ export const getTailoredCv = (userId: string, jobId: string) => find(userId, job
 export const getCoverLetter = (userId: string, jobId: string) => find(userId, jobId, "cover_letter");
 
 /** Update-or-create in one step; the unique (jobId, kind) index keeps it to one document per job. */
-async function upsert(userId: string, jobId: string, kind: "cv" | "cover_letter", fields: { cv: TailoredCv } | { text: string; generationMethod?: "ai" | "basic" }) {
+async function upsert(userId: string, jobId: string, kind: "cv" | "cover_letter", fields: { cv: TailoredCv } | { text: string; generationMethod?: "ai" | "basic"; generationReason?: "unavailable" | "safety" }) {
   const now = new Date();
   // The field this call doesn't write starts out null on a new document.
   const other = "cv" in fields ? { text: null } : { cv: null };
@@ -30,12 +30,12 @@ export async function saveTailoredCv(userId: string, jobId: string, cv: Tailored
 }
 
 /** Save edits in place. A fresh draft (`replace`) starts a new document, so the editor knows to reload. */
-export async function saveCoverLetter(userId: string, jobId: string, text: string, opts: { replace?: boolean; method?: "ai" | "basic" } = {}) {
+export async function saveCoverLetter(userId: string, jobId: string, text: string, opts: { replace?: boolean; method?: "ai" | "basic"; reason?: "unavailable" | "safety" | null } = {}) {
   if (opts.replace) {
     const { documents } = await collections();
     await documents.deleteOne({ userId: String(userId), jobId: String(jobId), kind: "cover_letter" });
   }
-  await upsert(userId, jobId, "cover_letter", { text, ...(opts.method ? { generationMethod: opts.method } : {}) });
+  await upsert(userId, jobId, "cover_letter", { text, ...(opts.method ? { generationMethod: opts.method } : {}), ...(opts.reason ? { generationReason: opts.reason } : {}) });
 }
 
 export async function getInterview(userId: string, jobId: string) {

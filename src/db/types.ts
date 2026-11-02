@@ -57,6 +57,7 @@ export type Document = {
   cv: TailoredCv | null;
   text: string | null;
   generationMethod?: "ai" | "basic";
+  generationReason?: "unavailable" | "safety";
   sourceNeedsReview?: boolean;
   createdAt: Date;
   updatedAt: Date;

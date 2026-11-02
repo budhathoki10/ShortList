@@ -41,7 +41,15 @@ export default async function CoverTab({ params }: PageProps<"/app/jobs/[id]/cov
   }
   return (
     <div className="space-y-4">
-      {doc.generationMethod === "basic" && <p className="rounded-lg border border-warning/25 bg-warning-soft px-4 py-3 text-sm text-warning">AI drafting was unavailable. This is a local draft built from your CV; review the examples and wording before sending.</p>}
+      {doc.generationMethod === "basic" && (
+        <p className="rounded-lg border border-warning/25 bg-warning-soft px-4 py-3 text-sm text-warning">
+          {doc.generationReason === "unavailable"
+            ? "AI drafting was unavailable. This is a local draft built from your CV; review the examples and wording before sending."
+            : doc.generationReason === "safety"
+              ? "The AI draft included claims that were not supported by your CV, so it was replaced with a safe local draft. Review the wording before sending."
+              : "This draft was built locally from your CV. Review the examples and wording before sending."}
+        </p>
+      )}
       <CoverLetterEditor key={doc.id} jobId={job.id} initial={doc.text} flags={unsupportedFacts(doc.text, profile, JSON.stringify(job.post))} email={user.email} role={job.post.title} recipient={job.postText.match(/[\w.+-]+@[\w-]+\.[\w.-]+/)?.[0] ?? ""} />
     </div>
   );

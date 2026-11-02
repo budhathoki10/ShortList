@@ -7,6 +7,7 @@ import { EMPTY_PROFILE, type Change, type JobPost, type Profile } from "@/lib/mo
 import { containsTerm } from "@/lib/text";
 import { applyChanges } from "@/lib/tailor/apply";
 import { basicChanges } from "@/lib/tailor/basic";
+import { writeCoverLetter } from "@/lib/tailor/cover-letter";
 import { unsupportedCvFacts, unsupportedFacts } from "@/lib/tailor/fact-check";
 import { proposeChanges } from "@/lib/tailor/tailor";
 
@@ -239,5 +240,24 @@ describe("close-the-gap advice", () => {
     expect(hub.action).toMatch(/course or assessment/);
     expect(jp.action).toMatch(/test/);
     expect(cert.action).toMatch(/official route/);
+  });
+});
+
+describe("AI cover letters", () => {
+  afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
+
+  it("repairs an unsupported first draft before falling back to local wording", async () => {
+    vi.stubEnv("ANTHROPIC_API_KEY", "test-key");
+    const response = (text: string) => Response.json({ type: "message", role: "assistant", stop_reason: "end_turn", content: [{ type: "text", text: JSON.stringify({ text }) }] });
+    const fetch = vi.fn()
+      .mockResolvedValueOnce(response("I have managed Salesforce implementations for enterprise customers."))
+      .mockResolvedValueOnce(response("Dear hiring team,\n\nI built React dashboards used by 300 customers and wrote REST APIs in Node.js and Express backed by PostgreSQL.\n\nKind regards,\nSam Rivera"));
+    vi.stubGlobal("fetch", fetch);
+
+    const result = await writeCoverLetter(dev, jsJob, scoreMatch(dev, jsJob));
+
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(result).toMatchObject({ method: "ai", aiFailed: false, fallbackReason: null });
+    expect(result.text).not.toContain("Salesforce");
   });
 });
