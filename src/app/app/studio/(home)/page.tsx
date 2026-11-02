@@ -58,10 +58,10 @@ export default async function Studio({ searchParams }: PageProps<"/app/studio">)
 
       <div className="grid gap-10 border-y border-border py-8 ">
         <div className="grid gap-6 sm:grid-cols-[200px_1fr]">
-          <Link href={`/app/studio/edit/${style.template.id}`} className="block w-full max-w-[200px] self-start overflow-hidden rounded-md ring-1 ring-border transition hover:ring-strong-border sm:max-w-none" >
-            <span className="sr-only">Edit {style.template.name}</span>
+          <div className="relative w-full max-w-[200px] self-start overflow-hidden rounded-md sm:max-w-none">
             <CvMini spec={style.spec} cv={cv} photoUrl={shownPhoto} />
-          </Link>
+            <Link href={`/app/studio/edit/${style.template.id}`} aria-label={`Edit ${style.template.name}`} className="absolute inset-0 rounded-md ring-1 ring-inset ring-border transition hover:ring-strong-border" />
+          </div>
           <div className="space-y-4">
             <div>
               <p className="text-[13px] text-muted">Your default look</p>
@@ -111,10 +111,10 @@ export default async function Studio({ searchParams }: PageProps<"/app/studio">)
               if (!spec) return null;
               return (
                 <li key={t.id} className="space-y-2">
-                  <Link href={`/app/studio/edit/${t.id}`}  className="block overflow-hidden rounded-md ring-1 ring-border transition hover:-translate-y-0.5 hover:ring-strong-border">
-                    <span className="sr-only">Edit {t.name}</span>
+                  <div className="group relative overflow-hidden rounded-md transition hover:-translate-y-0.5">
                     <CvMini spec={spec} cv={cv} photoUrl={shownPhoto} />
-                  </Link>
+                    <Link href={`/app/studio/edit/${t.id}`} aria-label={`Edit ${t.name}`} className="absolute inset-0 rounded-md ring-1 ring-inset ring-border transition group-hover:ring-strong-border" />
+                  </div>
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium">{t.name}</p>

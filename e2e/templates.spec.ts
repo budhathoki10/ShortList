@@ -37,6 +37,8 @@ test("anyone can browse and search the 100 templates without an account", async 
 });
 
 test("the studio starts on Classic, and a template can be made the default", async ({ page }) => {
+  const consoleErrors: string[] = [];
+  page.on("console", (message) => message.type() === "error" && consoleErrors.push(message.text()));
   await setUpJobSeeker(page, email);
   jobId = (await addFixtureJob(page, FIXTURE_BASE)).split("/").pop()!;
 
@@ -44,6 +46,8 @@ test("the studio starts on Classic, and a template can be made the default", asy
   await expect(page).toHaveURL(/\/app\/studio$/);
   await expect(page.getByRole("heading", { name: "CV Studio" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Classic" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Edit Classic" })).toBeVisible();
+  expect(consoleErrors.filter((message) => /hydration|cannot (?:be a descendant of|contain) a nested <a>/i.test(message))).toEqual([]);
 
   await page.goto("/app/studio/templates");
   await page.getByRole("button", { name: /\bCharter\b/ }).first().click();
