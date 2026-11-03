@@ -24,15 +24,6 @@ const list = (formData: FormData, name: string, limit = 20) =>
 const oneOf = <T extends string>(value: FormDataEntryValue | null, allowed: readonly T[], fallback: T): T =>
   allowed.includes(value as T) ? (value as T) : fallback;
 
-function validTimezone(value: string) {
-  try {
-    new Intl.DateTimeFormat("en", { timeZone: value }).format();
-    return value;
-  } catch {
-    return "UTC";
-  }
-}
-
 export async function updateCareerPassport(_: DiscoveryState, formData: FormData): Promise<DiscoveryState> {
   const user = await requireUser();
   const targetRoles = list(formData, "targetRoles", 12);
@@ -41,16 +32,17 @@ export async function updateCareerPassport(_: DiscoveryState, formData: FormData
   const alertStates = (["ready", "stretch", "verify"] as const).filter((state) => formData.getAll("alertStates").includes(state));
   await saveCareerPassport(user.id, {
     targetRoles,
-    excludedRoles: list(formData, "excludedRoles"),
+    excludedRoles: [],
     locations: list(formData, "locations"),
     workCountries: list(formData, "workCountries"),
     remoteModes: remoteModes.length ? remoteModes : ["remote", "hybrid", "onsite"],
     employmentTypes: list(formData, "employmentTypes", 8),
     discoveryEnabled: formData.get("discoveryEnabled") === "on",
     alertStates: alertStates.length ? [...alertStates] : ["ready"],
-    quietStart: /^([01]\d|2[0-3]):[0-5]\d$/.test(String(formData.get("quietStart"))) ? String(formData.get("quietStart")) : "22:00",
-    quietEnd: /^([01]\d|2[0-3]):[0-5]\d$/.test(String(formData.get("quietEnd"))) ? String(formData.get("quietEnd")) : "08:00",
-    timezone: validTimezone(String(formData.get("timezone") ?? "UTC")),
+    // Quiet hours are no longer asked for: with no time zone, alerts go out at any hour.
+    quietStart: "22:00",
+    quietEnd: "08:00",
+    timezone: "",
     userSet: true,
   });
   revalidatePath("/app/radar");
