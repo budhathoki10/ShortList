@@ -8,6 +8,14 @@ import { configuredSources, fetchSource, SOURCES, type SourceConfig, type Source
 
 /** New or changed postings read with AI per run. The rest wait for the next run, which keeps a run inside its time limit. */
 const MAX_EXTRACTIONS_PER_RUN = 40;
+/** AI reads in flight at once. They were one at a time, which alone could outlast the host's function time limit. */
+const EXTRACTION_CONCURRENCY = 5;
+/**
+ * Time a run spends fetching before it stops and leaves the rest for the next run (the scheduler calls every 15 minutes).
+ * Serverless hosts kill a function at their time limit without a word, which left sources neither healthy nor failed.
+ * Raise it with DISCOVERY_TIME_BUDGET_MS once you know your host's limit.
+ */
+const DEFAULT_TIME_BUDGET_MS = 8_000;
 /** A partial feed stops listing older jobs; one not seen for this long is treated as closed. */
 const PARTIAL_FEED_STALE_DAYS = 21;
 import { extractJob } from "@/lib/jobs/extract";
@@ -117,8 +125,11 @@ async function matchChangedJobs(jobs: DiscoveredJobDoc[]) {
 }
 
 export async function runJobDiscovery() {
-  const sources = configuredSources();
+  const deadline = Date.now() + (Number(process.env.DISCOVERY_TIME_BUDGET_MS) || DEFAULT_TIME_BUDGET_MS);
   const c = await collections();
+  // The source that has waited longest goes first, so a run cut short at the deadline never starves the same ones.
+  const lastRun = new Map((await c.jobSources.find({}, { projection: { lastRunAt: 1 } }).toArray()).map((row) => [row._id, row.lastRunAt?.valueOf() ?? 0]));
+  const sources = configuredSources().sort((a, b) => (lastRun.get(`${a.type}:${a.key.toLowerCase()}`) ?? 0) - (lastRun.get(`${b.type}:${b.key.toLowerCase()}`) ?? 0));
   const sourceIds = sources.map((source) => `${source.type}:${source.key.toLowerCase()}`);
   const configuredAt = new Date();
   for (const source of sources) {
@@ -164,6 +175,10 @@ export async function runJobDiscovery() {
   const budget = { left: MAX_EXTRACTIONS_PER_RUN };
 
   for (const source of sources) {
+    if (Date.now() > deadline) {
+      skippedSources += 1;
+      continue;
+    }
     const runId = randomUUID();
     const startedAt = new Date();
     const sourceId = `${source.type}:${source.key.toLowerCase()}`;
@@ -179,15 +194,17 @@ export async function runJobDiscovery() {
       const info = SOURCES[source.type];
       const wanted = (title: string) => roleCompatibility(title, targets) >= 45;
       const known = new Set((await c.discoveredJobs.find({ sourceType: source.type, sourceKey: source.key }, { projection: { externalId: 1 } }).toArray()).map((row) => row.externalId));
-      const { postings, seen } = await fetchSource(source, { wanted, known });
+      const { postings, seen } = await fetchSource(source, { wanted, known, deadline });
       found += seen.length;
       const changedJobs: DiscoveredJobDoc[] = [];
-      for (const posting of postings) {
-        // Only roles someone is looking for are stored and read with AI. A board lists every role it has each run,
-        // so if someone later targets a role, its postings are picked up on the next run.
-        if (!wanted(posting.title)) continue;
-        const result = await upsertPosting(posting, budget);
-        if (result?.changed) changedJobs.push(result.job);
+      // Only roles someone is looking for are stored and read with AI. A board lists every role it has each run,
+      // so if someone later targets a role, its postings are picked up on the next run.
+      const todo = postings.filter((posting) => wanted(posting.title));
+      for (let i = 0; i < todo.length; i += EXTRACTION_CONCURRENCY) {
+        // Past the deadline nothing new is read: the posting is picked up again next run.
+        if (Date.now() > deadline) budget.left = 0;
+        const results = await Promise.all(todo.slice(i, i + EXTRACTION_CONCURRENCY).map((posting) => upsertPosting(posting, budget)));
+        for (const result of results) if (result?.changed) changedJobs.push(result.job);
       }
       // Still listed but not read in full this run (a SmartRecruiters posting already stored): it's still open.
       const returned = new Set(postings.map((posting) => posting.externalId));

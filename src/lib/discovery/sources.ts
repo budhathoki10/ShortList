@@ -6,7 +6,8 @@ import { cleanText } from "@/lib/text";
 
 export type SourceConfig = { type: JobSourceType; key: string; company: string };
 /** What the runner tells an adapter: which titles anyone wants, and which postings are already stored. */
-export type FetchOptions = { wanted?: (title: string) => boolean; known?: Set<string> };
+/** `deadline` (epoch ms): stop making extra calls past it, so a run fits the host's function time limit. */
+export type FetchOptions = { wanted?: (title: string) => boolean; known?: Set<string>; deadline?: number };
 /**
  * `postings`: fully read postings. `seen`: every posting id the source currently lists, including ones not read in
  * full this time (already stored, or not wanted), so the runner can keep them open and close only what disappeared.
@@ -246,22 +247,30 @@ async function smartrecruiters(source: SourceConfig, options: FetchOptions): Pro
     const body = obj(await fetchJson(`${base}?limit=100&offset=${page * 100}`));
     const rows = rowsOf(body, "content");
     listed.push(...rows);
-    if (rows.length < 100 || listed.length >= Number(body.totalFound ?? 0)) break;
+    // A partial source only lists its newest jobs, so a shorter list just means older ones are checked on a later run.
+    if (rows.length < 100 || listed.length >= Number(body.totalFound ?? 0) || (options.deadline && Date.now() > options.deadline)) break;
   }
   const seen = listed.map((row) => str(row.id)).filter(Boolean);
-  const postings: SourcePosting[] = [];
-  let reads = 0;
-  for (const row of listed) {
+  const toRead = listed.filter((row) => {
     const id = str(row.id);
-    if (!id || options.known?.has(id) || (options.wanted && !options.wanted(str(row.name)))) continue;
-    if (reads >= 30) break;
-    reads += 1;
-    const detail = obj(await fetchJson(`${base}/${encodeURIComponent(id)}`));
-    const sections = obj(obj(detail.jobAd).sections);
-    const html = ["jobDescription", "qualifications", "additionalInformation", "companyDescription"].map((name) => str(obj(sections[name]).text)).join("\n");
-    const where = obj(row.location);
-    const place = str(where.fullLocation) || [str(where.city), str(where.country).toUpperCase()].filter(Boolean).join(", ");
-    postings.push(...posting(source, { id, url: detail.postingUrl, company: obj(row.company).name || source.company, title: row.name, location: placeOf(where.remote === true, place), html: `${str(obj(row.typeOfEmployment).label)}\n${str(obj(row.experienceLevel).label)}\n${html}`, updated: row.releasedDate }));
+    return id && !options.known?.has(id) && (!options.wanted || options.wanted(str(row.name)));
+  }).slice(0, 30);
+  const postings: SourcePosting[] = [];
+  // Small parallel batches: thirty one-by-one calls alone can outlast a serverless function.
+  for (let i = 0; i < toRead.length; i += 5) {
+    if (options.deadline && Date.now() > options.deadline) break;
+    const batch = await Promise.all(
+      toRead.slice(i, i + 5).map(async (row) => {
+        const id = str(row.id);
+        const detail = obj(await fetchJson(`${base}/${encodeURIComponent(id)}`));
+        const sections = obj(obj(detail.jobAd).sections);
+        const html = ["jobDescription", "qualifications", "additionalInformation", "companyDescription"].map((name) => str(obj(sections[name]).text)).join("\n");
+        const where = obj(row.location);
+        const place = str(where.fullLocation) || [str(where.city), str(where.country).toUpperCase()].filter(Boolean).join(", ");
+        return posting(source, { id, url: detail.postingUrl, company: obj(row.company).name || source.company, title: row.name, location: placeOf(where.remote === true, place), html: `${str(obj(row.typeOfEmployment).label)}\n${str(obj(row.experienceLevel).label)}\n${html}`, updated: row.releasedDate });
+      }),
+    );
+    postings.push(...batch.flat());
   }
   return { postings, seen };
 }

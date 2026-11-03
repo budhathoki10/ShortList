@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState, useRef } from "react";
 import { updateCareerPassport, type DiscoveryState } from "@/app/actions/discovery";
 import type { RecommendationState } from "@/db/types";
 import { ActionToast } from "@/components/toast";
@@ -53,20 +53,12 @@ export function CareerPassportForm({ value, fromCv }: { value: PassportFormValue
     const countries = field("workCountries");
     if (countries && fromCv.country) countries.value = merge(countries.value, [fromCv.country]);
   }
-  // A new passport starts in the browser's own time zone, so quiet hours mean the person's night, not UTC's.
-  const timezone = useRef<HTMLInputElement>(null);
-  useEffect(() => {
-    if (timezone.current && !timezone.current.value) timezone.current.value = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
-  }, []);
   return (
     <form ref={form} action={action} className="space-y-7">
       <ActionToast state={state} toastKey="career-passport" />
       <div className="grid gap-5 sm:grid-cols-2">
         <Field label="Target roles" hint="Comma-separated. Be specific enough to avoid unrelated jobs.">
           <input name="targetRoles" defaultValue={joined(value.targetRoles)} placeholder="Frontend developer, Full-stack engineer" className={inputClass} required />
-        </Field>
-        <Field label="Roles to exclude" hint="Optional.">
-          <input name="excludedRoles" defaultValue={joined(value.excludedRoles)} placeholder="Sales engineer, Engineering manager" className={inputClass} />
         </Field>
         <Field label="Target locations" hint="Cities, regions, or countries. Leave blank if location is flexible.">
           <input name="locations" defaultValue={joined(value.locations)} placeholder="Kathmandu, United Kingdom, Remote" className={inputClass} />
@@ -91,19 +83,7 @@ export function CareerPassportForm({ value, fromCv }: { value: PassportFormValue
         <Checks name="remoteModes" selected={value.remoteModes} values={[{ value: "remote", label: "Remote" }, { value: "hybrid", label: "Hybrid" }, { value: "onsite", label: "On-site" }]} />
       </fieldset>
 
-      <div className="grid gap-5 border-t border-border pt-7 sm:grid-cols-2">
-        <Field label="Quiet hours start">
-          <input type="time" name="quietStart" defaultValue={value.quietStart} className={inputClass} />
-        </Field>
-        <Field label="Quiet hours end">
-          <input type="time" name="quietEnd" defaultValue={value.quietEnd} className={inputClass} />
-        </Field>
-        <Field label="Time zone" hint="IANA name, such as Asia/Kathmandu.">
-          <input ref={timezone} name="timezone" defaultValue={value.timezone} placeholder="Asia/Kathmandu" className={inputClass} />
-        </Field>
-      </div>
-
-      <fieldset className="space-y-2">
+      <fieldset className="space-y-2 border-t border-border pt-7">
         <legend className="t-label">Which matches can alert you</legend>
         <Checks name="alertStates" selected={value.alertStates} values={[{ value: "ready", label: "Ready to apply" }, { value: "stretch", label: "Strong stretch" }, { value: "verify", label: "Verify first" }]} />
       </fieldset>
