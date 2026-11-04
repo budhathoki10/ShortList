@@ -1,5 +1,6 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
+import { cache } from "react";
 import { stripHtmlDeep } from "@/lib/jobs/html";
 import { collections, fromDoc } from "@/db/mongo";
 import type { Job } from "@/db/types";
@@ -30,10 +31,32 @@ export async function ownedJob(userId: string, jobId: string): Promise<Job | nul
   return doc ? stripHtmlDeep(fromDoc<Job>(doc)) : null;
 }
 
-export async function listJobs(userId: string): Promise<Job[]> {
+/** A saved job without its full posting text, which can be tens of kilobytes and is only needed on one job's own pages. */
+export type JobSummary = Omit<Job, "postText">;
+
+/**
+ * Every saved job, without the posting text. Cached for one request, so the app layout and the page share one query.
+ * Use `listJobsWithText` where the text is needed.
+ */
+export const listJobs = cache(async (userId: string): Promise<JobSummary[]> => {
+  const docs = await (await collections()).jobs.find({ userId: String(userId) }, { projection: { postText: 0 } }).sort({ updatedAt: -1 }).toArray();
+  return docs.map((d) => stripHtmlDeep(fromDoc<JobSummary>(d as never)));
+});
+
+export async function listJobsWithText(userId: string): Promise<Job[]> {
   const docs = await (await collections()).jobs.find({ userId: String(userId) }).sort({ updatedAt: -1 }).toArray();
   return docs.map((d) => stripHtmlDeep(fromDoc<Job>(d)));
 }
+
+/** The few fields the command palette shows, for the most recent jobs only. Runs on every page, so it reads almost nothing. */
+export const paletteJobs = cache(async (userId: string) => {
+  const docs = await (await collections()).jobs
+    .find({ userId: String(userId) }, { projection: { "post.title": 1, "post.company": 1, status: 1 } })
+    .sort({ updatedAt: -1 })
+    .limit(200)
+    .toArray();
+  return docs.map((d) => ({ id: d._id, title: String(d.post?.title ?? ""), company: String(d.post?.company ?? ""), status: d.status }));
+});
 
 export async function setMatch(userId: string, jobId: string, match: Match) {
   await (await collections()).jobs.updateOne({ _id: String(jobId), userId: String(userId) }, { $set: { match } });

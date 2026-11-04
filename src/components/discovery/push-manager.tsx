@@ -26,25 +26,36 @@ function subscribeError(error: unknown) {
   return error instanceof Error ? error.message : "Try again in a moment.";
 }
 
+type Unsupported = "insecure" | "ios-install" | "no-push" | "register-failed";
+
+/** What is actually wrong, so the hint can say what to do instead of a blanket "not supported". */
+function unsupportedHint(reason: Unsupported | null, detail: string) {
+  if (reason === "insecure") return "Push needs a secure (https) connection. Open the site with its https address, not an IP address or http link.";
+  if (reason === "ios-install") return "On iPhone and iPad, tap Share → Add to Home Screen, then open Shortlist from the home screen to turn this on.";
+  if (reason === "register-failed") return `Couldn't start the notification service${detail ? `: ${detail}` : ""}. Reload the page and try again.`;
+  return "This browser can't receive push notifications. Try Chrome, Edge or Firefox. Email alerts still work.";
+}
+
 /** One switch: on subscribes this device to push alerts, off removes it. */
 export function PushManager({ publicKey, configured, accountOn = true }: { publicKey: string; configured: boolean; accountOn?: boolean }) {
   const [supported, setSupported] = useState<boolean | null>(configured ? null : false);
   const [subscription, setSubscription] = useState<PushSubscription | null>(null);
+  const [reason, setReason] = useState<Unsupported | null>(null);
+  const [detail, setDetail] = useState("");
   const [busy, setBusy] = useState(false);
   const [testing, setTesting] = useState(false);
   const toast = useToast();
 
   useEffect(() => {
     if (!configured) return;
-    const available = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
-    if (!available) {
-      queueMicrotask(() => setSupported(false));
-      return;
-    }
-    navigator.serviceWorker.register("/sw.js", { scope: "/", updateViaCache: "none" }).then((registration) => registration.pushManager.getSubscription()).then((current) => {
-      setSubscription(current);
+    const fail = (why: Unsupported, message = "") => queueMicrotask(() => { setReason(why); setDetail(message); setSupported(false); });
+    if (!window.isSecureContext || !("serviceWorker" in navigator)) return fail("insecure");
+    if (!("PushManager" in window) || !("Notification" in window)) return fail(/iPhone|iPad|iPod/.test(navigator.userAgent) ? "ios-install" : "no-push");
+    navigator.serviceWorker.register("/sw.js", { scope: "/", updateViaCache: "none" }).then(async (registration) => {
+      // Only the registration decides support: a failed lookup of an existing subscription just means "not subscribed yet".
+      setSubscription(await registration.pushManager.getSubscription().catch(() => null));
       setSupported(true);
-    }).catch(() => setSupported(false));
+    }).catch((error) => fail("register-failed", error instanceof Error ? error.message.slice(0, 120) : ""));
   }, [configured]);
 
   async function enable() {
@@ -98,7 +109,7 @@ export function PushManager({ publicKey, configured, accountOn = true }: { publi
   }
 
   const on = Boolean(subscription);
-  const hint = !configured ? "Not set up on this server." : supported === false ? "Not supported in this browser." : "Job Radar alerts on this device, whenever notifications are on for your account.";
+  const hint = !configured ? "Not set up on this server." : supported === false ? unsupportedHint(reason, detail) : "Job Radar alerts on this device, whenever notifications are on for your account.";
 
   return (
     <div>

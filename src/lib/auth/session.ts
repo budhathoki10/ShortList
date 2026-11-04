@@ -39,11 +39,12 @@ export const getCurrentUser = cache(async (): Promise<User | null> => {
   const { sessions, users } = await collections();
   const session = await sessions.findOne({ _id: hashToken(token), expiresAt: { $gt: new Date() } });
   if (!session) return null;
-  const doc = await users.findOne({ _id: session.userId });
+  // Independent of each other, so they run together instead of one after the other on every request.
+  // Paid access from a subscription is worked out here, on the server, from what Freemius confirmed. It is never read from a request.
+  const [doc, accessUntil] = await Promise.all([users.findOne({ _id: session.userId }), accessUntilForUser(session.userId)]);
   if (!doc) return null;
   const user = fromDoc<User>(doc);
-  // Paid access from a subscription is worked out here, on the server, from what Freemius confirmed. It is never read from a request.
-  user.subscriptionAccessUntil = await accessUntilForUser(user.id);
+  user.subscriptionAccessUntil = accessUntil;
   return user;
 });
 

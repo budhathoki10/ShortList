@@ -2,8 +2,9 @@ import "server-only";
 import { createHash } from "node:crypto";
 import webpush from "web-push";
 import { collections } from "@/db/mongo";
-import type { CareerPassportDoc, NotificationDeliveryDoc } from "@/db/types";
-import { noticeMessage, sendEmail } from "@/lib/email";
+import type { CareerPassportDoc, DiscoveredJobDoc, JobRecommendationDoc, NotificationDeliveryDoc } from "@/db/types";
+import { jobMatchesMessage, sendEmail, type JobMatchLine } from "@/lib/email";
+import { RECOMMENDATION_RETENTION_DAYS } from "./retention";
 import { appUrl } from "@/lib/util";
 import { NOTIFICATIONS_OFF_REASON, notificationsOn } from "@/lib/services/notification-settings";
 import { decryptPushSecret } from "./push-crypto";
@@ -17,18 +18,29 @@ function configureWebPush() {
   webpush.setVapidDetails(process.env.VAPID_SUBJECT!, process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!, process.env.VAPID_PRIVATE_KEY!);
 }
 
-export async function enqueueRecommendationNotifications(passport: CareerPassportDoc, recommendationId: string, notificationVersion: number) {
+/** What a run needs to know about each person once, so a hundred matches for one user cost two queries, not two hundred. */
+export type OwnerCache = Map<string, { owner: Awaited<ReturnType<typeof loadOwner>>; hasPush: boolean }>;
+
+const loadOwner = async (userId: string) => (await collections()).users.findOne({ _id: userId }, { projection: { notificationsOff: 1, emailVerifiedAt: 1 } });
+
+export async function enqueueRecommendationNotifications(passport: CareerPassportDoc, recommendationId: string, notificationVersion: number, cache: OwnerCache = new Map()) {
   const c = await collections();
+  let known = cache.get(passport._id);
+  if (!known) {
+    const [owner, pushCount] = await Promise.all([loadOwner(passport._id), c.pushSubscriptions.countDocuments({ userId: passport._id }, { limit: 1 })]);
+    known = { owner, hasPush: pushCount > 0 };
+    cache.set(passport._id, known);
+  }
   // The account-wide switch in Settings is the only control: off sends nothing, on sends the email (to a confirmed
   // address) and the push alert (to saved devices).
-  const owner = await c.users.findOne({ _id: passport._id }, { projection: { notificationsOff: 1, emailVerifiedAt: 1 } });
+  const { owner } = known;
   if (!owner || !notificationsOn(owner)) return;
   const now = new Date();
   const channels = (["email", "push"] as const).map((channel) => ({ channel, frequency: "immediate" as const }));
 
   for (const item of channels) {
     if (item.channel === "email" && !owner.emailVerifiedAt) continue;
-    if (item.channel === "push" && (await c.pushSubscriptions.countDocuments({ userId: passport._id }, { limit: 1 })) === 0) continue;
+    if (item.channel === "push" && !known.hasPush) continue;
     const delivery: NotificationDeliveryDoc = {
       _id: `${recommendationId}:${item.channel}:${notificationVersion}`,
       userId: passport._id,
@@ -63,6 +75,10 @@ function inQuietHours(passport: CareerPassportDoc, date = new Date()) {
 
 function stateLabel(state: string) {
   return state === "ready" ? "Ready to apply" : state === "stretch" ? "Strong stretch" : state === "verify" ? "Verify first" : "Blocked";
+}
+
+function matchLine(label: string, job: DiscoveredJobDoc, recommendation: JobRecommendationDoc, url: string): JobMatchLine {
+  return { state: label, title: job.title, company: job.company, location: job.location, reason: recommendation.reasons[0] ?? null, warning: recommendation.eligibility[0]?.message ?? null, url };
 }
 
 async function recommendationContext(delivery: NotificationDeliveryDoc) {
@@ -114,15 +130,8 @@ async function sendOne(delivery: NotificationDeliveryDoc): Promise<{ providerMes
   const { job, recommendation, user } = context;
   const url = appUrl(`/app/radar/${recommendation._id}`);
   const label = stateLabel(recommendation.state);
-  const warning = recommendation.eligibility[0]?.message;
   if (delivery.channel === "email") {
-    const message = noticeMessage(
-      user.email,
-      `${label}: ${job.title} at ${job.company}`,
-      `${job.title} at ${job.company}`,
-      [`${label} · ${job.location || "Location not stated"}`, recommendation.reasons[0], warning ?? "No eligibility warning was found in the posting."],
-      { label: "Review this match", url },
-    );
+    const message = jobMatchesMessage({ to: user.email, name: user.name ?? "", roles: context.passport.targetRoles, matches: [matchLine(label, job, recommendation, url)], radarUrl: appUrl("/app/radar"), retentionDays: RECOMMENDATION_RETENTION_DAYS });
     const result = await sendEmail({ ...message, idempotencyKey: `discovery:${delivery._id}`, headers: { "List-Unsubscribe": `<${appUrl("/app/radar")}>` } });
     return { providerMessageId: result.id, skipped: null };
   }
@@ -145,13 +154,15 @@ export async function sendImmediateDiscoveryNotifications() {
   );
   const due = await c.notificationDeliveries.find({ state: "pending", frequency: "immediate", nextAttemptAt: { $lte: new Date() } }).sort({ createdAt: 1 }).limit(200).toArray();
   let sent = 0;
+  // One query for everyone's passport instead of one per delivery.
+  const passports = new Map((await c.careerPassports.find({ _id: { $in: [...new Set(due.map((row) => row.userId))] } }).toArray()).map((row) => [row._id, row]));
   for (const delivery of due) {
     const claimed = await c.notificationDeliveries.updateOne(
       { _id: delivery._id, state: "pending", nextAttemptAt: { $lte: new Date() } },
       { $set: { state: "sending", lockedUntil: new Date(Date.now() + 2 * 60_000) }, $inc: { attempts: 1 } },
     );
     if (!claimed.modifiedCount) continue;
-    const passport = await c.careerPassports.findOne({ _id: delivery.userId });
+    const passport = passports.get(delivery.userId);
     if (passport && inQuietHours(passport)) {
       await defer(delivery, "Quiet hours", 15);
       continue;
@@ -197,14 +208,13 @@ export async function sendDiscoveryDigests() {
     if (!claimed.modifiedCount) continue;
     const contexts = (await Promise.all(rows.map(recommendationContext)))
       .filter((value): value is NonNullable<typeof value> => !!value && notificationsOn(value.user) && (first.channel !== "email" || !!value.user.emailVerifiedAt))
-      .slice(0, 20);
     try {
       if (contexts.length) {
         if (first.channel === "email") {
-          const user = contexts[0].user;
-          const lines = contexts.map(({ job, recommendation }) => `${stateLabel(recommendation.state)} · ${job.title} at ${job.company}${job.location ? ` · ${job.location}` : ""}`);
+          const { user, passport: owner } = contexts[0];
+          const matches = contexts.map(({ job, recommendation }) => matchLine(stateLabel(recommendation.state), job, recommendation, appUrl(`/app/radar/${recommendation._id}`)));
           const digestKey = createHash("sha256").update(ids.slice().sort().join("\n")).digest("hex");
-          const result = await sendEmail({ ...noticeMessage(user.email, `${contexts.length} new Shortlist Job Radar matches`, "Your new job matches", lines, { label: "Open Job Radar", url: appUrl("/app/radar") }), idempotencyKey: `discovery-digest:${digestKey}` });
+          const result = await sendEmail({ ...jobMatchesMessage({ to: user.email, name: user.name ?? "", roles: owner.targetRoles, matches, radarUrl: appUrl("/app/radar"), retentionDays: RECOMMENDATION_RETENTION_DAYS }), idempotencyKey: `discovery-digest:${digestKey}` });
           await c.notificationDeliveries.updateMany({ _id: { $in: ids }, state: "sending" }, { $set: { providerMessageId: result.id } });
         } else {
           await sendPushToUser(first.userId, { title: `${contexts.length} new job matches`, body: "Open Job Radar to review your latest shortlist.", url: "/app/radar", tag: "job-match-digest", version: Math.max(...contexts.map(({ recommendation }) => recommendation.notificationVersion)) });

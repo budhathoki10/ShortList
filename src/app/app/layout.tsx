@@ -8,7 +8,7 @@ import { requireUser } from "@/lib/auth/session";
 import { recheckRenewals } from "@/lib/billing/renewal-check";
 import { billingConfigured } from "@/lib/billing/config";
 import { isPaid } from "@/lib/plans";
-import { dueFollowUpCount, listJobs } from "@/lib/services/jobs";
+import { dueFollowUpCount, paletteJobs } from "@/lib/services/jobs";
 
 export const metadata: Metadata = { robots: { index: false, follow: false, noarchive: true } };
 
@@ -16,7 +16,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const user = await requireUser();
   // If a renewal webhook was lost, re-read Freemius around the renewal date, after the page is sent.
   if (billingConfigured()) after(() => recheckRenewals(user.id).catch(() => {}));
-  const [followUps, jobs] = await Promise.all([dueFollowUpCount(user.id), listJobs(user.id)]);
+  const [followUps, jobs] = await Promise.all([dueFollowUpCount(user.id), paletteJobs(user.id)]);
   const paid = isPaid(user);
   return (
     <div className="min-h-dvh lg:grid lg:grid-cols-[4.5rem_minmax(0,1fr)] print:block">
@@ -29,7 +29,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           {children}
         </main>
       </div>
-      <KeyboardLayer jobs={jobs.slice(0, 200).map((j) => ({ id: j.id, title: j.post.title, company: j.post.company, status: j.status }))} />
+      <KeyboardLayer jobs={jobs} />
       <LogoutConfirm />
     </div>
   );
