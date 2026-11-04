@@ -4,6 +4,7 @@ import { collections } from "@/db/mongo";
 import type { CareerPassportDoc, RecommendationState } from "@/db/types";
 import type { Profile } from "@/lib/model/types";
 import { mergePassport, passportFromCv } from "@/lib/discovery/passport-from-cv";
+import { postedAt, postingCutoff } from "@/lib/discovery/retention";
 import { createJob } from "@/lib/services/jobs";
 import { encryptPushSecret } from "@/lib/discovery/push-crypto";
 import { isPushServiceEndpoint } from "@/lib/discovery/push-endpoints";
@@ -68,15 +69,18 @@ export async function listRecommendations(userId: string, includeDismissed = fal
   const c = await collections();
   const recommendations = await c.jobRecommendations
     .find({ userId: String(userId), status: { $in: includeDismissed ? ["active", "saved", "dismissed"] : ["active", "saved"] } })
+    // No cap: unanswered matches expire after RECOMMENDATION_RETENTION_DAYS, which keeps the list bounded (see discovery/retention.ts).
     .sort({ createdAt: -1 })
-    .limit(200)
     .toArray();
   const jobs = await c.discoveredJobs.find({ _id: { $in: recommendations.map((row) => row.discoveredJobId) } }).toArray();
   const byId = new Map(jobs.map((job) => [job._id, job]));
+  const cutoff = postingCutoff();
   return recommendations.flatMap((recommendation) => {
     const job = byId.get(recommendation.discoveredJobId);
-    return job ? [{ recommendation, job }] : [];
-  });
+    // Only recent postings are shown, newest first; a job the user already saved or dismissed stays where they put it.
+    if (!job || (recommendation.status === "active" && postedAt(job) < cutoff)) return [];
+    return [{ recommendation, job }];
+  }).sort((a, b) => postedAt(b.job).valueOf() - postedAt(a.job).valueOf());
 }
 
 export async function ownedRecommendation(userId: string, recommendationId: string) {

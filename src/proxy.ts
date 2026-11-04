@@ -56,5 +56,5 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   // Pages only: static files and API routes (webhooks, cron) don't render HTML.
-  matcher: ["/((?!api/|_next/static|_next/image|favicon.ico).*)"],
+  matcher: ["/((?!api/|_next/static|_next/image|favicon.ico|sw.js).*)"],
 };

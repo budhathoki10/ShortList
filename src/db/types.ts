@@ -183,7 +183,8 @@ export type PhotoDoc = { _id: string; image: Uint8Array; updatedAt: Date; /** Fa
 
 export type AlertFrequency = "immediate" | "daily" | "off";
 export type RecommendationState = "ready" | "stretch" | "verify" | "blocked";
-export type RecommendationStatus = "active" | "dismissed" | "saved" | "closed";
+/** `expired`: nobody responded within the retention window. Hidden, and kept only so the same job isn't recommended again while it stays open. */
+export type RecommendationStatus = "active" | "dismissed" | "saved" | "closed" | "expired";
 
 /** Search facts the CV cannot answer safely. `_id` is the user id. */
 export type CareerPassportDoc = {

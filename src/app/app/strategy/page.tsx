@@ -3,14 +3,14 @@ import { Badge, ButtonLink, EmptyState, PageHeader } from "@/components/ui";
 import { requireUser } from "@/lib/auth/session";
 import { careerFingerprint } from "@/lib/career/evidence";
 import { listCareerPlans } from "@/lib/services/career";
-import { listJobs } from "@/lib/services/jobs";
+import { listJobsWithText } from "@/lib/services/jobs";
 import { getProfile, profileReady } from "@/lib/services/profile";
 import { collections } from "@/db/mongo";
 
 export const metadata: Metadata = { title: "Application strategy" };
 export default async function ApplicationStrategy() {
   const user = await requireUser();
-  const [jobs, profile, plans, sessions] = await Promise.all([listJobs(user.id), getProfile(user.id), listCareerPlans(user.id), (await collections()).mockSessions.find({ userId: user.id, status: "complete" }, { projection: { report: 1, jobId: 1, createdAt: 1 } }).sort({ createdAt: -1 }).toArray()]);
+  const [jobs, profile, plans, sessions] = await Promise.all([listJobsWithText(user.id), getProfile(user.id), listCareerPlans(user.id), (await collections()).mockSessions.find({ userId: user.id, status: "complete" }, { projection: { report: 1, jobId: 1, createdAt: 1 } }).sort({ createdAt: -1 }).toArray()]);
   if (!profileReady(profile)) return <EmptyState title="Add your CV first" action={<ButtonLink href="/app/profile">Add CV</ButtonLink>}>Compare job requirements with your actual experience before prioritising applications.</EmptyState>;
   const ranked = jobs.filter((j) => j.status !== "rejected" && j.status !== "offer").map((job) => {
     const saved = plans.find((p) => p._id === job.id);

@@ -15,10 +15,10 @@ export async function ensureIndexes(db: Db) {
     ]),
     db.collection("sessions").createIndexes([{ key: { userId: 1 } }, { key: { expiresAt: 1 }, expireAfterSeconds: 0 }]),
     db.collection("payments").createIndexes([{ key: { providerRef: 1 }, unique: true }, { key: { userId: 1 } }]),
-    db.collection("jobs").createIndexes([{ key: { userId: 1, updatedAt: -1 } }, { key: { status: 1, followUpOn: 1 } }]),
+    db.collection("jobs").createIndexes([{ key: { userId: 1, updatedAt: -1 } }, { key: { status: 1, followUpOn: 1 } }, { key: { userId: 1, status: 1, followUpOn: 1 } }]),
     db.collection("documents").createIndexes([{ key: { jobId: 1, kind: 1 }, unique: true }, { key: { userId: 1 } }]),
     db.collection("interviews").createIndex({ userId: 1 }),
-    db.collection("usage").createIndex({ userId: 1 }),
+    db.collection("usage").createIndexes([{ key: { userId: 1 } }, { key: { userId: 1, month: 1 } }]),
     db.collection("subscriptions").createIndexes([
       // One row per Freemius license: this is what stops a redelivered or concurrent event from creating a second subscription.
       { key: { freemiusLicenseId: 1 }, unique: true, partialFilterExpression: { freemiusLicenseId: { $type: "string" } } },
@@ -43,6 +43,8 @@ export async function ensureIndexes(db: Db) {
       { key: { userId: 1, status: 1, createdAt: -1 } },
       // Closing a posting closes its recommendations across every user.
       { key: { discoveredJobId: 1, status: 1 } },
+      // The expiry sweep looks up unanswered matches by age across every user.
+      { key: { status: 1, createdAt: 1 } },
     ]),
     db.collection("push_subscriptions").createIndexes([
       { key: { endpointHash: 1 }, unique: true },
@@ -52,6 +54,8 @@ export async function ensureIndexes(db: Db) {
       { key: { state: 1, frequency: 1, nextAttemptAt: 1 } },
       { key: { userId: 1, createdAt: -1 } },
       { key: { recommendationId: 1, state: 1 } },
+      // The hourly email limit counts one user's recent sends.
+      { key: { userId: 1, channel: 1, state: 1, sentAt: -1 } },
     ]),
     db.collection("discovery_runs").createIndex({ startedAt: -1 }),
     db.collection("job_sources").createIndexes([{ key: { type: 1, key: 1 }, unique: true }, { key: { enabled: 1, nextAttemptAt: 1 } }]),

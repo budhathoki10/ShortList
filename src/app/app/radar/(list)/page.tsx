@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { dismissRadarMatch, prepareRadarMatch } from "@/app/actions/discovery";
+import { prepareRadarMatch } from "@/app/actions/discovery";
+import { DismissMatch, OptimisticCard } from "@/components/discovery/optimistic-card";
 import { CareerPassportForm, type PassportFormValue } from "@/components/discovery/career-passport-form";
 import { RadarPoller } from "@/components/discovery/radar-poller";
 import { SubmitButton } from "@/components/submit-button";
@@ -8,6 +9,7 @@ import { Badge, ButtonLink, EmptyState, Notice, PageHeader } from "@/components/
 import { requireUser } from "@/lib/auth/session";
 import { formatDay } from "@/lib/dates";
 import { SOURCES } from "@/lib/discovery/sources";
+import { MAX_POSTING_AGE_DAYS, postedAt, RECOMMENDATION_RETENTION_DAYS } from "@/lib/discovery/retention";
 import { getCareerPassport, getDiscoverySourceStatus, listRecommendations } from "@/lib/services/discovery";
 import { getProfile } from "@/lib/services/profile";
 import { notificationsOn } from "@/lib/services/notification-settings";
@@ -33,18 +35,34 @@ function workArrangement(job: DiscoveredJobDoc) {
   return null;
 }
 
+/** How well the CV covers this job, as a bar: the score is the share of the posting's requirements the CV backs with evidence. */
+function FitBar({ score }: { score: number }) {
+  const value = Math.max(0, Math.min(100, Math.round(score)));
+  const tone = value >= 70 ? "bg-success" : value >= 40 ? "bg-warning" : "bg-danger";
+  return (
+    <div className="mt-3 flex items-center gap-3">
+      <span aria-hidden="true" className="shrink-0 text-xs font-medium text-muted">CV fit</span>
+      <div role="progressbar" aria-label="CV fit" aria-valuemin={0} aria-valuemax={100} aria-valuenow={value} className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-sunken">
+        <div className={`h-full rounded-full ${tone}`} style={{ width: `${value}%` }} />
+      </div>
+      <span className="w-10 shrink-0 text-right text-xs font-semibold tabular-nums">{value}%</span>
+    </div>
+  );
+}
+
 function RecommendationCard({ recommendation, job }: { recommendation: JobRecommendationDoc; job: DiscoveredJobDoc }) {
   const state = STATE[recommendation.state];
   const arrangement = workArrangement(job);
   return (
-    <article className="rounded-md border border-border bg-surface p-4">
+    <OptimisticCard className="rounded-md border border-border bg-surface p-4">
       <h3 className="text-sm font-semibold leading-relaxed"><Link href={`/app/radar/${recommendation._id}`} className="hover:underline">{job.title}</Link></h3>
       <p className="text-[13px] text-muted">{job.company}{job.location ? ` · ${job.location}` : " · Location not stated"}{arrangement && !job.location.toLowerCase().includes(arrangement.toLowerCase()) ? ` · ${arrangement}` : ""}</p>
       <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
         <Badge tone={state.tone}>{state.label}</Badge>
-        <span className="tabular-nums">CV evidence {recommendation.evidenceScore}% · preferences {recommendation.preferenceScore}%</span>
-        <span>{SOURCES[job.sourceType]?.label ?? job.sourceType} · checked {formatDay(job.lastSeenAt)}</span>
+        <span className="tabular-nums">Preferences {recommendation.preferenceScore}%</span>
+        <span>{SOURCES[job.sourceType]?.label ?? job.sourceType} · <time dateTime={postedAt(job).toISOString()}>Posted {formatDay(postedAt(job))}</time></span>
       </div>
+      <FitBar score={recommendation.evidenceScore} />
       <p className="mt-3 text-sm">{recommendation.reasons[0]}</p>
       {recommendation.eligibility[0] && <p className={`mt-2 text-[13px] ${recommendation.eligibility[0].severity === "blocker" ? "text-danger" : "text-warning"}`}>{recommendation.eligibility[0].message}</p>}
       {job.post.salary && <p className="mt-2 text-[13px] text-muted">Salary: {job.post.salary}</p>}
@@ -53,16 +71,9 @@ function RecommendationCard({ recommendation, job }: { recommendation: JobRecomm
         {recommendation.trackerJobId ? <ButtonLink href={`/app/jobs/${recommendation.trackerJobId}`} size="sm">Open application</ButtonLink> : recommendation.state !== "blocked" ? <form action={prepareRadarMatch}><input type="hidden" name="recommendationId" value={recommendation._id} /><SubmitButton size="sm" pendingLabel="Saving…">Save and prepare</SubmitButton></form> : null}
         <ButtonLink href={`/app/radar/${recommendation._id}`} variant="secondary" size="sm">Review evidence</ButtonLink>
         <a href={job.canonicalUrl} target="_blank" rel="noopener" className="inline-flex h-8 items-center rounded px-3 text-sm font-medium text-muted hover:bg-surface-hover hover:text-foreground">View source</a>
-        <form action={dismissRadarMatch} className="ml-auto flex min-w-0 flex-wrap items-center gap-2">
-          <input type="hidden" name="recommendationId" value={recommendation._id} />
-          <label className="sr-only" htmlFor={`dismiss-${recommendation._id}`}>Dismiss reason</label>
-          <select id={`dismiss-${recommendation._id}`} name="reason" defaultValue="not interested" className="h-8 max-w-44 rounded border border-border bg-surface px-2 text-xs text-muted max-sm:h-11">
-            {dismissReasons.map((reason) => <option key={reason} value={reason}>{reason}</option>)}
-          </select>
-          <SubmitButton variant="ghost" size="sm" pendingLabel="Dismissing…">Dismiss</SubmitButton>
-        </form>
+        <DismissMatch recommendationId={recommendation._id} reasons={dismissReasons} />
       </div>
-    </article>
+    </OptimisticCard>
   );
 }
 
@@ -89,7 +100,7 @@ export default async function RadarPage() {
         title="Job Radar"
         description={
           <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span>New roles that fit your CV and preferences.</span>
+            <span>Roles posted in the last {MAX_POSTING_AGE_DAYS} days that fit your CV and preferences. Matches you don&apos;t save or dismiss are removed after {RECOMMENDATION_RETENTION_DAYS} days.</span>
             <span role="status" data-testid="radar-agent-status" className={`inline-flex items-center gap-1.5 font-medium ${agentRunning ? "text-success" : "text-danger"}`}>
               <span aria-hidden="true" className={`size-2 shrink-0 rounded-full ${agentRunning ? "bg-success" : "bg-danger"}`} />
               {agentStatus}

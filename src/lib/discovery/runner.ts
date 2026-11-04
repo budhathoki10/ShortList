@@ -4,10 +4,14 @@ import { collections, isDuplicateKey } from "@/db/mongo";
 import type { Filter } from "mongodb";
 import type { DiscoveredJobDoc } from "@/db/types";
 import { evaluateJob, roleCompatibility } from "./match";
+import { postedAt, postingCutoff, RECOMMENDATION_RETENTION_DAYS } from "./retention";
 import { configuredSources, fetchSource, SOURCES, type SourceConfig, type SourcePosting } from "./sources";
 
-/** New or changed postings read with AI per run. The rest wait for the next run, which keeps a run inside its time limit. */
-const MAX_EXTRACTIONS_PER_RUN = 40;
+/**
+ * New or changed postings read with AI per run. The time budget is the real limit; this only stops a runaway run.
+ * Anything left over is picked up by the next run (every 15 minutes), so nothing is dropped.
+ */
+const MAX_EXTRACTIONS_PER_RUN = Number(process.env.DISCOVERY_MAX_EXTRACTIONS) || 500;
 /** AI reads in flight at once. They were one at a time, which alone could outlast the host's function time limit. */
 const EXTRACTION_CONCURRENCY = 5;
 /**
@@ -21,15 +25,15 @@ const PARTIAL_FEED_STALE_DAYS = 21;
 import { extractJob } from "@/lib/jobs/extract";
 import { profileReady } from "@/lib/services/profile";
 import { backfillPassports } from "@/lib/services/discovery";
-import { enqueueRecommendationNotifications, sendImmediateDiscoveryNotifications } from "./notifications";
+import { enqueueRecommendationNotifications, sendImmediateDiscoveryNotifications, type OwnerCache } from "./notifications";
 
 /** Store one posting. Null when it's new or changed but this run's extraction budget is spent: the next run takes it. */
-async function upsertPosting(posting: SourcePosting, budget: { left: number }): Promise<{ job: DiscoveredJobDoc; changed: boolean } | null> {
+async function upsertPosting(posting: SourcePosting, budget: { left: number }, existing: DiscoveredJobDoc | undefined): Promise<{ job: DiscoveredJobDoc; changed: boolean } | null> {
   const c = await collections();
-  const existing = await c.discoveredJobs.findOne({ sourceType: posting.sourceType, sourceKey: posting.sourceKey, externalId: posting.externalId });
   const now = new Date();
   if (existing && existing.contentHash === posting.contentHash) {
-    await c.discoveredJobs.updateOne({ _id: existing._id }, { $set: { lastSeenAt: now, closedAt: null } });
+    // Still open and unchanged: the run refreshes lastSeenAt for all of these in one write. Only a reopened posting needs its own.
+    if (existing.closedAt !== null) await c.discoveredJobs.updateOne({ _id: existing._id }, { $set: { lastSeenAt: now, closedAt: null } });
     return { job: { ...existing, lastSeenAt: now, closedAt: null }, changed: existing.closedAt !== null };
   }
   if (budget.left <= 0) return null;
@@ -82,11 +86,33 @@ async function closeWhere(filter: Filter<DiscoveredJobDoc>) {
   }
 }
 
+/**
+ * Remove matches the user never responded to (still "active", not saved, not dismissed) after the retention window,
+ * with any alert still waiting to go out. The row is kept as a hidden "expired" marker while its posting is open, or the
+ * next run would recommend the same job again; the marker is deleted once the posting closes or disappears.
+ */
+async function expireUnansweredRecommendations() {
+  const c = await collections();
+  const cutoff = new Date(Date.now() - RECOMMENDATION_RETENTION_DAYS * 24 * 60 * 60_000);
+  const stale = await c.jobRecommendations.find({ status: "active", trackerJobId: null, createdAt: { $lt: cutoff } }, { projection: { _id: 1 } }).toArray();
+  if (stale.length) {
+    const ids = stale.map((row) => row._id);
+    await c.jobRecommendations.updateMany({ _id: { $in: ids }, status: "active" }, { $set: { status: "expired", updatedAt: new Date() } });
+    await c.notificationDeliveries.updateMany({ recommendationId: { $in: ids }, state: "pending" }, { $set: { state: "failed", failureReason: "Match expired unanswered" } });
+  }
+  const expired = await c.jobRecommendations.find({ status: "expired" }, { projection: { _id: 1, discoveredJobId: 1 } }).toArray();
+  if (!expired.length) return;
+  const open = new Set((await c.discoveredJobs.find({ _id: { $in: expired.map((row) => row.discoveredJobId) }, closedAt: null }, { projection: { _id: 1 } }).toArray()).map((row) => row._id));
+  const gone = expired.filter((row) => !open.has(row.discoveredJobId)).map((row) => row._id);
+  if (gone.length) await c.jobRecommendations.deleteMany({ _id: { $in: gone }, status: "expired" });
+}
+
 async function matchChangedJobs(jobs: DiscoveredJobDoc[]) {
   if (!jobs.length) return 0;
   const c = await collections();
   const passports = await c.careerPassports.find({ discoveryEnabled: true }).toArray();
   if (!passports.length) return 0;
+  const ownerCache: OwnerCache = new Map();
   const profiles = await c.profiles.find({ _id: { $in: passports.map((row) => row._id) } }, { projection: { data: 1, updatedAt: 1 } }).toArray();
   const byUser = new Map(profiles.map((row) => [row._id, row]));
   let created = 0;
@@ -98,6 +124,8 @@ async function matchChangedJobs(jobs: DiscoveredJobDoc[]) {
     const existingByJob = new Map(existingRows.map((row) => [row.discoveredJobId, row]));
     for (const job of jobs) {
       const existing = existingByJob.get(job._id);
+      // Postings older than a week are never newly recommended (or emailed), however long they stay open.
+      if (!existing && postedAt(job) < postingCutoff()) continue;
       // Nothing that feeds the decision has changed: skip before scoring.
       if (existing && existing.status !== "closed" && existing.jobContentHash === job.contentHash && existing.passportVersion === passport.version && existing.profileUpdatedAt.valueOf() === profile.updatedAt.valueOf()) continue;
       const decision = evaluateJob(profile.data, profile.updatedAt, passport, job);
@@ -115,9 +143,9 @@ async function matchChangedJobs(jobs: DiscoveredJobDoc[]) {
         { upsert: true },
       );
       if (!existing) created += 1;
-      // A dismissed match stays quiet even when the employer edits the posting.
-      if (existing?.status !== "dismissed" && (!existing || existing.jobContentHash !== job.contentHash) && passport.alertStates.includes(decision.state)) {
-        await enqueueRecommendationNotifications(passport, recommendationId, notificationVersion);
+      // A dismissed or expired match stays quiet even when the employer edits the posting.
+      if (existing?.status !== "dismissed" && existing?.status !== "expired" && (!existing || existing.jobContentHash !== job.contentHash) && passport.alertStates.includes(decision.state)) {
+        await enqueueRecommendationNotifications(passport, recommendationId, notificationVersion, ownerCache);
       }
     }
   }
@@ -154,13 +182,16 @@ export async function runJobDiscovery() {
     throw error;
   }
   const configuredSourceIds = new Set(sourceIds);
-  const openSourcePairs = await c.discoveredJobs.find({ closedAt: null }, { projection: { sourceType: 1, sourceKey: 1, company: 1 } }).toArray();
-  const closedSourceIds = new Set<string>();
-  for (const job of openSourcePairs) {
-    const id = `${job.sourceType}:${job.sourceKey.toLowerCase()}`;
-    if (configuredSourceIds.has(id) || closedSourceIds.has(id)) continue;
-    closedSourceIds.add(id);
-    await closeMissing({ type: job.sourceType, key: job.sourceKey, company: job.company }, []);
+  // One row per source with open postings, instead of reading every open posting just to find the source names.
+  const openSources = await c.discoveredJobs
+    .aggregate<{ _id: { sourceType: SourceConfig["type"]; sourceKey: string }; company: string }>([
+      { $match: { closedAt: null } },
+      { $group: { _id: { sourceType: "$sourceType", sourceKey: "$sourceKey" }, company: { $first: "$company" } } },
+    ])
+    .toArray();
+  for (const { _id, company } of openSources) {
+    if (configuredSourceIds.has(`${_id.sourceType}:${_id.sourceKey.toLowerCase()}`)) continue;
+    await closeMissing({ type: _id.sourceType, key: _id.sourceKey, company }, []);
   }
   // People who saved a CV before passports filled themselves still get searched for.
   await backfillPassports();
@@ -200,16 +231,17 @@ export async function runJobDiscovery() {
       // Only roles someone is looking for are stored and read with AI. A board lists every role it has each run,
       // so if someone later targets a role, its postings are picked up on the next run.
       const todo = postings.filter((posting) => wanted(posting.title));
+      // One query for the stored copies of this source's postings, instead of one per posting.
+      const stored = new Map((await c.discoveredJobs.find({ sourceType: source.type, sourceKey: source.key, externalId: { $in: todo.map((posting) => posting.externalId) } }).toArray()).map((row) => [row.externalId, row]));
       for (let i = 0; i < todo.length; i += EXTRACTION_CONCURRENCY) {
         // Past the deadline nothing new is read: the posting is picked up again next run.
         if (Date.now() > deadline) budget.left = 0;
-        const results = await Promise.all(todo.slice(i, i + EXTRACTION_CONCURRENCY).map((posting) => upsertPosting(posting, budget)));
+        const results = await Promise.all(todo.slice(i, i + EXTRACTION_CONCURRENCY).map((posting) => upsertPosting(posting, budget, stored.get(posting.externalId))));
         for (const result of results) if (result?.changed) changedJobs.push(result.job);
       }
-      // Still listed but not read in full this run (a SmartRecruiters posting already stored): it's still open.
-      const returned = new Set(postings.map((posting) => posting.externalId));
-      const listedOnly = seen.filter((id) => known.has(id) && !returned.has(id));
-      if (listedOnly.length) await c.discoveredJobs.updateMany({ sourceType: source.type, sourceKey: source.key, externalId: { $in: listedOnly }, closedAt: null }, { $set: { lastSeenAt: new Date() } });
+      // Everything stored that the source still lists is still open: refresh them all in one write.
+      const listed = seen.filter((id) => known.has(id));
+      if (listed.length) await c.discoveredJobs.updateMany({ sourceType: source.type, sourceKey: source.key, externalId: { $in: listed }, closedAt: null }, { $set: { lastSeenAt: new Date() } });
       if (info.partial) await closeStale(source);
       else await closeMissing(source, seen);
       changed += changedJobs.length;
@@ -226,6 +258,7 @@ export async function runJobDiscovery() {
       await c.jobSources.updateOne({ _id: sourceId }, { $set: { lastFailureReason: reason, nextAttemptAt: new Date(Date.now() + delayMinutes * 60_000), updatedAt: new Date() }, $inc: { failureCount: 1 } });
     }
   }
+  await expireUnansweredRecommendations();
   recommendations = await matchChangedJobs(await c.discoveredJobs.find({ closedAt: null }).toArray());
   const delivered = await sendImmediateDiscoveryNotifications();
   await c.discoveryRuns.updateOne({ _id: lease._id }, { $set: { status: attemptedSources > 0 && failures.length === attemptedSources ? "failed" : "complete", found, changed, recommendations, failureReason: failures.length ? failures.join(" | ").slice(0, 500) : null, completedAt: new Date() } });
