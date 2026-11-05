@@ -9,13 +9,23 @@ export const DISCOVERY_RULE_VERSION = 3;
 
 const words = (value: string) => canonical(value).split(" ").filter((word) => word.length > 2);
 
+/** Titles that name the same job: "Backend Engineer" is a "Backend Developer". */
+const SAME_WORD: Record<string, string> = { engineer: "developer", programmer: "developer", dev: "developer", swe: "developer", engineers: "developer", developers: "developer" };
+/** Words nearly every title has. Sharing only these says nothing about the role, so they never carry a match alone. */
+const GENERIC_WORDS = new Set(["developer", "manager", "officer", "specialist", "associate", "assistant", "executive", "lead", "senior", "junior", "staff", "principal"]);
+const roleWords = (value: string) => words(value).map((word) => SAME_WORD[word] ?? word);
+
 export function roleCompatibility(title: string, targets: string[]): number {
   if (!targets.length) return 0;
   return Math.max(...targets.map((target) => {
-    const titleWords = new Set(words(title));
-    const targetWords = words(target);
+    const titleWords = new Set(roleWords(title));
+    const targetWords = roleWords(target);
     const exact = canonical(title).includes(canonical(target)) || canonical(target).includes(canonical(title));
-    return exact ? 100 : Math.round((targetWords.filter((word) => titleWords.has(word)).length / Math.max(1, targetWords.length)) * 100);
+    if (exact) return 100;
+    const matched = targetWords.filter((word) => titleWords.has(word));
+    // "Backend Developer" must match on "backend": "Android Developer" shares only the generic word.
+    if (targetWords.some((word) => !GENERIC_WORDS.has(word)) && matched.every((word) => GENERIC_WORDS.has(word))) return 0;
+    return Math.round((matched.length / Math.max(1, targetWords.length)) * 100);
   }));
 }
 
@@ -45,6 +55,20 @@ function explicitEmploymentType(job: DiscoveredJobDoc) {
 
 const ANYWHERE = /\b(worldwide|anywhere|global|international|any location|all countries)\b/i;
 
+/** How job posts spell the same place, so "USA" on your passport also matches "United States" or "US only". */
+const PLACE_ALIASES: string[][] = [
+  ["usa", "us", "u.s.", "united states", "america", "north america"],
+  ["uk", "united kingdom", "britain", "england"],
+  ["eu", "europe", "emea", "european union"],
+  ["apac", "asia", "asia pacific"],
+  ["uae", "united arab emirates", "dubai", "mena", "middle east"],
+  ["canada", "north america"],
+  ["australia", "anz", "apac"],
+];
+
+const expandPlace = (place: string) => [place, ...PLACE_ALIASES.filter((group) => group.includes(place)).flat()];
+const mentions = (region: string, place: string) => (place.length > 3 ? region.includes(place) : new RegExp(`(^|[^a-z])${place.replace(/\./g, "\\.")}([^a-z]|$)`).test(region));
+
 /**
  * Remote feeds write their region limit into the location ("Remote (USA only)"). A remote role open only to a region
  * the person hasn't listed as a place they can work or want to work is not "Ready to apply" for them: it needs checking.
@@ -52,10 +76,10 @@ const ANYWHERE = /\b(worldwide|anywhere|global|international|any location|all co
 export function remoteRegionFinding(job: Pick<DiscoveredJobDoc, "location">, passport: Pick<CareerPassportDoc, "workCountries" | "locations">): EligibilityFinding | null {
   const region = job.location.match(/^Remote \((.+)\)$/)?.[1];
   if (!region || ANYWHERE.test(region)) return null;
-  const places = [...passport.workCountries, ...passport.locations].flatMap((place) => place.toLowerCase().split(",")).map((part) => part.trim()).filter((part) => part.length > 1);
+  const places = [...passport.workCountries, ...passport.locations].flatMap((place) => place.toLowerCase().split(",")).map((part) => part.trim()).filter((part) => part.length > 1).flatMap(expandPlace);
   if (!places.length) return null;
   const lower = region.toLowerCase();
-  if (places.some((place) => lower.includes(place))) return null;
+  if (places.some((place) => mentions(lower, place))) return null;
   return { code: "location", severity: "verify", message: `This remote role is limited to ${region}. Check you're allowed to work from there before applying.`, evidence: job.location };
 }
 

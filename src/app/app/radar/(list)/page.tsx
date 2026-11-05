@@ -88,7 +88,6 @@ export default async function RadarPage() {
   const groups = (["ready", "stretch", "verify", "blocked"] as const).map((state) => ({ state, rows: rows.filter((row) => row.recommendation.state === state && ["active", "saved"].includes(row.recommendation.status)) }));
   const visibleCount = rows.filter((row) => ["active", "saved"].includes(row.recommendation.status) && row.recommendation.state !== "blocked").length;
   const blockedRows = groups.find((group) => group.state === "blocked")?.rows ?? [];
-  const dismissedRows = rows.filter((row) => row.recommendation.status === "dismissed");
   const discoveryDelayed = sourceStatus.configured > 0 && sourceStatus.failing === sourceStatus.configured;
   const agentRunning = passport?.discoveryEnabled === true && !discoveryDelayed;
   const agentStatus = discoveryDelayed ? "Agent delayed" : agentRunning ? "Agent running" : "Agent paused";
@@ -123,7 +122,6 @@ export default async function RadarPage() {
 
       {blockedRows.length > 0 && <details className="group rounded-md border border-border bg-surface"><summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 font-medium marker:hidden sm:px-6"><span>Blocked matches <span className="ml-1 font-mono text-xs text-muted">{blockedRows.length}</span></span><span aria-hidden="true" className="text-muted transition-transform group-open:rotate-45">+</span></summary><div className="space-y-3 border-t border-border p-4 sm:p-5">{blockedRows.map((row) => <RecommendationCard key={row.recommendation._id} {...row} />)}</div></details>}
 
-      {dismissedRows.length > 0 && <details className="group rounded-md border border-border bg-surface"><summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 font-medium marker:hidden sm:px-6"><span>Dismissed <span className="ml-1 font-mono text-xs text-muted">{dismissedRows.length}</span></span><span aria-hidden="true" className="text-muted transition-transform group-open:rotate-45">+</span></summary><ul className="divide-y divide-border border-t border-border">{dismissedRows.map(({ recommendation, job }) => <li key={recommendation._id} className="flex flex-wrap items-center gap-3 px-5 py-3 text-sm"><div className="min-w-0 flex-1"><Link href={`/app/radar/${recommendation._id}`} className="font-medium hover:underline">{job.title}</Link><p className="truncate text-xs text-muted">{job.company} · {recommendation.dismissalReason || "Dismissed"}</p></div><a href={job.canonicalUrl} target="_blank" rel="noopener" className="text-xs font-medium text-muted hover:text-foreground">View source</a></li>)}</ul></details>}
 
       <details id="alert-settings" className="group scroll-mt-20 rounded-md border border-border bg-surface" open={!passport}>
         <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 font-medium marker:hidden sm:px-6"><span>Career Passport and alert settings</span><span aria-hidden="true" className="text-muted transition-transform group-open:rotate-45">+</span></summary>

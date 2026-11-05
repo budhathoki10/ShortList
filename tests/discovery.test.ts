@@ -51,6 +51,9 @@ describe("eligibility-first matching", () => {
   it("matches related role titles but refuses unrelated roles", () => {
     expect(roleCompatibility("Senior Frontend Engineer", ["Frontend developer"])).toBeGreaterThanOrEqual(45);
     expect(roleCompatibility("Account executive", ["Frontend developer"])).toBe(0);
+    expect(roleCompatibility("Senior Backend Engineer", ["Backend Developer"])).toBe(100);
+    expect(roleCompatibility("Android Developer", ["Backend Developer"])).toBe(0);
+    expect(roleCompatibility("Developer Relations Engineer", ["Backend Developer"])).toBe(0);
   });
 
   it("no longer blocks or flags a role for refusing sponsorship or naming a graduation window", () => {
@@ -234,5 +237,14 @@ describe("notification preferences", () => {
     expect(deviceName("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36 Edg/130.0")).toBe("Edge on Windows");
     expect(deviceName("Mozilla/5.0 (Macintosh; Intel Mac OS X 14.0; rv:131.0) Gecko/20100101 Firefox/131.0")).toBe("Firefox on macOS");
     expect(deviceName("")).toBe("Browser");
+  });
+});
+
+describe("search indexing hosts", () => {
+  it("never treats a tunnel address as the real site", async () => {
+    const { isTemporaryHost } = await import("@/lib/site");
+    expect(isTemporaryHost("sasquatch-rickety-imaging.ngrok-free.dev")).toBe(true);
+    expect(isTemporaryHost("abc.trycloudflare.com")).toBe(true);
+    expect(isTemporaryHost("shortlist.example.com")).toBe(false);
   });
 });
