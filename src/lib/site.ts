@@ -17,8 +17,13 @@ export const SITE = {
   legalUpdated: "1 November 2026",
 };
 
+const TEMPORARY_HOSTS = /(^|\.)(ngrok(-free)?\.(dev|app|io)|trycloudflare\.com|loca\.lt|localhost\.run|serveo\.net)$/i;
+export const isTemporaryHost = (hostname: string) => TEMPORARY_HOSTS.test(hostname);
+
 /** Preview and local deployments should never compete with the production domain in search. */
 export function searchIndexingEnabled() {
+  // A tunnel address changes or disappears, and Google would index it as if it were the real site.
+  if (isTemporaryHost(new URL(SITE.url).hostname)) return false;
   if (process.env.SEO_INDEXING_ENABLED === "true") return true;
   if (process.env.SEO_INDEXING_ENABLED === "false") return false;
   const url = new URL(SITE.url);

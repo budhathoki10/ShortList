@@ -49,7 +49,8 @@ export const metadata: Metadata = {
     description: DEFAULT_DESCRIPTION,
   },
   verification: {
-    google: process.env.GOOGLE_SITE_VERIFICATION || undefined,
+    // Public by design (it is printed in every page's head). The env var overrides it if the Search Console property changes.
+    google: process.env.GOOGLE_SITE_VERIFICATION || "CtrvgZZwPQbVRFyGRCR3jXI3-nF9PkOl0Mot3YM4aEg",
     other: process.env.BING_SITE_VERIFICATION ? { "msvalidate.01": process.env.BING_SITE_VERIFICATION } : undefined,
   },
 };

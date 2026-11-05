@@ -22,7 +22,9 @@ export type PassportFormValue = {
   timezone: string;
 };
 
-const joined = (items: string[]) => items.join(", ");
+const INTERNATIONAL_REGIONS = ["USA", "UK", "Europe", "Canada", "Australia", "UAE", "APAC"];
+
+const joined =(items: string[]) => items.join(", ");
 
 function Checks({ name, values, selected }: { name: string; values: Array<{ value: string; label: string }>; selected: string[] }) {
   return (
@@ -53,6 +55,10 @@ export function CareerPassportForm({ value, fromCv }: { value: PassportFormValue
     const countries = field("workCountries");
     if (countries && fromCv.country) countries.value = merge(countries.value, [fromCv.country]);
   }
+  function addRegion(region: string) {
+    const countries = field("workCountries");
+    if (countries) countries.value = merge(countries.value, [region]);
+  }
   return (
     <form ref={form} action={action} className="space-y-7">
       <ActionToast state={state} toastKey="career-passport" />
@@ -72,6 +78,15 @@ export function CareerPassportForm({ value, fromCv }: { value: PassportFormValue
               Add {fromCv.country}, where your CV says you live
             </button>
           )}
+          <div className="flex flex-wrap items-center gap-1.5 pt-1" role="group" aria-label="Add regions you apply to abroad">
+            <span className="text-[13px] text-muted">Applying abroad too?</span>
+            {INTERNATIONAL_REGIONS.map((region) => (
+              <button key={region} type="button" onClick={() => addRegion(region)} className="inline-flex min-h-8 items-center rounded-md border border-border bg-surface px-2.5 text-[13px] font-medium text-foreground transition-colors hover:bg-surface-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent max-sm:min-h-11">
+                + {region}
+              </button>
+            ))}
+          </div>
+          <p className="text-[13px] text-muted">Remote roles limited to a region you haven't listed show as "Verify first".</p>
         </div>
         <Field label="Employment types" hint="Optional.">
           <input name="employmentTypes" defaultValue={joined(value.employmentTypes)} placeholder="Full-time, Internship" className={inputClass} />
